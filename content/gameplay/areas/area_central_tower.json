@@ -1,0 +1,17 @@
+{
+  "areaId": "area_central_tower",
+  "name": "中央通信塔",
+  "mapId": "world_map_demo",
+  "worldPosition": {
+    "x": 0,
+    "y": 0
+  },
+  "initialState": "visible",
+  "transmissionIds": [
+    "tx_good_morning"
+  ],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "themeId": "theme_central_tower",
+  "firstVisitPresentationId": "system.boot.message"
+}

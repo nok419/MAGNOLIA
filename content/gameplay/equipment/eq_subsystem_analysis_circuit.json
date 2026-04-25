@@ -1,0 +1,43 @@
+{
+  "equipmentId": "eq_subsystem_analysis_circuit",
+  "slot": "subsystem",
+  "name": "解析回路",
+  "iconId": "icon_eq_subsystem_analysis_circuit",
+  "summary": "時間経過で解析率を少しずつ伸ばす。",
+  "description": "ミッション中、時間経過で解析率が自動的に上昇する。",
+  "flavorText": "",
+  "passiveEffectIds": [
+    "eff_subsystem_analysis_circuit"
+  ],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "mapPickup",
+    "nodeId": "node_collect_analysis_circuit"
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "analysisDeltaPerStep": 0.002
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 80,
+      "effectOverrides": {
+        "analysisDeltaPerStep": 0.004
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 160,
+      "effectOverrides": {
+        "analysisDeltaPerStep": 0.006
+      }
+    }
+  ]
+}

@@ -1,0 +1,169 @@
+{
+  "mapId": "world_map_demo",
+  "playerSpawnNodeId": "node_area_central_tower",
+  "areaNodes": [
+    {
+      "type": "area",
+      "nodeId": "node_area_central_tower",
+      "x": 0,
+      "y": 0,
+      "areaId": "area_central_tower",
+      "labelPosition": {
+        "x": 16,
+        "y": -12
+      },
+      "minimapVisibleByDefault": true,
+      "visibilityConditionId": "cond_always"
+    },
+    {
+      "type": "area",
+      "nodeId": "node_area_broadcast_facility",
+      "x": 1040,
+      "y": -180,
+      "areaId": "area_broadcast_facility",
+      "labelPosition": {
+        "x": 16,
+        "y": -12
+      },
+      "minimapVisibleByDefault": false,
+      "visibilityConditionId": "cond_mission_good_morning_cleared"
+    }
+  ],
+  "transmissionNodes": [
+    {
+      "type": "transmission",
+      "nodeId": "node_tx_good_morning",
+      "x": 214,
+      "y": 126,
+      "transmissionId": "tx_good_morning",
+      "areaId": "area_central_tower",
+      "interactionRadius": 20,
+      "panelKind": "transmission",
+      "visibilityConditionId": "cond_always",
+      "accessConditionId": "cond_always"
+    },
+    {
+      "type": "transmission",
+      "nodeId": "node_tx_where_are_you",
+      "x": 1136,
+      "y": -130,
+      "transmissionId": "tx_where_are_you",
+      "areaId": "area_broadcast_facility",
+      "interactionRadius": 20,
+      "panelKind": "transmission",
+      "visibilityConditionId": "cond_mission_good_morning_cleared",
+      "accessConditionId": "cond_mission_good_morning_cleared"
+    },
+    {
+      "type": "transmission",
+      "nodeId": "node_tx_evacuation",
+      "x": 1368,
+      "y": -292,
+      "transmissionId": "tx_evacuation",
+      "areaId": "area_broadcast_facility",
+      "interactionRadius": 20,
+      "panelKind": "transmission",
+      "visibilityConditionId": "cond_mission_good_morning_cleared",
+      "accessConditionId": "cond_mission_good_morning_cleared"
+    }
+  ],
+  "warpNodes": [],
+  "collectibleNodes": [
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_silent_wave",
+      "x": -286,
+      "y": -214,
+      "areaId": "area_central_tower",
+      "collectibleKind": "hiddenEquipment",
+      "equipmentId": "eq_sub_silent_wave",
+      "interactionRadius": 18,
+      "visibilityConditionId": "cond_always",
+      "visualHint": "glow"
+    },
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_repair_cluster_a",
+      "x": 246,
+      "y": -234,
+      "areaId": "area_central_tower",
+      "collectibleKind": "selfRepairPoints",
+      "selfRepairPointAmount": 6,
+      "interactionRadius": 18,
+      "visibilityConditionId": "cond_always",
+      "visualHint": "glow"
+    },
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_repair_cluster_b",
+      "x": 284,
+      "y": 228,
+      "areaId": "area_central_tower",
+      "collectibleKind": "selfRepairPoints",
+      "selfRepairPointAmount": 4,
+      "interactionRadius": 18,
+      "visibilityConditionId": "cond_always",
+      "visualHint": "glow"
+    },
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_repair_cluster_d",
+      "x": -304,
+      "y": 184,
+      "areaId": "area_central_tower",
+      "collectibleKind": "selfRepairPoints",
+      "selfRepairPointAmount": 5,
+      "interactionRadius": 18,
+      "visibilityConditionId": "cond_always",
+      "visualHint": "glow"
+    },
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_repair_cluster_e",
+      "x": 328,
+      "y": -34,
+      "areaId": "area_central_tower",
+      "collectibleKind": "selfRepairPoints",
+      "selfRepairPointAmount": 5,
+      "interactionRadius": 18,
+      "visibilityConditionId": "cond_always",
+      "visualHint": "glow"
+    },
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_analysis_circuit",
+      "x": 912,
+      "y": -282,
+      "areaId": "area_broadcast_facility",
+      "collectibleKind": "hiddenEquipment",
+      "equipmentId": "eq_subsystem_analysis_circuit",
+      "interactionRadius": 18,
+      "visibilityConditionId": "cond_always",
+      "visualHint": "glow"
+    },
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_repair_cluster_c",
+      "x": 1188,
+      "y": -246,
+      "areaId": "area_broadcast_facility",
+      "collectibleKind": "selfRepairPoints",
+      "selfRepairPointAmount": 8,
+      "interactionRadius": 18,
+      "visibilityConditionId": "cond_mission_good_morning_cleared",
+      "visualHint": "glow"
+    },
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_repair_cluster_f",
+      "x": 998,
+      "y": -42,
+      "areaId": "area_broadcast_facility",
+      "collectibleKind": "selfRepairPoints",
+      "selfRepairPointAmount": 6,
+      "interactionRadius": 18,
+      "visibilityConditionId": "cond_mission_good_morning_cleared",
+      "visualHint": "glow"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "equipmentId": "eq_subsystem_inverse_phase",
+  "slot": "subsystem",
+  "name": "逆位相",
+  "iconId": "icon_eq_subsystem_inverse_phase",
+  "summary": "mainショットに炎上の継続ダメージを加える。",
+  "description": "mainショットが敵に炎上状態（継続ダメージ）を付与するようになる。",
+  "flavorText": "",
+  "passiveEffectIds": [
+    "eff_subsystem_inverse_phase"
+  ],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "purchase",
+    "selfRepairPointCost": 200
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "burnDamagePerSec": 3,
+        "burnDurationMs": 3000
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 100,
+      "effectOverrides": {
+        "burnDamagePerSec": 5,
+        "burnDurationMs": 3500
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 180,
+      "effectOverrides": {
+        "burnDamagePerSec": 7,
+        "burnDurationMs": 4000
+      }
+    }
+  ]
+}

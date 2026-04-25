@@ -1,0 +1,10 @@
+{
+  "projectileId": "proj_player_pulse_melee",
+  "side": "player",
+  "damage": 8,
+  "noiseDamage": 0,
+  "speed": 200,
+  "lifetimeMs": 300,
+  "visualPresetId": "vis_bullet_player_melee",
+  "hitboxPresetId": "hitbox_bullet_medium"
+}

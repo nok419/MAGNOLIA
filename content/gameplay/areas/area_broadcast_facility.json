@@ -1,0 +1,17 @@
+{
+  "areaId": "area_broadcast_facility",
+  "name": "民間放送施設",
+  "mapId": "world_map_demo",
+  "worldPosition": {
+    "x": 1040,
+    "y": -180
+  },
+  "initialState": "locked",
+  "transmissionIds": [
+    "tx_where_are_you",
+    "tx_evacuation"
+  ],
+  "unlockConditionId": "cond_mission_good_morning_cleared",
+  "visibilityConditionId": "cond_mission_good_morning_cleared",
+  "themeId": "theme_broadcast_facility"
+}

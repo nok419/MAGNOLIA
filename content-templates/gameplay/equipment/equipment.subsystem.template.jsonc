@@ -1,0 +1,48 @@
+{
+  "equipmentId": "eq_subsystem_todo_01",
+  "slot": "subsystem",
+  "name": "TODO subsystem name",
+  "iconId": "icon_eq_subsystem_todo_01",
+  "summary": "TODO one-line summary",
+  "description": "TODO detailed description",
+  "flavorText": "TODO flavor text",
+
+  // subsystem は探索補助や防御補助の常時効果を入れます。
+  // 2 枠まで同時装備できるため、他の subsystem と重ねた時の相性も考えて設計します。
+  "passiveEffectIds": [
+    "eff_subsystem_todo_01"
+  ],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+
+  // 通信報酬で解放する例です。
+  "unlockSource": {
+    "kind": "transmissionReward",
+    "transmissionId": "tx_todo_01"
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "extraRadius": 1
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 80,
+      "effectOverrides": {
+        "extraRadius": 2
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 160,
+      "effectOverrides": {
+        "extraRadius": 3
+      }
+    }
+  ]
+}

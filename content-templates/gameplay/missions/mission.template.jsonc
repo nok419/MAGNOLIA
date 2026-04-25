@@ -1,0 +1,140 @@
+{
+  // ミッションの一意識別子です。
+  "missionId": "mission_todo_01",
+
+  // 紐付く通信の識別子です。
+  "transmissionId": "tx_todo_01",
+
+  // ミッション全体の長さです。
+  "durationMs": 18000,
+
+  // 背景スクロールや進行の基準速度です。
+  "scrollSpeed": 180,
+
+  // 背景見た目 preset の識別子です。
+  "backgroundPresetId": "bg_todo_01",
+
+  // 自機スポーン位置の識別子です。
+  "playerSpawnId": "spawn_player_01",
+
+  // 解析率 100% に必要な総量です。
+  "analysisTotal": 100,
+
+  // ミッション一覧に見せる条件です。
+  "visibilityConditionId": "cond_always",
+
+  // 開始可能にする条件です。
+  "startConditionId": "cond_always",
+
+  // 接続演出後、音声再生が始まるまでの待ち時間です。
+  "audioStartDelayMs": 1200,
+
+  // 音声終了後の余韻時間です。
+  "outroMs": 1800,
+
+  // 表示用の危険度です。1 から 5 程度を想定します。
+  "dangerLevel": 1,
+
+  // このミッションだけの聴取しきい値です。不要なら削除して構いません。
+  "hearingThresholdOverride": 0.7,
+
+  // 初回クリア時の基本自己修復ポイントです。
+  "baseSelfRepairPoints": 100,
+
+  // 再挑戦時の報酬減衰率です。
+  "repeatDecayRate": 0.2,
+
+  // 敵出現 wave の一覧です。
+  "waves": [
+    {
+      // この wave が始まる時刻です。
+      "atMs": 1500,
+      "entries": [
+        {
+          // 出現させる敵機種です。
+          "enemyId": "enemy_todo_01",
+
+          // どの spawn point から出すかです。
+          "spawnPointId": "spawn_enemy_01",
+
+          // 個体差を固定したい時の seed です。
+          "seed": 1,
+
+          // この個体だけ上書きするパラメータです。
+          "overrides": {
+            "speedMultiplier": 1
+          }
+        }
+      ]
+    },
+    {
+      "atMs": 7000,
+      "entries": [
+        {
+          "enemyId": "enemy_todo_02",
+          "spawnPointId": "spawn_enemy_02",
+          "seed": 2,
+          "overrides": {
+            "patternVariant": "TODO_variant"
+          }
+        }
+      ]
+    }
+  ],
+
+  // 敵弾とは別に流れる広域環境 hazard です。
+  "hazards": [
+    {
+      // hazard の一意識別子です。
+      "hazardId": "hazard_magnetic_disaster_01",
+
+      // 現行の汎用 hazard kind です。ゲーム内では「磁気災害」と呼ぶ想定です。
+      "kind": "magneticDisaster",
+
+      // 予兆開始時刻です。
+      "spawnAtMs": 9500,
+
+      // 淡い赤点滅の持続時間です。
+      "telegraphMs": 1200,
+
+      // ノイズ走行と接触判定の有効時間です。
+      "activeMs": 2600,
+
+      // 消失演出の時間です。
+      "fadeOutMs": 600,
+
+      // 接触中に何 ms ごとにノイズを与えるかです。
+      "tickIntervalMs": 250,
+
+      // 1 tick あたりのノイズ量です。
+      "noiseDamage": 0.08,
+
+      // 危険領域です。帯型や上半分は rect で表現します。
+      "area": {
+        "shape": "rect",
+        "x": -80,
+        "y": -20,
+        "width": 520,
+        "height": 120
+      },
+
+      // マップ外から横断させたい時の移動です。
+      "motion": {
+        "motionKind": "linear",
+        "velocity": {
+          "x": 24,
+          "y": 0
+        }
+      },
+
+      // 描画 preset の識別子です。
+      "visualPresetId": "hazard_magnetic_disaster_todo_01",
+
+      // 進行条件に応じて出したい時だけ使います。
+      "visibilityConditionId": "cond_always"
+    }
+  ],
+
+  // 現状のクリア条件です。
+  "clearCondition": "surviveUntilEnd"
+}

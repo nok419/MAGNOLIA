@@ -1,0 +1,100 @@
+{
+  "missionId": "mission_good_morning",
+  "transmissionId": "tx_good_morning",
+  "durationMs": 60000,
+  "scrollSpeed": 120,
+  "backgroundPresetId": "bg_central_tower",
+  "playerSpawnId": "spawn_player_center",
+  "analysisTotal": 50,
+  "visibilityConditionId": "cond_always",
+  "startConditionId": "cond_always",
+  "audioStartDelayMs": 1200,
+  "outroMs": 1800,
+  "dangerLevel": 1,
+  "hearingThresholdOverride": 0.8,
+  "baseSelfRepairPoints": 50,
+  "repeatDecayRate": 0.3,
+  "waves": [
+    {
+      "atMs": 3000,
+      "entries": [
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 1 }
+      ]
+    },
+    {
+      "atMs": 9000,
+      "entries": [
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 2 },
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 3 }
+      ]
+    },
+    {
+      "atMs": 17000,
+      "entries": [
+        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 4 }
+      ]
+    },
+    {
+      "atMs": 25000,
+      "entries": [
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 5 },
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 6 },
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 7 }
+      ]
+    },
+    {
+      "atMs": 34000,
+      "entries": [
+        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 8 },
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 9 },
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 10 }
+      ]
+    },
+    {
+      "atMs": 43000,
+      "entries": [
+        {
+          "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 11,
+          "overrides": { "speed": 6, "driftX": 38 }
+        },
+        {
+          "enemyId": "enemy_standard", "spawnPointId": "spawn_side_right", "seed": 12,
+          "overrides": { "speed": 6, "driftX": -38 }
+        }
+      ]
+    },
+    {
+      "atMs": 51000,
+      "entries": [
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 13 },
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 14 }
+      ]
+    }
+  ],
+  "hazards": [
+    {
+      "hazardId": "hazard_gm_01",
+      "kind": "magneticDisaster",
+      "spawnAtMs": 37000,
+      "telegraphMs": 1200,
+      "activeMs": 2000,
+      "fadeOutMs": 600,
+      "tickIntervalMs": 300,
+      "noiseDamage": 0.06,
+      "enemyDamagePerSecond": 18,
+      "area": {
+        "shape": "rect",
+        "x": -40,
+        "y": 60,
+        "width": 440,
+        "height": 80
+      },
+      "motion": {
+        "motionKind": "static"
+      },
+      "visualPresetId": "hazard_magnetic_disaster_gentle",
+      "visibilityConditionId": "cond_always"
+    }
+  ],
+  "clearCondition": "surviveUntilEnd"
+}

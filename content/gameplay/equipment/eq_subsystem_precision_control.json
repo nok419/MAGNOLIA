@@ -1,0 +1,29 @@
+{
+  "equipmentId": "eq_subsystem_precision_control",
+  "slot": "subsystem",
+  "name": "精密操作",
+  "iconId": "icon_eq_subsystem_precision_control",
+  "summary": "Shiftで低速移動を有効にする操作補助。",
+  "description": "Shiftキーで低速移動が可能になる。細かい回避に有用。",
+  "flavorText": "",
+  "passiveEffectIds": [
+    "eff_subsystem_precision_control"
+  ],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "purchase",
+    "selfRepairPointCost": 150
+  },
+  "maxLevel": 1,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "focusSpeedMultiplier": 0.5
+      }
+    }
+  ]
+}

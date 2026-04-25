@@ -1,0 +1,10 @@
+{
+  "effectId": "eff_subsystem_inverse_phase",
+  "effectKind": "mainShot",
+  "runtimeHandlerId": "subsystem.shot.modifier.burn",
+  "params": {
+    "addBurnOnHit": true,
+    "burnDamagePerSec": 3,
+    "burnDurationMs": 3000
+  }
+}

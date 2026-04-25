@@ -1,0 +1,15 @@
+{
+  "name": "magnolia",
+  "private": true,
+  "scripts": {
+    "build": "tsc -b && npm run build --workspace @magnolia/web",
+    "check": "tsc -b"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

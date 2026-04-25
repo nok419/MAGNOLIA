@@ -1,0 +1,134 @@
+{
+  // この logic が対応するマップ識別子です。
+  "mapId": "world_map_todo_01",
+
+  // 探索開始時の初期スポーン node です。
+  "playerSpawnNodeId": "node_area_todo_01",
+
+  // エリア node の一覧です。
+  "areaNodes": [
+    {
+      // area node 固定です。
+      "type": "area",
+
+      // node の一意識別子です。Tiled 側の nodeId と一致させます。
+      "nodeId": "node_area_todo_01",
+
+      // マップ上の X 座標です。
+      "x": 0,
+
+      // マップ上の Y 座標です。
+      "y": 0,
+
+      // 対応するエリア識別子です。
+      "areaId": "area_todo_01",
+
+      // ラベル表示位置です。省略時は node 近傍に自動配置します。
+      "labelPosition": {
+        "x": 16,
+        "y": -12
+      },
+
+      // 最初からミニマップに見せるかどうかです。
+      "minimapVisibleByDefault": true,
+
+      // node を見せる条件 ID です。
+      "visibilityConditionId": "cond_always"
+    }
+  ],
+
+  // 通信 node の一覧です。
+  "transmissionNodes": [
+    {
+      "type": "transmission",
+      "nodeId": "node_tx_todo_01",
+      "x": 64,
+      "y": 0,
+
+      // 対応する通信識別子です。
+      "transmissionId": "tx_todo_01",
+
+      // 所属エリアです。
+      "areaId": "area_todo_01",
+
+      // 接続判定に使う半径です。
+      "interactionRadius": 20,
+
+      // 開く UI 種別です。現状は transmission 固定です。
+      "panelKind": "transmission",
+
+      // node が見える条件です。
+      "visibilityConditionId": "cond_always",
+
+      // 実際に接続可能かどうかの条件です。
+      "accessConditionId": "cond_always"
+    }
+  ],
+
+  // ワープ node の一覧です。
+  "warpNodes": [
+    {
+      "type": "warp",
+      "nodeId": "node_warp_todo_01",
+      "x": 128,
+      "y": 0,
+
+      // ワープ元の所属エリアです。
+      "areaId": "area_todo_01",
+
+      // 移動先エリアです。
+      "warpTargetAreaId": "area_todo_02",
+
+      // ワープ判定に使う半径です。
+      "interactionRadius": 24,
+
+      // ワープ node を見せる条件です。
+      "visibilityConditionId": "cond_always",
+
+      // ワープ可能にする条件です。
+      "accessConditionId": "cond_always"
+    }
+  ],
+
+  // 収集要素 node の一覧です。
+  "collectibleNodes": [
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_self_repair_01",
+      "x": 96,
+      "y": 24,
+      "areaId": "area_todo_01",
+
+      // 取得物の種類です。selfRepairPoints か hiddenEquipment を使います。
+      "collectibleKind": "selfRepairPoints",
+
+      // selfRepairPoints の時に渡す量です。
+      "selfRepairPointAmount": 100,
+
+      // 接触判定に使う半径です。
+      "interactionRadius": 18,
+
+      // 見える条件です。
+      "visibilityConditionId": "cond_always",
+
+      // 簡易な見た目ヒントです。
+      "visualHint": "glow"
+    },
+    {
+      "type": "collectible",
+      "nodeId": "node_collect_equipment_01",
+      "x": 112,
+      "y": -24,
+      "areaId": "area_todo_01",
+      "collectibleKind": "hiddenEquipment",
+
+      // hiddenEquipment の時に解放する装備 ID です。
+      "equipmentId": "eq_subsystem_todo_01",
+      "interactionRadius": 18,
+
+      // 特定装備中だけ見せたい場合などに使います。
+      "visibilityConditionId": "cond_equipment_subsystem_vision",
+      "visualHint": "glow"
+    }
+  ]
+}

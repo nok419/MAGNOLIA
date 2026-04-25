@@ -1,0 +1,24 @@
+{
+  "equipmentId": "eq_os_broken",
+  "slot": "os",
+  "name": "破損",
+  "iconId": "icon_eq_os_broken",
+  "summary": "最低限の装備管理だけが残った破損OS。",
+  "description": "損傷したOS。装備変更に必要な最小限の管理機能だけが残っており、観測や地図表示は失われている。",
+  "flavorText": "",
+  "passiveEffectIds": [],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "initial"
+  },
+  "maxLevel": 1,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {}
+    }
+  ]
+}

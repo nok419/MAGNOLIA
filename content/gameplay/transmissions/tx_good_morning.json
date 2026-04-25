@@ -1,0 +1,38 @@
+{
+  "transmissionId": "tx_good_morning",
+  "areaId": "area_central_tower",
+  "missionId": "mission_good_morning",
+  "category": "automated",
+  "title": "グッド・モーニング",
+  "sender": "MAGNOLIA",
+  "recipient": "MAGNOLIA",
+  "sentAt": "2326-05-14T06:00:00Z",
+  "subjectTags": [
+    "tutorial",
+    "system",
+    "reboot"
+  ],
+  "transcriptChunkIds": [
+    "chunk_gm_001",
+    "chunk_gm_002",
+    "chunk_gm_003",
+    "chunk_gm_004",
+    "chunk_gm_005",
+    "chunk_gm_006",
+    "chunk_gm_007",
+    "chunk_gm_008",
+    "chunk_gm_009"
+  ],
+  "visibilityConditionId": "cond_always",
+  "accessConditionId": "cond_always",
+  "unlockConditionId": "cond_always",
+  "metadataUnlockThresholds": {
+    "title": 0.10,
+    "sender": 0.25,
+    "recipient": 0.40,
+    "sentAt": 0.60
+  },
+  "rewardEquipmentIds": [
+    "eq_os_magnolia"
+  ]
+}

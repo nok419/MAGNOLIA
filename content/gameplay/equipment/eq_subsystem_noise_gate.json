@@ -1,0 +1,43 @@
+{
+  "equipmentId": "eq_subsystem_noise_gate",
+  "slot": "subsystem",
+  "name": "ノイズゲート",
+  "iconId": "icon_eq_subsystem_noise_gate",
+  "summary": "被弾時のノイズ増加を抑える防御補助。",
+  "description": "被弾時のノイズ蓄積量を軽減する。",
+  "flavorText": "",
+  "passiveEffectIds": [
+    "eff_subsystem_noise_gate"
+  ],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "transmissionReward",
+    "transmissionId": "tx_where_are_you"
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "noiseReduction": 0.15
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 80,
+      "effectOverrides": {
+        "noiseReduction": 0.25
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 160,
+      "effectOverrides": {
+        "noiseReduction": 0.35
+      }
+    }
+  ]
+}

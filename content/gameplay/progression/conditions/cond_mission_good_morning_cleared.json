@@ -1,0 +1,5 @@
+{
+  "conditionId": "cond_mission_good_morning_cleared",
+  "kind": "missionCleared",
+  "missionId": "mission_good_morning"
+}

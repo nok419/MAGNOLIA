@@ -1,0 +1,15 @@
+{
+  "effectId": "eff_subsystem_todo_01",
+
+  // マップ追加可視の効果です。
+  "effectKind": "mapReveal",
+
+  "runtimeHandlerId": "subsystem.map.reveal",
+  "params": {
+    // 追加で見えるセル半径です。
+    "extraRadius": 1,
+
+    // 装備中だけ見える nodeId をカンマ区切りで指定します。
+    "nodeIds": "node_collect_equipment_01"
+  }
+}

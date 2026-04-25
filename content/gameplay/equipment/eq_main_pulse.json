@@ -1,0 +1,57 @@
+{
+  "equipmentId": "eq_main_pulse",
+  "slot": "main",
+  "name": "パルス",
+  "iconId": "icon_eq_main_pulse",
+  "summary": "近距離迎撃を自動で併用する標準ショット。",
+  "description": "通常のショット。近距離のノイズ源には円弧状の近接攻撃を自動で併用する。",
+  "flavorText": "",
+  "active": {
+    "cooldownMs": 100,
+    "stock": 1,
+    "inputAction": "fireMain"
+  },
+  "runtimeHandlerId": "weapon.main.pulse",
+  "passiveEffectIds": [],
+  "activeEffectIds": [
+    "eff_main_pulse"
+  ],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "initial"
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "damage": 10,
+        "cadenceMs": 120,
+        "shotCount": 1,
+        "meleeRange": 80
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 100,
+      "effectOverrides": {
+        "damage": 12,
+        "cadenceMs": 110,
+        "shotCount": 2,
+        "meleeRange": 100
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 180,
+      "effectOverrides": {
+        "damage": 14,
+        "cadenceMs": 100,
+        "shotCount": 3,
+        "meleeRange": 120
+      }
+    }
+  ]
+}

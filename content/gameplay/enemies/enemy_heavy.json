@@ -1,0 +1,19 @@
+{
+  "enemyId": "enemy_heavy",
+  "hp": 110,
+  "collisionDamage": 12,
+  "analysisValue": 20,
+  "behaviorKind": "slowDescent",
+  "behaviorParams": {
+    "speed": 22,
+    "pauseMs": 2400,
+    "pauseAtY": 80
+  },
+  "bulletPatternIds": [
+    "bp_heavy_burst",
+    "bp_spiral_stream"
+  ],
+  "visualPresetId": "vis_enemy_heavy",
+  "hitboxPresetId": "hitbox_enemy_large",
+  "dropSelfRepairPoints": 20
+}

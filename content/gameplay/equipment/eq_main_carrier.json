@@ -1,0 +1,55 @@
+{
+  "equipmentId": "eq_main_carrier",
+  "slot": "main",
+  "name": "キャリア",
+  "iconId": "icon_eq_main_carrier",
+  "summary": "前方を貫くレーザーと遅延爆発で削る主兵装。",
+  "description": "レーザー。軌跡上に遅延爆発が順番に発生する。近接攻撃は持たない。",
+  "flavorText": "",
+  "active": {
+    "cooldownMs": 300,
+    "stock": 1,
+    "inputAction": "fireMain"
+  },
+  "runtimeHandlerId": "weapon.main.carrier",
+  "passiveEffectIds": [],
+  "activeEffectIds": [
+    "eff_main_carrier"
+  ],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "purchase",
+    "selfRepairPointCost": 200
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "damage": 15,
+        "cadenceMs": 360,
+        "explosionRadius": 30
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 120,
+      "effectOverrides": {
+        "damage": 20,
+        "cadenceMs": 330,
+        "explosionRadius": 40
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 200,
+      "effectOverrides": {
+        "damage": 25,
+        "cadenceMs": 300,
+        "explosionRadius": 50
+      }
+    }
+  ]
+}

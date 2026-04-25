@@ -1,0 +1,9 @@
+{
+  "effectId": "eff_subsystem_analysis_circuit",
+  "effectKind": "analysisBoost",
+  "runtimeHandlerId": "subsystem.analysis.ramp",
+  "hookKind": "onBattleStep",
+  "params": {
+    "analysisDeltaPerStep": 0.002
+  }
+}

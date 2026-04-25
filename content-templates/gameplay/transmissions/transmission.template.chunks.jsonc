@@ -1,0 +1,42 @@
+[
+  {
+    // 本文チャンクの一意識別子です。
+    "chunkId": "chunk_tx_todo_01_001",
+
+    // 親になる通信の識別子です。
+    "transmissionId": "tx_todo_01",
+
+    // 同一通信内での行識別子です。
+    "lineId": "line_001",
+
+    // この行が始まる時刻です。
+    "startMs": 0,
+
+    // この行が終わる時刻です。
+    "endMs": 2400,
+
+    // 表示する話者ラベルです。不要なら消して構いません。
+    "speakerLabel": "TODO speaker A",
+
+    // 実際の本文です。
+    "text": "TODO transcript line 001"
+  },
+  {
+    "chunkId": "chunk_tx_todo_01_002",
+    "transmissionId": "tx_todo_01",
+    "lineId": "line_002",
+    "startMs": 2400,
+    "endMs": 5200,
+    "speakerLabel": "TODO speaker B",
+    "text": "TODO transcript line 002"
+  },
+  {
+    "chunkId": "chunk_tx_todo_01_003",
+    "transmissionId": "tx_todo_01",
+    "lineId": "line_003",
+    "startMs": 5200,
+    "endMs": 8600,
+    "speakerLabel": "TODO speaker A",
+    "text": "TODO transcript line 003"
+  }
+]

@@ -1,0 +1,38 @@
+{
+  // エリアの一意識別子です。area_ で始めると判別しやすくなります。
+  "areaId": "area_todo_01",
+
+  // 画面に出すエリア名です。
+  "name": "TODO area name",
+
+  // 対応するワールドマップ logic と Tiled マップの識別子です。
+  "mapId": "world_map_todo_01",
+
+  // ワールド全体で見た時のおおまかな位置です。
+  "worldPosition": {
+    // X 座標です。
+    "x": 0,
+    // Y 座標です。
+    "y": 0
+  },
+
+  // 初期状態です。最初から見えているなら visible、隠すなら locked です。
+  "initialState": "visible",
+
+  // このエリアに属する通信の識別子一覧です。
+  "transmissionIds": [
+    "tx_todo_01"
+  ],
+
+  // エリア自体を開放する条件 ID です。
+  "unlockConditionId": "cond_always",
+
+  // エリアをマップ上に見せる条件 ID です。
+  "visibilityConditionId": "cond_always",
+
+  // UI や演出で使うテーマ識別子です。
+  "themeId": "theme_todo_01",
+
+  // 初回訪問時に流す演出 ID です。
+  "firstVisitPresentationId": "system.boot.message"
+}

@@ -1,0 +1,10 @@
+{
+  "projectileId": "proj_player_carrier",
+  "side": "player",
+  "damage": 15,
+  "noiseDamage": 0,
+  "speed": 600,
+  "lifetimeMs": 2000,
+  "visualPresetId": "vis_bullet_player_carrier",
+  "hitboxPresetId": "hitbox_bullet_thin"
+}

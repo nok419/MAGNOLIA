@@ -1,0 +1,13 @@
+{
+  "bulletPatternId": "bp_scout_single",
+  "patternKind": "goldenStream",
+  "projectileId": "proj_enemy_basic",
+  "cadenceMs": 280,
+  "burstCount": 1,
+  "params": {
+    "aimAtPlayer": false,
+    "baseAngleDeg": 0,
+    "rotationDegPerSec": 0,
+    "phaseOffsetDeg": 0
+  }
+}

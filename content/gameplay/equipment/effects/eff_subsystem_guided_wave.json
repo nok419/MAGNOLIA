@@ -1,0 +1,9 @@
+{
+  "effectId": "eff_subsystem_guided_wave",
+  "effectKind": "mainShot",
+  "runtimeHandlerId": "subsystem.shot.modifier.homing",
+  "params": {
+    "homingStrength": 0.3,
+    "homingRange": 150
+  }
+}

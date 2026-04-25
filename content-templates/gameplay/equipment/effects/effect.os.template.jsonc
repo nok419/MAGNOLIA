@@ -1,0 +1,16 @@
+{
+  // 効果の一意識別子です。
+  "effectId": "eff_os_todo_01",
+
+  // 解析補助のサンプルです。
+  "effectKind": "analysisBoost",
+
+  // 共通 passive handler の識別子です。
+  "runtimeHandlerId": "os.analysis.boost",
+
+  // handler に渡すパラメータです。
+  "params": {
+    // 解析率の補正値です。
+    "analysisBonus": 0.05
+  }
+}

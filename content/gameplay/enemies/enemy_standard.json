@@ -1,0 +1,16 @@
+{
+  "enemyId": "enemy_standard",
+  "hp": 56,
+  "collisionDamage": 8,
+  "analysisValue": 10,
+  "behaviorKind": "straightDown",
+  "behaviorParams": {
+    "speed": 28
+  },
+  "bulletPatternIds": [
+    "bp_standard_spread"
+  ],
+  "visualPresetId": "vis_enemy_standard",
+  "hitboxPresetId": "hitbox_enemy_medium",
+  "dropSelfRepairPoints": 10
+}

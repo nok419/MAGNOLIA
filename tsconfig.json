@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/game-session"
+    },
+    {
+      "path": "./packages/persistence"
+    },
+    {
+      "path": "./apps/web"
+    }
+  ]
+}

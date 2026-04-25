@@ -1,0 +1,55 @@
+{
+  "equipmentId": "eq_sub_silent_wave",
+  "slot": "sub",
+  "name": "静音波",
+  "iconId": "icon_eq_sub_silent_wave",
+  "summary": "前方に安全圏を作り、敵弾と磁気災害を抑える。",
+  "description": "前方に有利な円形エリアを射出する。エリア内では敵弾消去・敵継続ダメージ・磁気災害無効化が得られるが、mainの攻撃間隔が伸びる。",
+  "flavorText": "",
+  "active": {
+    "cooldownMs": 12000,
+    "stock": 1,
+    "inputAction": "fireSub"
+  },
+  "runtimeHandlerId": "sub.field.silent_wave",
+  "passiveEffectIds": [],
+  "activeEffectIds": [
+    "eff_sub_silent_wave"
+  ],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "mapPickup",
+    "nodeId": "node_collect_silent_wave"
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "radius": 60,
+        "dpsInField": 5,
+        "durationMs": 5000
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 120,
+      "effectOverrides": {
+        "radius": 72,
+        "dpsInField": 7,
+        "durationMs": 5500
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 200,
+      "effectOverrides": {
+        "radius": 84,
+        "dpsInField": 9,
+        "durationMs": 6000
+      }
+    }
+  ]
+}

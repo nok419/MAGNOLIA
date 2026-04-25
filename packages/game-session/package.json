@@ -1,0 +1,12 @@
+{
+  "name": "@magnolia/game-session",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@magnolia/contracts": "0.0.0"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

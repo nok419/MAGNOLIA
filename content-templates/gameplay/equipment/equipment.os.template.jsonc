@@ -1,0 +1,32 @@
+{
+  "equipmentId": "eq_os_todo_01",
+  "slot": "os",
+  "name": "TODO os name",
+  "iconId": "icon_eq_os_todo_01",
+  "summary": "TODO one-line summary",
+  "description": "TODO detailed description",
+  "flavorText": "TODO flavor text",
+
+  // OS は常時効果中心なので passiveEffectIds を使うことが多いです。
+  "passiveEffectIds": [
+    "eff_os_todo_01"
+  ],
+
+  // 発動型効果が無ければ空配列です。
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "initial"
+  },
+  "maxLevel": 1,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "analysisBonus": 0.05
+      }
+    }
+  ]
+}

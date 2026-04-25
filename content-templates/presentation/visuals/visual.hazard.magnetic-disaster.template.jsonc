@@ -1,0 +1,28 @@
+{
+  // 描画 preset の一意識別子です。
+  "visualPresetId": "hazard_magnetic_disaster_todo_01",
+
+  // 現行の広域環境 hazard kind です。
+  "kind": "magneticDisaster",
+
+  // 予兆中の色です。
+  "telegraphColor": "#ff6b6b",
+
+  // active 中の基調色です。
+  "activeColor": "#ff3b3b",
+
+  // 予兆点滅の周波数です。
+  "telegraphFlashHz": 2.5,
+
+  // 領域内ノイズの流れる速さです。
+  "noiseScrollSpeed": 0.18,
+
+  // 領域の縁をどれだけぼかすかです。
+  "edgeFeather": 18,
+
+  // 予兆中の不透明度です。
+  "telegraphOpacity": 0.22,
+
+  // active 中の不透明度です。
+  "activeOpacity": 0.38
+}

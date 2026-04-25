@@ -1,0 +1,9 @@
+{
+  "effectId": "eff_subsystem_noise_gate",
+  "effectKind": "noiseGuard",
+  "runtimeHandlerId": "subsystem.noise.gate",
+  "hookKind": "onPlayerHit",
+  "params": {
+    "noiseReduction": 0.15
+  }
+}

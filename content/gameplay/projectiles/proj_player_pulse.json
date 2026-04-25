@@ -1,0 +1,10 @@
+{
+  "projectileId": "proj_player_pulse",
+  "side": "player",
+  "damage": 10,
+  "noiseDamage": 0,
+  "speed": 400,
+  "lifetimeMs": 3000,
+  "visualPresetId": "vis_bullet_player_pulse",
+  "hitboxPresetId": "hitbox_bullet_small"
+}

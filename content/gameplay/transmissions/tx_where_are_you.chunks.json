@@ -1,0 +1,92 @@
+[
+  {
+    "chunkId": "chunk_way_001",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_001",
+    "startMs": 0,
+    "endMs": 7000,
+    "speakerLabel": "カナ",
+    "text": "ユウキ、お母さんです。……聞こえてるかな。20-Aから送ってます。"
+  },
+  {
+    "chunkId": "chunk_way_002",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_002",
+    "startMs": 7000,
+    "endMs": 15000,
+    "speakerLabel": "カナ",
+    "text": "昨日の配給で毛布が来たの。そっちにも届いてるといいんだけど。……夜、冷えるでしょう。"
+  },
+  {
+    "chunkId": "chunk_way_003",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_003",
+    "startMs": 15000,
+    "endMs": 24000,
+    "speakerLabel": "カナ",
+    "text": "返事はなくても構わないから。元気でいてくれたら、それでいいから。"
+  },
+  {
+    "chunkId": "chunk_way_004",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_004",
+    "startMs": 26000,
+    "endMs": 33000,
+    "speakerLabel": "タクミ",
+    "text": "あー……ソウタ、タクミ。生きてるか。"
+  },
+  {
+    "chunkId": "chunk_way_005",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_005",
+    "startMs": 33000,
+    "endMs": 42000,
+    "speakerLabel": "タクミ",
+    "text": "こっちは飯も出てるし、普通。お前もちゃんと食えよ。列長いけどサボんな。"
+  },
+  {
+    "chunkId": "chunk_way_006",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_006",
+    "startMs": 42000,
+    "endMs": 52000,
+    "speakerLabel": "タクミ",
+    "text": "……なんか、あれだ。あの漫画の続き、まだ読んでねえからな。帰ったら貸せよ。"
+  },
+  {
+    "chunkId": "chunk_way_007",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_007",
+    "startMs": 54000,
+    "endMs": 62000,
+    "speakerLabel": "ミサキ",
+    "text": "ハルカ、ミサキです。20-Aの中継所、やっと順番が回ってきた。"
+  },
+  {
+    "chunkId": "chunk_way_008",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_008",
+    "startMs": 62000,
+    "endMs": 72000,
+    "speakerLabel": "ミサキ",
+    "text": "こっちにはサトウさんとコバヤシくんがいるよ。サトウさん、相変わらず声が大きくてすぐわかった。"
+  },
+  {
+    "chunkId": "chunk_way_009",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_009",
+    "startMs": 72000,
+    "endMs": 80000,
+    "speakerLabel": "ミサキ",
+    "text": "そっちの区画、通信まだ不安定だって聞いた。届いてないかもしれないけど、送るだけ送る。"
+  },
+  {
+    "chunkId": "chunk_way_010",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_010",
+    "startMs": 80000,
+    "endMs": 85000,
+    "speakerLabel": "ミサキ",
+    "text": "……また会おうね。絶対。"
+  }
+]

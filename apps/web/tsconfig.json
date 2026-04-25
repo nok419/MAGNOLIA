@@ -1,0 +1,38 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "@magnolia/contracts": [
+        "../../packages/contracts/src/index.ts"
+      ],
+      "@magnolia/game-session": [
+        "../../packages/game-session/src/index.ts"
+      ]
+    },
+    "types": [
+      "vite/client"
+    ]
+  },
+  "references": [
+    {
+      "path": "../../packages/contracts"
+    },
+    {
+      "path": "../../packages/game-session"
+    },
+    {
+      "path": "../../packages/persistence"
+    }
+  ],
+  "include": [
+    "src",
+    "vite.config.ts"
+  ]
+}

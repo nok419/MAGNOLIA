@@ -1,0 +1,9 @@
+{
+  "effectId": "eff_subsystem_precision_control",
+  "effectKind": "cooldownModifier",
+  "runtimeHandlerId": "subsystem.movement.focus",
+  "params": {
+    "enableFocusMovement": true,
+    "focusSpeedMultiplier": 0.5
+  }
+}

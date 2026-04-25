@@ -1,0 +1,85 @@
+{
+  // 装備の一意識別子です。
+  "equipmentId": "eq_main_todo_01",
+
+  // 装備スロットです。これは main 固定です。
+  "slot": "main",
+
+  // 表示名です。
+  "name": "TODO main weapon name",
+
+  // アイコン識別子です。
+  "iconId": "icon_eq_main_todo_01",
+
+  // 取得 popup や簡易一覧向けの 1 行概要です。
+  "summary": "TODO one-line summary",
+
+  // 詳細画面向けの説明です。
+  "description": "TODO detailed description",
+
+  // 雰囲気づけの補足文です。
+  "flavorText": "TODO flavor text",
+
+  // 能動使用時の基本設定です。
+  "active": {
+    // 連射間隔です。
+    "cooldownMs": 100,
+    // 同時に持てる stock 数です。main は 1 でよいことが多いです。
+    "stock": 1,
+    // 入力名です。
+    "inputAction": "fireMain"
+  },
+
+  // 実際に呼ぶ main weapon handler 識別子です。
+  "runtimeHandlerId": "weapon.main.default",
+
+  // 常時効果 ID の一覧です。
+  "passiveEffectIds": [],
+
+  // 使用時に使う効果 ID の一覧です。
+  "activeEffectIds": [
+    "eff_main_todo_01"
+  ],
+
+  // 解放条件です。
+  "unlockConditionId": "cond_always",
+
+  // 一覧に見せる条件です。
+  "visibilityConditionId": "cond_always",
+
+  // 入手経路です。初期装備なら initial にします。
+  "unlockSource": {
+    "kind": "initial"
+  },
+
+  // 最大レベルです。
+  "maxLevel": 3,
+
+  // レベルごとの上書き値です。
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "damage": 10,
+        "cadenceMs": 120
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 100,
+      "effectOverrides": {
+        "damage": 12,
+        "cadenceMs": 110
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 180,
+      "effectOverrides": {
+        "damage": 14,
+        "cadenceMs": 100
+      }
+    }
+  ]
+}

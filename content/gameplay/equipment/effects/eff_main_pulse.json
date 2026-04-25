@@ -1,0 +1,18 @@
+{
+  "effectId": "eff_main_pulse",
+  "effectKind": "mainShot",
+  "runtimeHandlerId": "weapon.main.pulse",
+  "params": {
+    "projectileId": "proj_player_pulse",
+    "damage": 10,
+    "cadenceMs": 120,
+    "shotCount": 1,
+    "spreadDeg": 0,
+    "meleeEnabled": true,
+    "meleeRange": 80,
+    "meleeProjectileId": "proj_player_pulse_melee",
+    "meleeDamage": 8,
+    "meleeSpreadDeg": 120,
+    "meleeShotCount": 3
+  }
+}

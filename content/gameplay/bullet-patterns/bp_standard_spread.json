@@ -1,0 +1,13 @@
+{
+  "bulletPatternId": "bp_standard_spread",
+  "patternKind": "radial",
+  "projectileId": "proj_enemy_petal",
+  "cadenceMs": 2000,
+  "burstCount": 5,
+  "params": {
+    "aimAtPlayer": false,
+    "baseAngleDeg": 0,
+    "rotationDegPerSec": 15,
+    "phaseOffsetDeg": 0
+  }
+}

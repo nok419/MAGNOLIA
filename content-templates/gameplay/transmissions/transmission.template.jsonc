@@ -1,0 +1,67 @@
+{
+  // 通信の一意識別子です。
+  "transmissionId": "tx_todo_01",
+
+  // この通信が所属するエリアです。
+  "areaId": "area_todo_01",
+
+  // 接続時に始まるミッションの識別子です。
+  "missionId": "mission_todo_01",
+
+  // 通信の種別です。
+  "category": "private",
+
+  // アーカイブや一覧で見せるタイトルです。
+  "title": "TODO transmission title",
+
+  // 発信者です。
+  "sender": "TODO sender",
+
+  // 宛先です。
+  "recipient": "TODO recipient",
+
+  // 送信日時です。ISO 8601 形式を想定します。
+  "sentAt": "2120-01-01T09:00:00Z",
+
+  // 絞り込みや演出分岐に使うタグです。
+  "subjectTags": [
+    "TODO_tag_primary",
+    "TODO_tag_secondary"
+  ],
+
+  // 音声ファイルの識別子です。未使用なら削除して構いません。
+  "audioAssetId": "voice/tx_todo_01.ogg",
+
+  // 本文チャンクの並び順です。
+  "transcriptChunkIds": [
+    "chunk_tx_todo_01_001",
+    "chunk_tx_todo_01_002",
+    "chunk_tx_todo_01_003"
+  ],
+
+  // 通信一覧に見せる条件です。
+  "visibilityConditionId": "cond_always",
+
+  // 実際に接続可能にする条件です。
+  "accessConditionId": "cond_always",
+
+  // 恒久開放条件です。
+  "unlockConditionId": "cond_always",
+
+  // 解析率でメタデータをどこまで見せるかのしきい値です。
+  "metadataUnlockThresholds": {
+    // タイトルを開く解析率です。
+    "title": 0.15,
+    // 発信者を開く解析率です。
+    "sender": 0.35,
+    // 宛先を開く解析率です。
+    "recipient": 0.55,
+    // 日時を開く解析率です。
+    "sentAt": 0.8
+  },
+
+  // 初回報酬などで解放する装備 ID 一覧です。
+  "rewardEquipmentIds": [
+    "eq_subsystem_todo_01"
+  ]
+}

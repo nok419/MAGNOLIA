@@ -1,0 +1,22 @@
+{
+  // 効果の一意識別子です。
+  "effectId": "eff_sub_todo_01",
+
+  // サブ装備の burst 系サンプルです。
+  "effectKind": "subArmBurst",
+
+  // 実際に呼ぶ効果 handler 識別子です。
+  "runtimeHandlerId": "sub.default.burst",
+
+  // handler に渡すパラメータです。
+  "params": {
+    // 効果半径です。
+    "radius": 24,
+
+    // 同時発動数です。
+    "burstCount": 1,
+
+    // 持続時間です。
+    "durationMs": 600
+  }
+}

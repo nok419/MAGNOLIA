@@ -1,0 +1,39 @@
+{
+  "transmissionId": "tx_where_are_you",
+  "areaId": "area_broadcast_facility",
+  "missionId": "mission_where_are_you",
+  "category": "private",
+  "title": "あなたは今どこにいるの",
+  "sender": "エリア20-A 住民",
+  "recipient": "各種住居エリア",
+  "sentAt": "2325-03-07T14:00:00Z",
+  "subjectTags": [
+    "private",
+    "family",
+    "evacuation"
+  ],
+  "transcriptChunkIds": [
+    "chunk_way_001",
+    "chunk_way_002",
+    "chunk_way_003",
+    "chunk_way_004",
+    "chunk_way_005",
+    "chunk_way_006",
+    "chunk_way_007",
+    "chunk_way_008",
+    "chunk_way_009",
+    "chunk_way_010"
+  ],
+  "visibilityConditionId": "cond_mission_good_morning_cleared",
+  "accessConditionId": "cond_mission_good_morning_cleared",
+  "unlockConditionId": "cond_mission_good_morning_cleared",
+  "metadataUnlockThresholds": {
+    "title": 0.15,
+    "sender": 0.35,
+    "recipient": 0.55,
+    "sentAt": 0.80
+  },
+  "rewardEquipmentIds": [
+    "eq_subsystem_noise_gate"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "equipmentId": "eq_os_magnolia",
+  "slot": "os",
+  "name": "MAGNOLIA",
+  "iconId": "icon_eq_os_magnolia",
+  "summary": "探索UIと全体マップを解放する基本OS。",
+  "description": "MAGNOLIAの基本UI。ミニマップ・強度計・情報パネルの表示、装備・アーカイブへのアクセス、エリア外部の観測を有効にする。",
+  "flavorText": "",
+  "passiveEffectIds": [
+    "eff_os_magnolia"
+  ],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "transmissionReward",
+    "transmissionId": "tx_good_morning"
+  },
+  "maxLevel": 1,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {}
+    }
+  ]
+}

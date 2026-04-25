@@ -1,0 +1,10 @@
+{
+  "projectileId": "proj_enemy_petal",
+  "side": "enemy",
+  "damage": 0,
+  "noiseDamage": 0.06,
+  "speed": 60,
+  "lifetimeMs": 12000,
+  "visualPresetId": "vis_bullet_enemy_petal",
+  "hitboxPresetId": "hitbox_bullet_small"
+}

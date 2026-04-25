@@ -1,0 +1,28 @@
+{
+  // 効果の一意識別子です。
+  "effectId": "eff_main_todo_01",
+
+  // 効果種別です。main shot の場合は mainShot を使います。
+  "effectKind": "mainShot",
+
+  // 実際に呼ぶ効果 handler 識別子です。
+  "runtimeHandlerId": "weapon.main.default",
+
+  // handler に渡すパラメータです。
+  "params": {
+    // 発射する projectile の識別子です。
+    "projectileId": "proj_player_todo_01",
+
+    // 1 発あたりのダメージです。
+    "damage": 10,
+
+    // 発射間隔です。
+    "cadenceMs": 120,
+
+    // 1 回の入力で出す弾数です。
+    "shotCount": 1,
+
+    // 扇状に広げる角度です。単発正面なら 0 です。
+    "spreadDeg": 0
+  }
+}

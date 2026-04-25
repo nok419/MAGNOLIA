@@ -1,0 +1,15 @@
+{
+  "effectId": "eff_sub_noise_canceller",
+  "effectKind": "subArmField",
+  "runtimeHandlerId": "sub.barrier.noise_canceller",
+  "params": {
+    "radius": 48,
+    "maxDurationMs": 1200,
+    "cooldownMs": 3000,
+    "rechargeMs": 1000,
+    "moveSpeedMultiplier": 0.8,
+    "blocksEnemyBullets": true,
+    "allowAttackDuringUse": true,
+    "holdToActivate": true
+  }
+}

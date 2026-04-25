@@ -1,0 +1,13 @@
+{
+  "bulletPatternId": "bp_spiral_stream",
+  "patternKind": "radial",
+  "projectileId": "proj_enemy_geo",
+  "cadenceMs": 260,
+  "burstCount": 3,
+  "params": {
+    "aimAtPlayer": false,
+    "baseAngleDeg": 0,
+    "rotationDegPerSec": 28,
+    "phaseOffsetDeg": 0
+  }
+}

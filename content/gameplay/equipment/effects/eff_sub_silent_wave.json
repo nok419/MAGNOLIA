@@ -1,0 +1,17 @@
+{
+  "effectId": "eff_sub_silent_wave",
+  "effectKind": "subArmField",
+  "runtimeHandlerId": "sub.field.silent_wave",
+  "params": {
+    "radius": 60,
+    "launchSpeed": 100,
+    "spawnOffset": 72,
+    "durationMs": 5000,
+    "dpsInField": 5,
+    "mainCadenceMultiplier": 1.5,
+    "blocksEnemyBullets": true,
+    "blocksMagneticDisaster": true,
+    "cooldownMs": 12000,
+    "driftsWithScroll": true
+  }
+}

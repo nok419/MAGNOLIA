@@ -1,0 +1,15 @@
+{
+  "conditionId": "cond_equipment_subsystem_vision",
+
+  // 指定装備を装備中かどうかを見る条件です。
+  "kind": "equipmentEquipped",
+
+  // 判定対象の slot です。
+  "slot": "subsystem",
+
+  // 判定対象の装備 ID です。
+  "equipmentId": "eq_subsystem_todo_01",
+
+  // subsystem のどちらの枠を見るかです。どちらでもよければ削除して構いません。
+  "subsystemIndex": 0
+}

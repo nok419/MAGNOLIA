@@ -1,0 +1,12 @@
+{
+  "conditionId": "cond_analysis_tx_todo_01_50",
+
+  // 指定通信の解析率が threshold 以上かを見ます。
+  "kind": "analysisAtLeast",
+
+  // 判定対象の通信です。
+  "transmissionId": "tx_todo_01",
+
+  // 必要解析率です。0.5 は 50% を意味します。
+  "rate": 0.5
+}

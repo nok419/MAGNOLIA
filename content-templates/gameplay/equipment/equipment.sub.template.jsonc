@@ -1,0 +1,58 @@
+{
+  "equipmentId": "eq_sub_todo_01",
+  "slot": "sub",
+  "name": "TODO sub weapon name",
+  "iconId": "icon_eq_sub_todo_01",
+  "summary": "TODO one-line summary",
+  "description": "TODO detailed description",
+  "flavorText": "TODO flavor text",
+  "active": {
+    // サブ装備の再使用待機時間です。
+    "cooldownMs": 2500,
+    // 使用回数や保持数です。
+    "stock": 2,
+    "inputAction": "fireSub"
+  },
+
+  // サブ装備使用時に呼ぶ handler 識別子です。
+  "runtimeHandlerId": "sub.default.burst",
+  "passiveEffectIds": [],
+  "activeEffectIds": [
+    "eff_sub_todo_01"
+  ],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+
+  // 購入解放の例です。
+  "unlockSource": {
+    "kind": "purchase",
+    "selfRepairPointCost": 200
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "burstCount": 1,
+        "radius": 24
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 120,
+      "effectOverrides": {
+        "burstCount": 2,
+        "radius": 30
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 220,
+      "effectOverrides": {
+        "burstCount": 3,
+        "radius": 36
+      }
+    }
+  ]
+}

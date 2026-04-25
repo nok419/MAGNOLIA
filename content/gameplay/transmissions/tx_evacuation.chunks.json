@@ -1,0 +1,20 @@
+[
+  {
+    "chunkId": "tx_evacuation_01",
+    "transmissionId": "tx_evacuation",
+    "lineId": "evacuation_line_01",
+    "startMs": 0,
+    "endMs": 4000,
+    "speakerLabel": "CIVIL-DEFENSE",
+    "text": "緊急警報。第4居住区パノラマドームにて大規模な磁気崩壊が観測されました。全市民は直ちに地下シェルターへ避難してください。"
+  },
+  {
+    "chunkId": "tx_evacuation_02",
+    "transmissionId": "tx_evacuation",
+    "lineId": "evacuation_line_02",
+    "startMs": 4500,
+    "endMs": 8500,
+    "speakerLabel": "CIVIL-DEFENSE",
+    "text": "繰り返します……市民の皆さんは直ちに避難を……。救援部隊の到着は……絶望的……自力で……"
+  }
+]

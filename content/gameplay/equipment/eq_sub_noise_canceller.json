@@ -1,0 +1,51 @@
+{
+  "equipmentId": "eq_sub_noise_canceller",
+  "slot": "sub",
+  "name": "ノイズキャンセラー",
+  "iconId": "icon_eq_sub_noise_canceller",
+  "summary": "押している間だけ敵弾を消す円形バリアを張る。",
+  "description": "押している間だけ円形バリアを展開し、接触した敵弾を消す。展開中も攻撃可能だが移動速度が低下する。",
+  "flavorText": "",
+  "active": {
+    "cooldownMs": 3000,
+    "stock": 1,
+    "inputAction": "fireSub"
+  },
+  "runtimeHandlerId": "sub.barrier.noise_canceller",
+  "passiveEffectIds": [],
+  "activeEffectIds": [
+    "eff_sub_noise_canceller"
+  ],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "initial"
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "radius": 48,
+        "maxDurationMs": 1200
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 100,
+      "effectOverrides": {
+        "radius": 56,
+        "maxDurationMs": 1400
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 180,
+      "effectOverrides": {
+        "radius": 64,
+        "maxDurationMs": 1600
+      }
+    }
+  ]
+}

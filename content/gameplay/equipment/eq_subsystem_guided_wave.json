@@ -1,0 +1,45 @@
+{
+  "equipmentId": "eq_subsystem_guided_wave",
+  "slot": "subsystem",
+  "name": "誘導波",
+  "iconId": "icon_eq_subsystem_guided_wave",
+  "summary": "mainショットに緩い追尾性能を与える。",
+  "description": "mainショットが敵をある程度追尾するようになる。",
+  "flavorText": "",
+  "passiveEffectIds": [
+    "eff_subsystem_guided_wave"
+  ],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "initial"
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "effectOverrides": {
+        "homingStrength": 0.3,
+        "homingRange": 150
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 80,
+      "effectOverrides": {
+        "homingStrength": 0.45,
+        "homingRange": 180
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 160,
+      "effectOverrides": {
+        "homingStrength": 0.6,
+        "homingRange": 210
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enemyId": "enemy_scout",
+  "hp": 30,
+  "collisionDamage": 5,
+  "analysisValue": 5,
+  "behaviorKind": "straightDown",
+  "behaviorParams": {
+    "speed": 38,
+    "wobbleAmplitude": 28,
+    "wobblePeriodMs": 3200
+  },
+  "bulletPatternIds": [
+    "bp_scout_single"
+  ],
+  "visualPresetId": "vis_enemy_scout",
+  "hitboxPresetId": "hitbox_enemy_small",
+  "dropSelfRepairPoints": 5
+}

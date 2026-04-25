@@ -1,0 +1,22 @@
+{
+  // 効果の一意識別子です。
+  "effectId": "eff_subsystem_hook_todo_01",
+
+  // 補助系の effectKind です。内容に応じて analysisBoost や noiseGuard などを選びます。
+  "effectKind": "analysisBoost",
+
+  // subsystem hook handler の識別子です。
+  "runtimeHandlerId": "subsystem.analysis.ramp",
+
+  // どの契機で発火するかです。
+  // onBattleStep: 時間経過ごと
+  // onPlayerHit: 被弾時
+  // onExploreStep: 探索中
+  "hookKind": "onBattleStep",
+
+  // handler に渡すパラメータです。
+  "params": {
+    // 1 回の hook で加算する解析量です。
+    "analysisDeltaPerStep": 0.002
+  }
+}

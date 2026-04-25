@@ -1,0 +1,18 @@
+{
+  "effectId": "eff_main_carrier",
+  "effectKind": "mainShot",
+  "runtimeHandlerId": "weapon.main.carrier",
+  "params": {
+    "projectileId": "proj_player_carrier",
+    "damage": 15,
+    "cadenceMs": 360,
+    "shotCount": 1,
+    "spreadDeg": 0,
+    "meleeEnabled": false,
+    "trailExplosion": true,
+    "explosionRadius": 30,
+    "explosionDelayMs": 220,
+    "explosionDamageMultiplier": 0.75,
+    "explosionVisualProjectileId": "proj_player_carrier_blast"
+  }
+}

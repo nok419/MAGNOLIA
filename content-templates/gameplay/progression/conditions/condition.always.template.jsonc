@@ -1,0 +1,7 @@
+{
+  // 条件の一意識別子です。
+  "conditionId": "cond_always",
+
+  // 常に true になる条件です。
+  "kind": "always"
+}

@@ -1,0 +1,83 @@
+[
+  {
+    "chunkId": "chunk_gm_001",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_001",
+    "startMs": 0,
+    "endMs": 5000,
+    "speakerLabel": "SYSTEM",
+    "text": "再起動プロトコルを開始します。……起動確認、正常。ようこそ、MAGNOLIA。"
+  },
+  {
+    "chunkId": "chunk_gm_002",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_002",
+    "startMs": 5000,
+    "endMs": 10000,
+    "speakerLabel": "SYSTEM",
+    "text": "おはよう。目が覚めたなら、まずは周りを確認してみてほしい。"
+  },
+  {
+    "chunkId": "chunk_gm_003",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_003",
+    "startMs": 10000,
+    "endMs": 17000,
+    "speakerLabel": "SYSTEM",
+    "text": "前方にノイズ源を検出。排除を推奨します。攻撃は射程内で自動的に継続します。"
+  },
+  {
+    "chunkId": "chunk_gm_004",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_004",
+    "startMs": 17000,
+    "endMs": 23000,
+    "speakerLabel": "SYSTEM",
+    "text": "近距離のノイズ源には近接攻撃も同時に発動する。距離を詰めてみてくれ。"
+  },
+  {
+    "chunkId": "chunk_gm_005",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_005",
+    "startMs": 23000,
+    "endMs": 30000,
+    "speakerLabel": "SYSTEM",
+    "text": "防御機能を確認する。ノイズキャンセラーを展開してみてほしい。敵弾を無効化できる。"
+  },
+  {
+    "chunkId": "chunk_gm_006",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_006",
+    "startMs": 30000,
+    "endMs": 37000,
+    "speakerLabel": "SYSTEM",
+    "text": "被弾するとノイズが蓄積する。蓄積が閾値を超えると通信の聴取に支障が出ます。"
+  },
+  {
+    "chunkId": "chunk_gm_007",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_007",
+    "startMs": 37000,
+    "endMs": 44000,
+    "speakerLabel": "SYSTEM",
+    "text": "警告域の赤い点滅は磁気災害の予兆です。範囲内ではノイズが継続的に加算されます。"
+  },
+  {
+    "chunkId": "chunk_gm_008",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_008",
+    "startMs": 44000,
+    "endMs": 50000,
+    "speakerLabel": "SYSTEM",
+    "text": "基本機能の確認は完了です。未受信の通信が周辺に残存しています。探索を開始してください。"
+  },
+  {
+    "chunkId": "chunk_gm_009",
+    "transmissionId": "tx_good_morning",
+    "lineId": "line_009",
+    "startMs": 50000,
+    "endMs": 55000,
+    "speakerLabel": "SYSTEM",
+    "text": "本プロトコルを終了します。……健闘を。"
+  }
+]

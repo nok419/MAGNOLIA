@@ -1,0 +1,13 @@
+{
+  "name": "@magnolia/persistence",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@magnolia/contracts": "0.0.0",
+    "dexie": "^4.2.1"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

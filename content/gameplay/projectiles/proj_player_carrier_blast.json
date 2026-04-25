@@ -1,0 +1,10 @@
+{
+  "projectileId": "proj_player_carrier_blast",
+  "side": "player",
+  "damage": 0,
+  "noiseDamage": 0,
+  "speed": 0,
+  "lifetimeMs": 180,
+  "visualPresetId": "vis_bullet_player_carrier_blast",
+  "hitboxPresetId": "hitbox_bullet_medium"
+}
