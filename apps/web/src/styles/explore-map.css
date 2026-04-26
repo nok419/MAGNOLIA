@@ -1,0 +1,725 @@
+/* =========================================================
+   EXPLORE FULLSCREEN
+   ========================================================= */
+/* ── パネル基底: ブレスする薄グラデ + 極薄ドットグリッド + 左端アクセント ── */
+.ehud {
+  position: absolute;
+  z-index: 10;
+  padding: 15px 18px 14px 20px;
+  background:
+    /* 極薄のドットグリッド: 近接時だけ読み取れる密度 */
+    radial-gradient(circle at 0 0, rgba(93, 164, 209, 0.05) 1px, transparent 1px) 0 0 / 18px 18px,
+    /* 右上から左下へ落ちる淡いグラデ */
+    linear-gradient(135deg, rgba(10, 22, 42, 0.88) 0%, rgba(4, 10, 22, 0.94) 100%);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  border: 1px solid rgba(93, 164, 209, 0.14);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(10, 22, 42, 0.3) inset,
+    0 0 28px rgba(93, 164, 209, 0.05);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mg-text-dim);
+  pointer-events: auto;
+  /* リブート完了からの段階フェードインのため opacity / transform を transition 対象に。
+     通常時は不透明・その場。`.ehud--booting` が外れた瞬間に transition が走る。 */
+  transition:
+    opacity 820ms cubic-bezier(0.22, 0.8, 0.28, 1),
+    transform 820ms cubic-bezier(0.22, 0.8, 0.28, 1);
+}
+
+/* リブート演出中は全 HUD を透明化 + 微小な下方オフセットで "まだ世界が整っていない" 印象に。
+   各パネル別の transition-delay で段階フェードイン (status → signal → radar → help)。 */
+.ehud.ehud--booting {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: none; /* 入場前は瞬時に隠れ、外れてから transition が走る */
+}
+.ehud.ehud--settling {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  animation-name: ehud-reboot-settle;
+  animation-duration: calc(var(--ehud-settle-ms, 1600ms) - var(--ehud-blackout-ms, 576ms));
+  animation-timing-function: cubic-bezier(0.22, 0.8, 0.28, 1);
+  animation-fill-mode: both;
+}
+@keyframes ehud-reboot-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ehud--status { transition-delay: 0ms; }
+.ehud--signal { transition-delay: 180ms; }
+.ehud--radar  { transition-delay: 340ms; }
+.ehud--help   { transition-delay: 520ms; }
+.ehud--status.ehud--settling { animation-delay: calc(var(--ehud-blackout-ms, 576ms) + 0ms); }
+.ehud--signal.ehud--settling { animation-delay: calc(var(--ehud-blackout-ms, 576ms) + 180ms); }
+.ehud--radar.ehud--settling  { animation-delay: calc(var(--ehud-blackout-ms, 576ms) + 340ms); }
+.ehud--help.ehud--settling   { animation-delay: calc(var(--ehud-blackout-ms, 576ms) + 520ms); }
+
+/* 左端の縦アクセント: セグメント化されたグラデ line */
+.ehud::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(93, 164, 209, 0.25) 14%,
+    var(--mg-accent) 50%,
+    rgba(93, 164, 209, 0.25) 86%,
+    transparent 100%
+  );
+  box-shadow: 0 0 8px rgba(93, 164, 209, 0.25);
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* scanline overlay within panels — 色と流れに滑らかさを足す */
+.ehud__scanline {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.45;
+}
+.ehud__scanline::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(93, 164, 209, 0.2) 20%,
+    rgba(140, 195, 255, 0.38) 50%,
+    rgba(93, 164, 209, 0.2) 80%,
+    transparent
+  );
+  box-shadow: 0 0 10px rgba(93, 164, 209, 0.28);
+  animation: ehud-scanline 5.2s linear infinite;
+}
+@keyframes ehud-scanline {
+  0%   { top: -4%; opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { top: 104%; opacity: 0; }
+}
+
+/* ── Corner bracket decorations — 細線 + 内側 tick で精密機械感 ── */
+.ehud__bracket {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  border-color: var(--mg-accent-dim);
+  border-style: solid;
+}
+.ehud__bracket::after {
+  /* 内側の小さな tick。bracket の 4px 内側に同じ形の極小括弧を重ねる */
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-color: inherit;
+  border-style: inherit;
+}
+.ehud__bracket--tl { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.ehud__bracket--tl::after { top: 5px; left: 5px; border-width: 1px 0 0 1px; }
+.ehud__bracket--tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+.ehud__bracket--tr::after { top: 5px; right: 5px; border-width: 1px 1px 0 0; }
+.ehud__bracket--bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+.ehud__bracket--bl::after { bottom: 5px; left: 5px; border-width: 0 0 1px 1px; }
+.ehud__bracket--br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+.ehud__bracket--br::after { bottom: 5px; right: 5px; border-width: 0 1px 1px 0; }
+
+/* ── shared header row ── */
+.ehud__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+}
+/* ヘッダ下の分離線: 右へ流れる光 */
+.ehud__header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(93, 164, 209, 0.4) 0%,
+    rgba(93, 164, 209, 0.12) 40%,
+    transparent 100%
+  );
+}
+.ehud__header--center { justify-content: center; }
+.ehud__diamond {
+  color: var(--mg-accent);
+  font-size: 10px;
+  opacity: 0.7;
+}
+.ehud__label {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+}
+
+/* ── STATUS panel — top-left ── */
+.ehud--status {
+  top: 16px;
+  left: 16px;
+  min-width: 200px;
+  max-width: 260px;
+}
+
+.ehud-status__area {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--mg-text);
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  /* thin underline accent */
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(93, 164, 209, 0.15);
+}
+
+.ehud-status__divider {
+  height: 1px;
+  margin: 8px 0;
+  background: rgba(93, 164, 209, 0.08);
+}
+
+.ehud-status__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ehud-status__key {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+  white-space: nowrap;
+}
+
+.ehud-status__bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ehud-status__bar {
+  display: flex;
+  gap: 2px;
+}
+
+.ehud-status__seg {
+  display: block;
+  width: 8px;
+  height: 6px;
+  background: rgba(93, 164, 209, 0.08);
+  border: 1px solid rgba(93, 164, 209, 0.12);
+  transition: background 200ms, box-shadow 200ms;
+}
+.ehud-status__seg--on {
+  background: var(--mg-accent);
+  box-shadow: 0 0 4px var(--mg-glow-blue);
+  border-color: transparent;
+}
+
+.ehud-status__val {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mg-text);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.ehud-status__val--accent {
+  color: var(--mg-accent);
+  text-shadow: 0 0 8px var(--mg-glow-blue);
+}
+
+/* equipment rows */
+.ehud-status__equip {
+  display: grid;
+  gap: 4px;
+}
+.ehud-status__equip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ehud-status__slot-label {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--mg-accent);
+  opacity: 0.6;
+  min-width: 32px;
+}
+.ehud-status__slot-value {
+  font-size: 11px;
+  color: var(--mg-text-dim);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ehud-status__slot-value--empty {
+  color: var(--mg-text-muted);
+  opacity: 0.4;
+}
+
+/* ── SIGNAL meter — top-center ── */
+.ehud--signal {
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 220px;
+  padding: 12px 18px 14px;
+}
+
+.ehud--signal .ehud__header {
+  margin-bottom: 8px;
+}
+
+.ehud-signal__class {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+}
+.ehud-signal__class--lost   { color: var(--mg-text-muted); border-color: rgba(90, 122, 150, 0.3); }
+.ehud-signal__class--weak   { color: var(--mg-red); border-color: var(--mg-red-dim); }
+.ehud-signal__class--moderate { color: var(--mg-warm); border-color: rgba(240, 198, 116, 0.3); }
+.ehud-signal__class--strong { color: var(--mg-accent); border-color: var(--mg-accent-dim); }
+.ehud-signal__class--locked {
+  color: var(--mg-green);
+  border-color: rgba(132, 240, 163, 0.3);
+  text-shadow: 0 0 6px rgba(132, 240, 163, 0.4);
+}
+
+.ehud-signal__meter {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 32px;
+  padding: 2px 0;
+}
+
+.ehud-signal__seg {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(93, 164, 209, 0.1);
+  background: rgba(93, 164, 209, 0.04);
+  transition: background 250ms, border-color 250ms, box-shadow 250ms;
+}
+.ehud-signal__seg--on {
+  border-color: transparent;
+  animation: ehud-seg-pulse 2s ease-in-out infinite;
+}
+/* color-code by position: left segments = red, middle = warm, right = accent */
+.ehud-signal__seg--on:nth-child(-n+3) {
+  background: var(--mg-red);
+  box-shadow: 0 0 6px rgba(255, 90, 110, 0.3);
+}
+.ehud-signal__seg--on:nth-child(n+4):nth-child(-n+6) {
+  background: #e8926c;
+  box-shadow: 0 0 6px rgba(232, 146, 108, 0.3);
+}
+.ehud-signal__seg--on:nth-child(n+7):nth-child(-n+9) {
+  background: var(--mg-warm);
+  box-shadow: 0 0 6px rgba(240, 198, 116, 0.3);
+}
+.ehud-signal__seg--on:nth-child(n+10) {
+  background: var(--mg-accent);
+  box-shadow: 0 0 8px var(--mg-glow-blue);
+}
+@keyframes ehud-seg-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+
+.ehud-signal__readout {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: 6px;
+}
+.ehud-signal__pct {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--mg-text);
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+.ehud-signal__unit {
+  font-size: 11px;
+  color: var(--mg-text-muted);
+  letter-spacing: 0.06em;
+}
+
+/* ── RADAR panel — top-right ── */
+.ehud--radar {
+  top: 16px;
+  right: 16px;
+  padding: 10px 10px 8px;
+}
+.ehud--radar .ehud__header {
+  margin-bottom: 6px;
+}
+
+.mini-map-canvas { display: block; }
+
+/* ── HELP panel — bottom-left ── */
+.ehud--help {
+  bottom: 16px;
+  left: 16px;
+  display: grid;
+  gap: 4px;
+  padding: 10px 14px;
+  background: rgba(6, 14, 28, 0.65);
+}
+.ehud--help p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--mg-text-muted);
+  letter-spacing: 0.08em;
+}
+
+.explore-item-popup-stack {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  z-index: 18;
+  display: grid;
+  gap: 10px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* =========================================================
+   EXPLORE — equipment hint callout
+   ミッション01クリア直後に自機から斜め上→真横へ線を引き、
+   末端に「E」キーキャップを提示する美術効果重視の誘導。
+   ========================================================= */
+@keyframes mg-equip-hint-draw {
+  from { stroke-dashoffset: 220; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes mg-equip-hint-fade-in {
+  from { opacity: 0; transform: translate(calc(-1 * var(--equip-hint-anchor-x)), calc(-1 * var(--equip-hint-anchor-y))) translateY(4px); }
+  to   { opacity: 1; transform: translate(calc(-1 * var(--equip-hint-anchor-x)), calc(-1 * var(--equip-hint-anchor-y))); }
+}
+@keyframes mg-equip-hint-anchor-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+@keyframes mg-equip-hint-ring-pulse {
+  0%   { opacity: 0.55; r: 6; }
+  100% { opacity: 0;    r: 18; }
+}
+@keyframes mg-equip-hint-key-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 1px rgba(240, 198, 116, 0.7), 0 0 10px rgba(240, 198, 116, 0.4);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 1px rgba(240, 198, 116, 0.95), 0 0 22px rgba(240, 198, 116, 0.7);
+  }
+}
+
+.explore-equip-hint {
+  /* SVG (24, 96) を自機位置 (viewport 中央やや下) に合わせるための基準。 */
+  --equip-hint-anchor-x: 24px;
+  --equip-hint-anchor-y: 96px;
+  /* ラベルは横線 (y=56) の中点 (x=120) に乗せ、真上へ持ち上げる。 */
+  --equip-hint-label-x: 120px;
+  --equip-hint-label-y: 56px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 220px;
+  height: 120px;
+  pointer-events: none;
+  z-index: 16;
+  /* アンカー (SVG 内 24,96) を (left 50%, top 50%) へ寄せる。 */
+  transform: translate(calc(-1 * var(--equip-hint-anchor-x)), calc(-1 * var(--equip-hint-anchor-y)));
+  opacity: 0;
+  animation: mg-equip-hint-fade-in 600ms var(--ease-out-expo) 120ms forwards;
+}
+
+.explore-equip-hint__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.explore-equip-hint__line {
+  stroke: var(--mg-warm);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  opacity: 0.9;
+  animation: mg-equip-hint-draw 900ms var(--ease-out-quart) 200ms forwards;
+}
+
+.explore-equip-hint__anchor {
+  fill: var(--mg-warm);
+  animation: mg-equip-hint-anchor-pulse 1.6s ease-in-out infinite;
+}
+
+.explore-equip-hint__anchor-ring {
+  fill: none;
+  stroke: var(--mg-warm);
+  stroke-width: 0.8;
+  animation: mg-equip-hint-ring-pulse 2.2s ease-out infinite;
+}
+
+.explore-equip-hint__node {
+  fill: var(--mg-warm);
+  opacity: 0.8;
+}
+
+.explore-equip-hint__terminator {
+  fill: rgba(240, 198, 116, 0.15);
+  stroke: var(--mg-warm);
+  stroke-width: 1;
+}
+
+.explore-equip-hint__label {
+  position: absolute;
+  left: var(--equip-hint-label-x);
+  top: var(--equip-hint-label-y);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  /* 横線 (y=56) の真上に乗せるため、label ボックスの底辺を線から 8px 浮かせる。 */
+  transform: translate(-50%, calc(-100% - 8px));
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--mg-warm);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(240, 198, 116, 0.4);
+  opacity: 0;
+  animation: mg-fade-in 340ms var(--ease-out-expo) 960ms forwards;
+}
+
+.explore-equip-hint__key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: #0b1424;
+  background: var(--mg-warm);
+  border: 1px solid rgba(240, 198, 116, 0.95);
+  border-radius: 3px;
+  animation: mg-equip-hint-key-pulse 1.8s ease-in-out infinite 1200ms;
+}
+
+.explore-equip-hint__text {
+  opacity: 0.85;
+}
+
+.explore-item-popup {
+  position: relative;
+  min-width: 260px;
+  padding: 14px 20px 14px 22px;
+  border: 1px solid rgba(93, 164, 209, 0.24);
+  background:
+    radial-gradient(circle at 0 0, rgba(93, 164, 209, 0.05) 1px, transparent 1px) 0 0 / 18px 18px,
+    linear-gradient(135deg, rgba(10, 22, 42, 0.9) 0%, rgba(4, 10, 22, 0.95) 100%);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.45),
+    0 0 24px rgba(93, 164, 209, 0.08);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  overflow: hidden;
+}
+.explore-item-popup::before {
+  /* 左端の accent 縦線 — 他 HUD と意匠統一 */
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14%;
+  bottom: 14%;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(93, 164, 209, 0.35) 18%,
+    var(--mg-accent) 50%,
+    rgba(93, 164, 209, 0.35) 82%,
+    transparent
+  );
+  box-shadow: 0 0 8px rgba(93, 164, 209, 0.3);
+}
+
+.explore-item-popup__title,
+.explore-item-popup__detail {
+  margin: 0;
+}
+
+.explore-item-popup__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mg-accent);
+  text-shadow: 0 0 8px rgba(93, 164, 209, 0.25);
+}
+
+.explore-item-popup__detail {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--mg-text);
+  letter-spacing: 0.02em;
+}
+
+.map-screen {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 2.1fr);
+  gap: 1px;
+  background: var(--mg-border);
+}
+
+.map-screen__list,
+.map-screen__viewer {
+  min-height: 0;
+  background: var(--mg-panel);
+}
+
+.map-screen__list {
+  padding: 28px 20px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 18px;
+}
+
+.map-screen__area-list {
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.map-screen__area-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(93, 164, 209, 0.14);
+  background: rgba(8, 18, 34, 0.42);
+  color: var(--mg-text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast), transform var(--dur-fast);
+}
+
+.map-screen__area-button:hover,
+.map-screen__area-button--active {
+  border-color: rgba(93, 164, 209, 0.5);
+  background: rgba(93, 164, 209, 0.1);
+  transform: translateY(-1px);
+}
+
+.map-screen__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.map-screen__viewer {
+  position: relative;
+  padding: 24px;
+  background: rgba(6, 13, 26, 0.94);
+}
+
+.map-screen__canvas {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 48px);
+  min-height: 420px;
+  border: 1px solid rgba(93, 164, 209, 0.18);
+  background: #040810;
+}
+
+.map-screen__info {
+  position: absolute;
+  right: 40px;
+  bottom: 40px;
+  width: min(360px, calc(100% - 80px));
+  padding: 18px 20px;
+  border: 1px solid rgba(93, 164, 209, 0.2);
+  background: rgba(6, 14, 28, 0.88);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(18px);
+}
+
+.map-screen__info-eyebrow,
+.map-screen__info-title,
+.map-screen__info-text {
+  margin: 0;
+}
+
+.map-screen__info-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--mg-text-muted);
+  text-transform: uppercase;
+}
+
+.map-screen__info-title {
+  margin-top: 8px;
+  font-size: 20px;
+  color: var(--mg-text);
+}
+
+.map-screen__info-text {
+  margin-top: 6px;
+  line-height: 1.7;
+  color: var(--mg-text-dim);
+}

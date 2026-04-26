@@ -1,0 +1,211 @@
+/* =========================================================
+   ARCHIVE
+   ========================================================= */
+.archive-layout { align-items: start; }
+
+.archive-log__meta {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.archive-log__meta p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mg-text-dim);
+  letter-spacing: 0.04em;
+}
+
+.archive-log__body { max-height: 420px; }
+
+.archive-log__line {
+  display: grid;
+  gap: 4px;
+}
+.archive-log__line + .archive-log__line {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--mg-border);
+}
+.archive-log__speaker {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--mg-text-muted);
+}
+.archive-log__text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.9;
+  font-size: 15px;
+  color: var(--mg-text);
+}
+
+/* =========================================================
+   EXPLORE FULLSCREEN
+   ========================================================= */
+.explore-fullscreen {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--mg-void);
+}
+
+.explore-canvas-full {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* =========================================================
+   SETTINGS DASHBOARD
+   ========================================================= */
+.settings-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: clamp(16px, 2vw, 24px);
+  max-width: min(100%, 1120px);
+  width: 100%;
+  margin-inline: auto;
+  /* settings はパネル間の関係を変えず、画面内での占有率だけを引き上げます。 */
+  transform: scale(var(--settings-dashboard-visual-scale));
+  transform-origin: center top;
+}
+
+.settings-dashboard-col {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2vw, 24px);
+  height: 100%;
+}
+
+.settings-section {
+  background: rgba(8, 18, 34, 0.4);
+  border: 1px solid rgba(93, 164, 209, 0.2);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.settings-section::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px;
+  height: 100%;
+  background: rgba(93, 164, 209, 0.5);
+}
+.settings-section--danger::before {
+  background: rgba(220, 80, 80, 0.6);
+}
+.settings-section--danger {
+  border-color: rgba(220, 80, 80, 0.2);
+}
+
+.settings-section__title {
+  margin: 0;
+  padding:
+    clamp(10px, 1.5vh, 12px)
+    clamp(12px, 1.6vw, 16px);
+  background: rgba(93, 164, 209, 0.08);
+  font-family: var(--font-mono);
+  font-size: clamp(10px, 0.8vw, 11px);
+  letter-spacing: 0.2em;
+  color: var(--mg-text);
+  border-bottom: 1px solid rgba(93, 164, 209, 0.1);
+}
+.settings-section--danger .settings-section__title {
+  background: rgba(220, 80, 80, 0.06);
+  border-bottom-color: rgba(220, 80, 80, 0.1);
+  color: rgba(255, 180, 180, 0.9);
+}
+
+.settings-section__content {
+  padding: clamp(12px, 2vh, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.8vh, 16px);
+}
+
+.settings-section__content--compact {
+  padding:
+    clamp(10px, 1.5vh, 12px)
+    clamp(12px, 1.6vw, 16px);
+  gap: clamp(10px, 1.4vh, 12px);
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: clamp(14px, 2vw, 24px);
+}
+.settings-row + .settings-row {
+  padding-top: 16px;
+  border-top: 1px solid rgba(93, 164, 209, 0.1);
+}
+
+.settings-row__info {
+  flex: 1;
+}
+.settings-row__label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 0.95vw, 13px);
+  letter-spacing: 0.12em;
+  color: var(--mg-text);
+}
+.settings-row__desc {
+  margin: 4px 0 0;
+  font-size: clamp(10px, 0.8vw, 11px);
+  line-height: 1.5;
+  color: var(--mg-text-dim);
+}
+
+.settings-save-slots {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(220, 80, 80, 0.15);
+}
+
+.settings-save-slots--compact {
+  margin-top: 2px;
+  padding-top: 12px;
+}
+
+.save-slots-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.save-slot-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  background: rgba(4, 8, 16, 0.6);
+  border: 1px solid rgba(93, 164, 209, 0.2);
+}
+.save-slot-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.save-slot-card__id {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mg-accent);
+  letter-spacing: 0.15em;
+}
+.save-slot-card__meta {
+  margin: 0;
+  font-size: 11px;
+  color: var(--mg-text-dim);
+  font-family: var(--font-mono);
+}

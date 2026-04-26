@@ -1,0 +1,223 @@
+/* =========================================================
+   MAGNOLIA — Design System
+   終末通信システムの静かな電子空間を表現するUI基盤
+   ========================================================= */
+
+/* --- Design Tokens --- */
+:root {
+  /* palette */
+  --mg-void:        #040810;
+  --mg-abyss:       #060d1a;
+  --mg-deep:        #0a1628;
+  --mg-panel:       rgba(8, 18, 34, 0.82);
+  --mg-panel-solid: #0b1424;
+  --mg-border:      rgba(140, 195, 255, 0.16);
+  --mg-border-hi:   rgba(140, 195, 255, 0.38);
+  --mg-accent:      #5da4d1;
+  --mg-accent-dim:  rgba(93, 164, 209, 0.35);
+  --mg-text:        #dce8f5;
+  --mg-text-dim:    #8eabc8;
+  --mg-text-muted:  #5a7a96;
+  --mg-glow-blue:   rgba(93, 164, 209, 0.6);
+  --mg-glow-warm:   rgba(240, 198, 116, 0.5);
+  --mg-warm:        #f0c674;
+  --mg-green:       #84f0a3;
+  --mg-red:         #ff5a6e;
+  --mg-red-dim:     rgba(255, 90, 110, 0.25);
+
+  /* typography */
+  --font-body:   "IBM Plex Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-mono:   "IBM Plex Mono", "Menlo", monospace;
+
+  /* golden ratio tokens */
+  --phi:     1.618;
+  --phi-inv: 0.618;
+
+  /* motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-fast:   120ms;
+  --dur-normal: 220ms;
+  --dur-slow:   400ms;
+
+  /* layout */
+  --sidebar-width: 320px;
+  --title-panel-visual-scale: 1;
+  --settings-dashboard-visual-scale: clamp(1.18, 1.1 + 0.12vw, 1.26);
+
+  color-scheme: dark;
+  font-family: var(--font-body);
+  background: var(--mg-abyss);
+  color: var(--mg-text);
+  line-height: 1.618;
+}
+
+/* --- Reset --- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { min-height: 100%; margin: 0; }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(93, 164, 209, 0.08) 0%, transparent 50%),
+    var(--mg-abyss);
+}
+button, input, select, textarea { font: inherit; }
+
+/* --- Keyframes --- */
+@keyframes mg-scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+@keyframes mg-glow-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+@keyframes mg-text-glow {
+  0%, 100% { text-shadow: 0 0 20px var(--mg-glow-blue), 0 0 60px rgba(93, 164, 209, 0.2); }
+  50%      { text-shadow: 0 0 30px var(--mg-glow-blue), 0 0 80px rgba(93, 164, 209, 0.35); }
+}
+@keyframes mg-flicker {
+  0%, 100% { opacity: 1; }
+  92%      { opacity: 1; }
+  93%      { opacity: 0.6; }
+  94%      { opacity: 1; }
+  97%      { opacity: 0.8; }
+  98%      { opacity: 1; }
+}
+@keyframes mg-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mg-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mg-border-glow {
+  0%, 100% { border-color: var(--mg-border); }
+  50%      { border-color: var(--mg-border-hi); }
+}
+@keyframes mg-blue-call {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(93, 164, 209, 0), 0 0 18px rgba(93, 164, 209, 0.2);
+    background: rgba(93, 164, 209, 0.1);
+    color: #dce8f5;
+  }
+  50% {
+    box-shadow: 0 0 0 rgba(93, 164, 209, 0), 0 0 28px rgba(93, 164, 209, 0.42);
+    background: rgba(93, 164, 209, 0.18);
+    color: #f2f8ff;
+  }
+}
+
+/* --- Utility --- */
+.muted-text { color: var(--mg-text-dim); }
+.subtitle-muted { color: var(--mg-red); opacity: 0.7; }
+.mono { font-family: var(--font-mono); }
+
+/* =========================================================
+   ACTION BUTTON — 走査線風ボタン
+   ========================================================= */
+.action-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: var(--mg-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out-expo),
+    text-shadow var(--dur-normal) var(--ease-out-expo);
+  overflow: hidden;
+}
+/* 上下の走査線 */
+.action-button::before,
+.action-button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--mg-accent) 30%, var(--mg-accent) 70%, transparent 100%);
+  opacity: 0.5;
+  transition: opacity var(--dur-fast) var(--ease-out-expo);
+}
+.action-button::before { top: 0; }
+.action-button::after  { bottom: 0; }
+
+.action-button:hover:not(:disabled),
+.action-button[data-focused]:not(:disabled) {
+  color: #fff;
+  text-shadow: 0 0 12px var(--mg-glow-blue), 0 0 32px rgba(93, 164, 209, 0.3);
+}
+.action-button:hover:not(:disabled)::before,
+.action-button:hover:not(:disabled)::after,
+.action-button[data-focused]:not(:disabled)::before,
+.action-button[data-focused]:not(:disabled)::after {
+  opacity: 1;
+}
+.action-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* tones */
+.action-button--primary {
+  color: #e8f4ff;
+  background: rgba(93, 164, 209, 0.1);
+}
+.action-button--primary::before,
+.action-button--primary::after {
+  opacity: 0.7;
+}
+
+.action-button--ghost {
+  color: var(--mg-text-dim);
+}
+.action-button--ghost::before,
+.action-button--ghost::after {
+  background: linear-gradient(90deg, transparent 0%, var(--mg-border-hi) 30%, var(--mg-border-hi) 70%, transparent 100%);
+  opacity: 0.3;
+}
+.action-button--ghost:hover:not(:disabled) {
+  color: var(--mg-text);
+}
+
+.action-button--danger {
+  color: var(--mg-red);
+}
+.action-button--danger::before,
+.action-button--danger::after {
+  background: linear-gradient(90deg, transparent 0%, var(--mg-red) 30%, var(--mg-red) 70%, transparent 100%);
+  opacity: 0.35;
+}
+
+.action-button:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+.action-button:disabled::before,
+.action-button:disabled::after {
+  opacity: 0.1;
+}
+
+/* focus ring */
+.action-button:focus-visible {
+  outline: 1px solid var(--mg-accent);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   STACKED ACTIONS
+   ========================================================= */
+.stacked-actions {
+  display: grid;
+  gap: 4px;
+}

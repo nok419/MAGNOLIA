@@ -1,0 +1,451 @@
+/* =========================================================
+   EQUIPMENT MODAL
+   ========================================================= */
+.equipment-modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 8, 16, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 9000;
+  animation: mg-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.equipment-modal {
+  width: 440px;
+  max-width: 90vw;
+  background: var(--mg-panel-solid);
+  border: 1px solid var(--mg-accent-dim);
+  box-shadow: 0 0 40px rgba(93, 164, 209, 0.15), inset 0 0 20px rgba(93, 164, 209, 0.05);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+  animation: mg-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.equipment-modal::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--mg-accent), transparent);
+  opacity: 0.8;
+}
+
+.equipment-modal__title {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--mg-accent);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin: 0;
+  text-align: center;
+  animation: mg-flicker 3s infinite;
+}
+
+.equipment-modal__box {
+  background: rgba(93, 164, 209, 0.03);
+  border: 1px solid rgba(93, 164, 209, 0.1);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}
+
+.equipment-modal__name {
+  font-size: 1.4rem;
+  margin: 0;
+  color: var(--mg-text);
+  text-shadow: 0 0 10px rgba(220, 232, 245, 0.3);
+  letter-spacing: 0.05em;
+}
+
+.equipment-modal__desc {
+  font-size: 0.95rem;
+  color: var(--mg-text-dim);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.equipment-modal__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.equipment-modal__tag {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  background: rgba(93, 164, 209, 0.1);
+  color: var(--mg-accent);
+  border: 1px solid rgba(93, 164, 209, 0.3);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.equipment-modal__tag--effect {
+  background: rgba(240, 198, 116, 0.1);
+  color: var(--mg-warm);
+  border-color: rgba(240, 198, 116, 0.3);
+}
+
+.equipment-modal__actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* =========================================================
+   KEY VISUAL MODAL (Cinematic Poster)
+   ========================================================= */
+.key-visual-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.95);
+  animation: mg-fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.key-visual-modal {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+/* シネマティック・ビネット — 四隅を暗くして中央のアクションに視線を集中 */
+.key-visual-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  /* ワイドスクリーン: 横長楕円でキャンバス中心に集中、左右の余白を暗く */
+  background: radial-gradient(ellipse 55% 65% at 50% 42%, transparent 30%, rgba(0, 0, 0, 0.55) 100%);
+  pointer-events: none;
+}
+
+.key-visual-modal--windowed {
+  width: 500px;
+  height: 500px;
+  border: 1px solid rgba(93, 164, 209, 0.35);
+  box-shadow:
+    0 0 40px rgba(0, 5, 12, 0.8),
+    0 0 80px rgba(93, 164, 209, 0.15),
+    inset 0 0 60px rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+}
+
+/* Background particle canvas — タイトル画面と同じ SignalBackdrop */
+.key-visual-modal__particles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* 戦闘描画レイヤー — 透過背景で SignalBackdrop を活かす */
+.key-visual-modal__battle-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 薄いスキャンライン */
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(93, 164, 209, 0.03) 2px,
+    rgba(93, 164, 209, 0.03) 4px
+  );
+}
+
+.key-visual-modal__battle-frame .play-canvas--battle {
+  /* canvas (480×520) — フルスクリーンでは高さ基準でセンタリング */
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+  background: transparent !important;
+  box-shadow: none;
+  border: none;
+}
+
+/* ロゴオーバーレイ — 画面下部にグリッチ MAGNOLIA ロゴ */
+.key-visual-modal__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: min(5vh, 48px);
+  pointer-events: none;
+  /* フルスクリーン: ワイドに広がるグラデーション */
+  background: linear-gradient(
+    to top,
+    rgba(0, 5, 12, 0.85) 0%,
+    rgba(0, 5, 12, 0.5) 12%,
+    rgba(0, 5, 12, 0.15) 28%,
+    rgba(0, 5, 12, 0) 42%
+  );
+}
+
+.key-visual-modal__logo {
+  --title-logo-size: clamp(80px, 10vh, 140px);
+  --title-logo-offset-x: 0.1em;
+  margin: 0;
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.6),
+    0 0 24px rgba(0, 0, 0, 0.95),
+    0 0 40px rgba(93, 164, 209, 0.7),
+    0 0 80px rgba(93, 164, 209, 0.4),
+    0 0 120px rgba(60, 140, 220, 0.3),
+    0 2px 6px rgba(0, 0, 0, 0.8);
+  filter: drop-shadow(0 0 14px rgba(93, 164, 209, 0.25));
+}
+
+/* ロゴ下のアクセントライン */
+.key-visual-modal__logo-accent {
+  width: clamp(200px, 30vw, 480px);
+  height: 1px;
+  margin: 14px auto 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(93, 164, 209, 0.18) 12%,
+    rgba(200, 235, 255, 0.6) 50%,
+    rgba(93, 164, 209, 0.18) 88%,
+    transparent 100%
+  );
+  position: relative;
+}
+
+.key-visual-modal__logo-accent::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(93, 164, 209, 0.3) 30%,
+    rgba(93, 164, 209, 0.3) 70%,
+    transparent
+  );
+  filter: blur(2px);
+}
+
+/* ロゴ下のタグライン */
+.key-visual-modal__tagline {
+  margin: 10px 0 0;
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 1.8vh, 18px);
+  font-weight: 300;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: rgba(160, 210, 240, 0.55);
+  text-shadow:
+    0 0 8px rgba(93, 164, 209, 0.35),
+    0 0 24px rgba(93, 164, 209, 0.12);
+}
+
+/* windowed (500×500) ではキャンバス (480×520) をコンテナいっぱいに引き延ばし、
+   アスペクト比差 (~4%) による左右余白を解消する */
+.key-visual-modal--windowed .key-visual-modal__battle-frame .play-canvas--battle {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+/* windowed: 正方形向けビネット */
+.key-visual-modal--windowed::before {
+  background: radial-gradient(ellipse at 50% 40%, transparent 28%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+/* windowed (500×500) ではロゴ位置を維持しつつ縮小 */
+.key-visual-modal--windowed .key-visual-modal__overlay {
+  padding-bottom: 5%;
+  background: linear-gradient(
+    to top,
+    rgba(0, 5, 12, 0.82) 0%,
+    rgba(0, 5, 12, 0.35) 18%,
+    rgba(0, 5, 12, 0.08) 36%,
+    rgba(0, 5, 12, 0) 48%
+  );
+}
+.key-visual-modal--windowed .key-visual-modal__logo {
+  --title-logo-size: 60px;
+}
+.key-visual-modal--windowed .key-visual-modal__logo-accent {
+  width: 238px;
+  margin-top: 10px;
+}
+.key-visual-modal--windowed .key-visual-modal__tagline {
+  font-size: 14px;
+  letter-spacing: 0.54em;
+}
+
+/* アクションボタン — 右上に縦並び、ビジュアルに重ならない */
+.key-visual-modal__actions {
+  position: fixed;
+  top: min(3vh, 24px);
+  right: min(3vw, 28px);
+  z-index: 9300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+.key-visual-modal__close {
+  background: rgba(0, 5, 12, 0.5);
+  border: 1px solid rgba(93, 164, 209, 0.15);
+  color: var(--mg-text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all var(--dur-normal);
+  backdrop-filter: blur(6px);
+}
+.key-visual-modal__close:hover {
+  background: rgba(93, 164, 209, 0.12);
+  color: var(--mg-text);
+  border-color: var(--mg-accent);
+  box-shadow: 0 0 16px rgba(93, 164, 209, 0.2);
+}
+
+/* =========================================================
+   KEY VISUAL LAUNCHER (Settings Button)
+   ========================================================= */
+.kv-launcher-group {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.kv-launcher {
+  position: relative;
+  flex: 1;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mg-panel-solid);
+  border: 1px solid var(--mg-border-hi);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color var(--dur-normal), box-shadow var(--dur-normal);
+  text-decoration: none;
+}
+
+/* 微細なドットグリッドパターン + 対角グラデーション */
+.kv-launcher::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1h2v2H1z' fill='rgba(93,164,209,0.05)'/%3E%3C/svg%3E"),
+    linear-gradient(135deg, rgba(93, 164, 209, 0.06) 0%, transparent 60%);
+  z-index: 1;
+  transition: opacity var(--dur-normal);
+}
+
+/* ホバー時のセンターグロー */
+.kv-launcher::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(93, 164, 209, 0.18) 0%, transparent 65%);
+  opacity: 0;
+  z-index: 1;
+  transition: opacity var(--dur-normal);
+}
+
+.kv-launcher:hover {
+  border-color: var(--mg-accent);
+  box-shadow: 0 0 28px rgba(93, 164, 209, 0.12);
+}
+.kv-launcher:hover::after {
+  opacity: 1;
+}
+
+.kv-launcher__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+@keyframes kv-icon-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.06); }
+}
+
+.kv-launcher__icon {
+  font-size: 22px;
+  color: var(--mg-accent);
+  animation: kv-icon-breathe 3.5s ease-in-out infinite;
+  transition: transform var(--dur-normal) var(--ease-out-expo), opacity var(--dur-normal);
+}
+.kv-launcher:hover .kv-launcher__icon {
+  animation: none;
+  transform: scale(1.2);
+  opacity: 1;
+  text-shadow: 0 0 14px var(--mg-glow-blue);
+}
+
+.kv-launcher__text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--mg-text);
+  text-transform: uppercase;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.kv-launcher__sub {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--mg-text-muted);
+  opacity: 0.45;
+  text-transform: lowercase;
+  line-height: 1;
+  transition: opacity var(--dur-normal);
+}
+.kv-launcher:hover .kv-launcher__sub {
+  opacity: 0.7;
+}

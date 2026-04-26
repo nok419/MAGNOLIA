@@ -1,0 +1,396 @@
+/* =========================================================
+   TITLE SCREEN (unified: title menu + slot select)
+   ========================================================= */
+.title-screen {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding:
+    clamp(28px, 5.4vh, 48px)
+    clamp(18px, 2.4vw, 24px);
+  overflow: hidden;
+}
+.title-screen--departing {
+  pointer-events: none;
+}
+
+/* canvas particle backdrop */
+.title-screen__particles {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+/* gradient + vignette + scanline overlay */
+.title-screen__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 16%, rgba(0, 0, 0, 0.18) 38%, rgba(0, 0, 0, 0.94) 100%),
+    radial-gradient(circle at 50% 12%, rgba(150, 205, 240, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(93, 164, 209, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 30%, rgba(93, 164, 209, 0.06), transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+}
+.title-screen__backdrop::before {
+  content: "";
+  position: absolute;
+  inset: -14%;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(0, 0, 0, 0.7), transparent 34%),
+    radial-gradient(circle at 100% 0%, rgba(0, 0, 0, 0.68), transparent 32%),
+    radial-gradient(circle at 0% 100%, rgba(0, 0, 0, 0.68), transparent 32%),
+    radial-gradient(circle at 100% 100%, rgba(0, 0, 0, 0.76), transparent 34%);
+  filter: blur(22px);
+  opacity: 0.96;
+  pointer-events: none;
+}
+.title-screen__backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(0, 0, 0, 0.03) 3px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+  pointer-events: none;
+}
+
+.title-screen__panel {
+  position: relative;
+  z-index: 2;
+  width: min(100%, clamp(420px, 46vw, 700px));
+  padding:
+    clamp(42px, 7vh, 72px)
+    clamp(34px, 4.6vw, 72px)
+    clamp(34px, 5.6vh, 60px);
+  text-align: center;
+  animation: mg-fade-in 800ms var(--ease-out-expo);
+}
+
+.title-screen__eyebrow {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: clamp(14px, 1.1vw, 18px);
+  font-weight: 300;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+}
+
+.title-screen__logo-wrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: fit-content;
+  margin: 0 auto 8px;
+  /* ロゴの箱自体は中央固定にし、文字レイヤーだけを動かす。
+     これで中央寄せの責務と見た目補正の責務を分離する。 */
+  --title-logo-manual-offset-x: var(--title-logo-offset-x, 0);
+  --title-glitch-r-top: 100%;
+  --title-glitch-r-bottom: 0%;
+  --title-glitch-r-left: 0%;
+  --title-glitch-r-right: 0%;
+  --title-glitch-r-shift: 0px;
+  --title-glitch-r-skew: 0deg;
+  --title-glitch-r-scale: 1;
+  --title-glitch-r-opacity: 0;
+  --title-glitch-c-top: 100%;
+  --title-glitch-c-bottom: 0%;
+  --title-glitch-c-left: 0%;
+  --title-glitch-c-right: 0%;
+  --title-glitch-c-shift: 0px;
+  --title-glitch-c-skew: 0deg;
+  --title-glitch-c-scale: 1;
+  --title-glitch-c-opacity: 0;
+}
+
+.title-screen__panel > .title-screen__logo-wrap {
+  /* タイトル画面だけは見た目優先で左に寄せる。共通既定値へ混ぜると、
+     KV や loading 画面まで巻き込むため、補正はタイトル文脈に閉じる。 */
+  --title-logo-manual-offset-x: -1.48em;
+}
+
+.title-screen__logo {
+  grid-area: 1 / 1;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--title-logo-size, clamp(92px, 16.5vw, 170px));
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e8f4ff;
+  animation: mg-text-glow 4s ease-in-out infinite;
+  line-height: 1.1;
+  transform: translateX(var(--title-logo-manual-offset-x));
+}
+
+.title-screen__logo--glitch-r,
+.title-screen__logo--glitch-c {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: clip-path, transform, opacity;
+  transition:
+    clip-path 48ms steps(2, end),
+    transform 48ms steps(2, end),
+    opacity 40ms linear;
+}
+
+.title-screen__logo--glitch-r {
+  animation: mg-text-glow 4s ease-in-out infinite;
+  text-shadow: 5px 0 0 rgba(255, 0, 80, 0.8);
+  color: rgba(255, 100, 140, 0.8);
+  clip-path: inset(
+    var(--title-glitch-r-top)
+    var(--title-glitch-r-right)
+    var(--title-glitch-r-bottom)
+    var(--title-glitch-r-left)
+  );
+  transform:
+    translateX(calc(var(--title-logo-manual-offset-x) + var(--title-glitch-r-shift)))
+    skewX(var(--title-glitch-r-skew))
+    scaleX(var(--title-glitch-r-scale));
+  opacity: var(--title-glitch-r-opacity);
+}
+
+.title-screen__logo--glitch-c {
+  animation: mg-text-glow 4s ease-in-out infinite;
+  text-shadow: -5px 0 0 rgba(0, 255, 255, 0.8);
+  color: rgba(80, 210, 255, 0.8);
+  clip-path: inset(
+    var(--title-glitch-c-top)
+    var(--title-glitch-c-right)
+    var(--title-glitch-c-bottom)
+    var(--title-glitch-c-left)
+  );
+  transform:
+    translateX(calc(var(--title-logo-manual-offset-x) + var(--title-glitch-c-shift)))
+    skewX(var(--title-glitch-c-skew))
+    scaleX(var(--title-glitch-c-scale));
+  opacity: var(--title-glitch-c-opacity);
+}
+
+.title-screen__summary {
+  margin: 0 0 clamp(24px, 4vh, 36px);
+  font-family: var(--font-mono);
+  font-size: clamp(17px, 1.32vw, 22px);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  color: var(--mg-text-muted);
+  line-height: 1.6;
+}
+
+.title-screen__actions {
+  display: grid;
+  gap: 6px;
+  max-width: min(100%, clamp(320px, 24vw, 380px));
+  margin: 0 auto;
+}
+
+.title-screen .action-button {
+  min-height: clamp(54px, 6vh, 66px);
+  padding:
+    clamp(12px, 1.8vh, 16px)
+    clamp(24px, 2.8vw, 34px);
+  font-size: clamp(14px, 1.05vw, 16px);
+  letter-spacing: 0.16em;
+}
+
+.title-screen__sys {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--mg-text-muted);
+  letter-spacing: 0.1em;
+  animation: mg-flicker 6s infinite;
+  z-index: 5;
+}
+
+/* ── Phase transitions (title ↔ slot select) ── */
+.title-phases {
+  display: grid;
+}
+.title-phase {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 350ms var(--ease-out-expo),
+    transform 350ms var(--ease-out-expo);
+  pointer-events: none;
+}
+.title-phase--active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ── Slot cards (redesigned) ── */
+.title-slots {
+  display: grid;
+  gap: 10px;
+  max-width: min(100%, clamp(420px, 36vw, 520px));
+  margin: 0 auto 22px;
+}
+
+.title-slot {
+  position: relative;
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 0;
+  border: 1px solid rgba(93, 164, 209, 0.1);
+  background: rgba(6, 14, 28, 0.5);
+  backdrop-filter: blur(8px);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition:
+    border-color var(--dur-normal) var(--ease-out-expo),
+    background var(--dur-normal) var(--ease-out-expo),
+    box-shadow var(--dur-normal) var(--ease-out-expo),
+    transform var(--dur-fast) var(--ease-out-expo);
+}
+.title-slot:hover:not(:disabled) {
+  border-color: rgba(93, 164, 209, 0.3);
+  background: rgba(93, 164, 209, 0.04);
+}
+.title-slot--focused {
+  border-color: rgba(93, 164, 209, 0.55);
+  background: rgba(93, 164, 209, 0.06);
+  box-shadow: 0 0 24px rgba(93, 164, 209, 0.1);
+  transform: translateY(-1px);
+}
+.title-slot:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.title-slot__number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 600;
+  color: rgba(93, 164, 209, 0.12);
+  letter-spacing: -0.02em;
+  border-right: 1px solid rgba(93, 164, 209, 0.06);
+  user-select: none;
+  transition: color var(--dur-normal);
+}
+.title-slot--focused .title-slot__number {
+  color: rgba(93, 164, 209, 0.35);
+  text-shadow: 0 0 12px var(--mg-glow-blue);
+}
+
+.title-slot__content {
+  padding: 14px 18px 14px 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.title-slot__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-slot__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+}
+
+.title-slot__status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+  opacity: 0.5;
+}
+.title-slot__status--active {
+  color: var(--mg-accent);
+  opacity: 0.7;
+}
+
+.title-slot__area {
+  display: block;
+  margin: 2px 0;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--mg-text);
+  letter-spacing: 0.02em;
+}
+
+.title-slot__meta {
+  display: flex;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mg-text-dim);
+  letter-spacing: 0.03em;
+}
+
+/* corner brackets on slots */
+.title-slot__bracket {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-normal);
+}
+.title-slot--focused .title-slot__bracket {
+  opacity: 1;
+}
+.title-slot__bracket--tl {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--mg-accent);
+  border-left: 2px solid var(--mg-accent);
+}
+.title-slot__bracket--br {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--mg-accent);
+  border-right: 2px solid var(--mg-accent);
+}
+
+/* ── Departure curtain ── */
+.title-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--mg-void);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 700ms var(--ease-out-expo);
+}
+.title-curtain--active {
+  opacity: 1;
+  pointer-events: all;
+}

@@ -1,0 +1,421 @@
+/* =========================================================
+   SCREEN SHELL — Archive/Equipment/Settings 共通レイアウト
+   ========================================================= */
+.screen-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+  gap: 1px;
+  background: var(--mg-border);
+}
+
+.screen-shell__main,
+.screen-shell__sidebar {
+  background: var(--mg-panel);
+  backdrop-filter: blur(20px);
+}
+
+.screen-shell__main {
+  padding: 32px 36px;
+  animation: mg-fade-in 400ms var(--ease-out-expo);
+}
+
+.screen-shell__sidebar {
+  padding: 32px 24px;
+  border-left: 1px solid var(--mg-border);
+  background: rgba(6, 13, 26, 0.92);
+}
+
+.screen-shell__eyebrow {
+  margin: 0 0 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+}
+
+.screen-shell__title {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: clamp(24px, 4vw, 36px);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  line-height: 1.2;
+  color: var(--mg-text);
+}
+
+.screen-shell__subtitle {
+  margin: 0 0 28px;
+  max-width: 60ch;
+  font-size: 13px;
+  color: var(--mg-text-dim);
+  line-height: 1.618;
+}
+
+.screen-shell__content {
+  display: grid;
+  gap: 20px;
+}
+
+/* =========================================================
+   SLOT SELECT
+   ========================================================= */
+.slot-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.slot-card {
+  position: relative;
+  display: block;
+  min-height: 100px;
+  border: 1px solid rgba(93, 164, 209, 0.15);
+  background: rgba(8, 18, 34, 0.5);
+  backdrop-filter: blur(12px);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-normal) var(--ease-out-expo),
+    background var(--dur-normal) var(--ease-out-expo),
+    box-shadow var(--dur-normal) var(--ease-out-expo),
+    transform var(--dur-fast) var(--ease-out-expo);
+  overflow: hidden;
+}
+.slot-card:hover:not(:disabled),
+.slot-card--focused {
+  border-color: rgba(93, 164, 209, 0.6);
+  background: rgba(93, 164, 209, 0.1);
+  box-shadow: 0 8px 32px rgba(93, 164, 209, 0.15);
+  transform: translateY(-2px);
+}
+.slot-card--focused .slot-card__indicator {
+  background: var(--mg-accent) !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 12px var(--mg-glow-blue);
+}
+.slot-card:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.slot-card__indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--mg-text-muted);
+  opacity: 0.3;
+  transition: background var(--dur-normal), opacity var(--dur-normal), box-shadow var(--dur-normal);
+}
+.slot-card--active .slot-card__indicator {
+  background: var(--mg-accent);
+  opacity: 1;
+  box-shadow: 0 0 8px var(--mg-glow-blue);
+}
+
+.slot-card__body {
+  padding: 18px 24px;
+}
+
+.slot-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+}
+
+.slot-card__title {
+  display: block;
+  margin: 10px 0 6px;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--mg-text);
+}
+
+.slot-card__meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mg-text-dim);
+  letter-spacing: 0.05em;
+}
+.slot-card__meta p { margin: 2px 0; }
+
+/* =========================================================
+   PANEL CARD — 汎用情報パネル
+   ========================================================= */
+.panel-card {
+  position: relative;
+  border: 1px solid var(--mg-border);
+  background: var(--mg-panel);
+  padding: 20px;
+  backdrop-filter: blur(12px);
+}
+/* 左端の縦ライン */
+.panel-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--mg-accent);
+  opacity: 0.4;
+}
+
+.panel-card__title {
+  margin: 0 0 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+}
+
+.panel-card p { margin: 4px 0; }
+
+/* hint / help variant */
+.hint-card {
+  border: 1px solid var(--mg-border);
+  background: rgba(6, 13, 26, 0.6);
+  padding: 14px 16px;
+}
+.hint-card__title {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+}
+
+.hud-column {
+  display: grid;
+  gap: 16px;
+}
+
+/* =========================================================
+   RESULT PANEL
+   ========================================================= */
+.panel-card--result {
+  border-color: rgba(240, 198, 116, 0.25);
+}
+.panel-card--result::before {
+  background: var(--mg-warm);
+  opacity: 0.6;
+}
+
+/* =========================================================
+   TWO COLUMN / GRID
+   ========================================================= */
+.two-column-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+/* =========================================================
+   LIST CARD — 選択可能なリストアイテム
+   ========================================================= */
+.list-stack { display: grid; gap: 6px; }
+.feed-list { display: grid; gap: 6px; }
+
+.list-card {
+  position: relative;
+  padding: 14px 16px 14px 20px;
+  border: 1px solid var(--mg-border);
+  background: rgba(8, 18, 34, 0.5);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast),
+    background var(--dur-fast),
+    box-shadow var(--dur-fast);
+}
+.list-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--mg-text-muted);
+  opacity: 0.3;
+  transition: background var(--dur-fast), opacity var(--dur-fast), box-shadow var(--dur-fast);
+}
+.list-card:hover {
+  border-color: var(--mg-border-hi);
+  background: rgba(93, 164, 209, 0.04);
+}
+.list-card--selected {
+  border-color: rgba(93, 164, 209, 0.5);
+  background: rgba(93, 164, 209, 0.06);
+}
+.list-card--selected::before {
+  background: var(--mg-accent);
+  opacity: 1;
+  box-shadow: 0 0 6px var(--mg-glow-blue);
+}
+
+.list-card p { margin: 2px 0; font-size: 14px; }
+
+.detail-title {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+/* =========================================================
+   FEED ITEMS
+   ========================================================= */
+.feed-item {
+  padding: 10px 14px;
+  border: 1px solid var(--mg-border);
+  background: rgba(8, 18, 34, 0.4);
+}
+.feed-item__label {
+  margin: 0 0 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mg-text);
+}
+.feed-item__label span {
+  color: var(--mg-text-muted);
+  font-size: 11px;
+}
+.feed-item__detail {
+  margin: 0;
+  color: var(--mg-text-dim);
+  font-size: 13px;
+}
+
+/* =========================================================
+   SCROLL BLOCK
+   ========================================================= */
+.scroll-block {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--mg-border);
+  background: rgba(4, 8, 16, 0.6);
+}
+.scroll-block::-webkit-scrollbar { width: 4px; }
+.scroll-block::-webkit-scrollbar-track { background: transparent; }
+.scroll-block::-webkit-scrollbar-thumb { background: var(--mg-border-hi); border-radius: 2px; }
+
+/* =========================================================
+   BUTTON / TOGGLE / VOLUME ROWS
+   ========================================================= */
+.button-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.toggle-row, .volume-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.volume-row + .volume-row,
+.toggle-row + .toggle-row { margin-top: 10px; }
+
+/* Volume segments */
+.volume-segments {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.volume-segment {
+  width: 16px;
+  height: 10px;
+  border: 1px solid var(--mg-border-hi);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.volume-segment--active {
+  background: var(--mg-accent);
+  box-shadow: 0 0 4px var(--mg-glow-blue);
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 18px;
+  border: 1px solid var(--mg-border-hi);
+  background: rgba(8, 18, 34, 0.6);
+  cursor: pointer;
+  transition: background var(--dur-normal), border-color var(--dur-normal);
+}
+.toggle-switch--on {
+  background: rgba(93, 164, 209, 0.2);
+  border-color: var(--mg-accent);
+}
+.toggle-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--mg-text-dim);
+  transition: left var(--dur-normal) var(--ease-out-expo), background var(--dur-normal);
+}
+.toggle-switch--on .toggle-switch__knob {
+  left: 20px;
+  background: var(--mg-accent);
+  box-shadow: 0 0 6px var(--mg-glow-blue);
+}
+
+.toggle-pill-group {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(93, 164, 209, 0.2);
+  background: rgba(6, 14, 26, 0.7);
+}
+
+.toggle-pill {
+  min-width: 92px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mg-text-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
+}
+
+.toggle-pill:hover {
+  color: var(--mg-text);
+}
+
+.toggle-pill--active {
+  border-color: rgba(93, 164, 209, 0.5);
+  background: rgba(93, 164, 209, 0.12);
+  color: var(--mg-accent);
+  box-shadow: 0 0 8px rgba(93, 164, 209, 0.15);
+}

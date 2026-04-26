@@ -17,8 +17,12 @@
   "visibilityConditionId": "cond_mission_good_morning_cleared",
   "accessConditionId": "cond_mission_good_morning_cleared",
   "transcriptChunkIds": [
-    "tx_evacuation_01",
-    "tx_evacuation_02"
+    "tx_evacuation_01a",
+    "tx_evacuation_01b",
+    "tx_evacuation_01c",
+    "tx_evacuation_02a",
+    "tx_evacuation_02b",
+    "tx_evacuation_02c"
   ],
   "metadataUnlockThresholds": {
     "title": 0.12,
