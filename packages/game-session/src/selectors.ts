@@ -29,7 +29,7 @@ import type {
 } from "@magnolia/contracts"
 import { evaluateCondition } from "./conditions"
 import type { ResolvedEquipmentBinding, ResolvedLoadout } from "./equipment-runtime"
-import { hasUnlockedTransmissionMetadata } from "./progression"
+import { hasUnlockedTransmissionMetadata, mergeRanges } from "./progression"
 
 const WORLD_CELL_SIZE = 20
 const WORLD_BITMAP_ORIGIN_X = -640
@@ -264,7 +264,7 @@ export function createMissionReplaySeed(input: {
 }): MissionReplaySeed {
   const progress = input.transmissionProgress
   return {
-    seededHeardRanges: mergeTimeRanges(progress?.heardRanges ?? []),
+    seededHeardRanges: mergeRanges(progress?.heardRanges ?? []),
     seededRestorationRate: progress?.archiveRestorationRate ?? 0,
   }
 }
@@ -276,11 +276,11 @@ export function seedMissionStateWithReplayProgress(input: {
   return {
     ...input.missionState,
     // 再挑戦では過去に確保した区間を失わず、今回分だけを上乗せできる形にします。
-    heardRanges: mergeTimeRanges([
+    heardRanges: mergeRanges([
       ...input.replaySeed.seededHeardRanges,
       ...input.missionState.heardRanges,
     ]),
-    seededHeardRanges: mergeTimeRanges([
+    seededHeardRanges: mergeRanges([
       ...input.missionState.seededHeardRanges,
       ...input.replaySeed.seededHeardRanges,
     ]),
@@ -512,21 +512,4 @@ function isChunkHeard(chunk: TranscriptChunk, heardRanges: TimeRange[]): boolean
   return heardRanges.some(
     (range) => range.startMs <= chunk.startMs && range.endMs >= chunk.endMs,
   )
-}
-
-function mergeTimeRanges(ranges: TimeRange[]): TimeRange[] {
-  const sorted = [...ranges].sort((left, right) => left.startMs - right.startMs)
-  const merged: TimeRange[] = []
-
-  for (const range of sorted) {
-    const last = merged[merged.length - 1]
-    if (!last || range.startMs > last.endMs) {
-      merged.push({ ...range })
-      continue
-    }
-
-    last.endMs = Math.max(last.endMs, range.endMs)
-  }
-
-  return merged
 }
