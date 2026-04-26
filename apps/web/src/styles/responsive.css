@@ -1,0 +1,83 @@
+/* =========================================================
+   SETTINGS LAYOUT
+   ========================================================= */
+.settings-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 560px;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 960px) {
+  :root {
+    --title-panel-visual-scale: 1;
+    --settings-dashboard-visual-scale: 1;
+  }
+  .screen-shell {
+    grid-template-columns: 1fr;
+  }
+  .screen-shell__sidebar {
+    order: -1;
+    border-left: none;
+    border-bottom: 1px solid var(--mg-border);
+  }
+  .two-column-layout {
+    grid-template-columns: 1fr;
+  }
+  .battle-screen {
+    grid-template-columns: 1fr;
+  }
+  .battle-screen__playfield {
+    border-right: none;
+    border-bottom: 1px solid var(--mg-border);
+  }
+  .map-screen {
+    grid-template-columns: 1fr;
+  }
+  .map-screen__viewer {
+    padding: 18px;
+  }
+  .map-screen__canvas {
+    height: 58vh;
+  }
+  .map-screen__info {
+    position: static;
+    width: auto;
+    margin-top: 14px;
+  }
+  .equip-4col {
+    grid-template-columns: 1fr;
+  }
+  .settings-dashboard {
+    grid-template-columns: 1fr;
+  }
+  .equip-ship-status {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .equip-ship-status__slots {
+    max-width: 280px;
+  }
+  .key-visual-modal--windowed {
+    width: calc(100vw - 32px);
+    height: calc(100vh - 32px);
+    max-width: 500px;
+    max-height: 500px;
+  }
+  .ehud--signal {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+    min-width: 0;
+    transform: none;
+  }
+  .ehud--help {
+    bottom: 72px;
+  }
+}

@@ -41,6 +41,7 @@ import {
   formatTimestamp,
   readEquipmentSlotLabel,
 } from "@/app/display-helpers"
+import { useMagnoliaInput } from "@/app/use-magnolia-input"
 
 type MagnoliaAppState = {
   ready: boolean
@@ -72,16 +73,6 @@ type CommandTarget =
 
 const FRAME_INTERVAL_MS = 1000 / 60
 const ZERO_VECTOR = { x: 0, y: 0 }
-const FALLBACK_MOVE_CODES = {
-  up: ["KeyW", "ArrowUp"],
-  down: ["KeyS", "ArrowDown"],
-  left: ["KeyA", "ArrowLeft"],
-  right: ["KeyD", "ArrowRight"],
-}
-const INTERACT_FALLBACK_CODES = ["Enter", "NumpadEnter"]
-const MAP_FALLBACK_CODES = ["KeyM"]
-const EQUIPMENT_FALLBACK_CODES = ["KeyE"]
-const DASH_FALLBACK_CODES = ["ShiftRight"]
 const OVERLAY_CHANNEL = "overlay"
 const ITEM_POPUP_DURATION_MS = 2200
 const SEEN_EQUIPMENT_STORAGE_PREFIX = "magnolia.seenEquipment:"
@@ -125,6 +116,7 @@ type ExploreItemPopup = {
 }
 
 export function useMagnoliaApp() {
+  const input = useMagnoliaInput()
   const [state, setState] = useState<MagnoliaAppState>({
     ready: false,
     snapshot: null,
@@ -143,12 +135,6 @@ export function useMagnoliaApp() {
     seenEquipmentIds: [],
   })
   const sessionRef = useRef<MagnoliaGameSession | null>(null)
-  const keyStateRef = useRef(new Set<string>())
-  const mouseStateRef = useRef({
-    left: false,
-    right: false,
-  })
-  const previousButtonsRef = useRef<Record<string, boolean>>({})
   const lastFrameAtRef = useRef<number | null>(null)
   const frameHandleRef = useRef<number | null>(null)
   const stateRef = useRef(state)
@@ -242,74 +228,6 @@ export function useMagnoliaApp() {
     }
   }, [])
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (shouldPreventDefaultForKey(event.code)) {
-        event.preventDefault()
-      }
-      keyStateRef.current.add(event.code)
-    }
-
-    function handleKeyUp(event: KeyboardEvent) {
-      if (shouldPreventDefaultForKey(event.code)) {
-        event.preventDefault()
-      }
-      keyStateRef.current.delete(event.code)
-    }
-
-    function handleBlur() {
-      // フォーカス外れ後の押しっぱなし扱いを避け、探索中に勝手に動き続けないようにします。
-      keyStateRef.current.clear()
-      mouseStateRef.current.left = false
-      mouseStateRef.current.right = false
-      previousButtonsRef.current = {}
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    window.addEventListener("keyup", handleKeyUp)
-    window.addEventListener("blur", handleBlur)
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-      window.removeEventListener("keyup", handleKeyUp)
-      window.removeEventListener("blur", handleBlur)
-    }
-  }, [])
-
-  useEffect(() => {
-    function handleMouseDown(event: MouseEvent) {
-      if (event.button === 0) {
-        mouseStateRef.current.left = true
-      }
-      if (event.button === 2) {
-        mouseStateRef.current.right = true
-      }
-    }
-
-    function handleMouseUp(event: MouseEvent) {
-      if (event.button === 0) {
-        mouseStateRef.current.left = false
-      }
-      if (event.button === 2) {
-        mouseStateRef.current.right = false
-      }
-    }
-
-    function handleContextMenu(event: MouseEvent) {
-      event.preventDefault()
-    }
-
-    window.addEventListener("mousedown", handleMouseDown)
-    window.addEventListener("mouseup", handleMouseUp)
-    window.addEventListener("contextmenu", handleContextMenu)
-
-    return () => {
-      window.removeEventListener("mousedown", handleMouseDown)
-      window.removeEventListener("mouseup", handleMouseUp)
-      window.removeEventListener("contextmenu", handleContextMenu)
-    }
-  }, [])
-
   function showLockedMapPopup() {
     setState((current) => ({
       ...current,
@@ -358,7 +276,7 @@ export function useMagnoliaApp() {
           ? explorePresentation.pausesWorld
           : Boolean(appState.activeOverlayPresentation?.blocking)
       if (pausesWorld) {
-        syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+        input.syncButtonEdges(settings)
         return
       }
 
@@ -367,15 +285,10 @@ export function useMagnoliaApp() {
           snapshot.screen === "equipment" ||
           snapshot.screen === "settings" ||
           snapshot.screen === "map") &&
-        isClosePanelPressed(
-          snapshot.screen,
-          settings,
-          keyStateRef.current,
-          previousButtonsRef.current,
-        )
+        input.isClosePanelPressed(snapshot.screen, settings)
       ) {
         // 開閉に同じキーを使うため、画面を閉じる瞬間に押下状態を消費して再オープンを防ぎます。
-        syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+        input.syncButtonEdges(settings)
         void session.dispatch({ type: "closePanel" }).then(() => syncFromSession(session))
         return
       }
@@ -386,33 +299,25 @@ export function useMagnoliaApp() {
       }
 
       if (snapshot.screen === "explore") {
-        const mapPressed = isMapPressed(
-          settings,
-          keyStateRef.current,
-          previousButtonsRef.current,
-        )
-        const equipmentPressed = isEquipmentPressed(
-          settings,
-          keyStateRef.current,
-          previousButtonsRef.current,
-        )
+        const mapPressed = input.isMapPressed(settings)
+        const equipmentPressed = input.isEquipmentPressed(settings)
         // explore 専用の演出 state を正本にし、入力停止の条件をここ 1 か所へ寄せます。
         const inputsLocked = explorePresentation.blocksInput
 
         if (mapPressed && !inputsLocked) {
           if (!tryOpenMap(session)) {
-            syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+            input.syncButtonEdges(settings)
             return
           }
           // M 押下をここで消費しないと、map 画面へ入った直後に閉じ判定へ流れます。
-          syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+          input.syncButtonEdges(settings)
           void session.dispatch({ type: "openMap" }).then(() => syncFromSession(session))
           return
         }
 
         if (equipmentPressed && !inputsLocked) {
           // E 押下を消費し、equipment 画面へ入った直後の即時 close を防ぎます。
-          syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+          input.syncButtonEdges(settings)
           void session.dispatch({ type: "openEquipment" }).then(() => syncFromSession(session))
           return
         }
@@ -421,43 +326,38 @@ export function useMagnoliaApp() {
           dtMs,
           move: inputsLocked
             ? ZERO_VECTOR
-            : readMovementVector(settings, keyStateRef.current),
+            : input.readMovementVector(settings),
           dashPressed: inputsLocked
             ? false
-            : isPressedAny(
-                [settings.keybindings.dash, ...DASH_FALLBACK_CODES],
-                keyStateRef.current,
-              ),
+            : input.isDashPressed(settings),
           interactPressed: inputsLocked
             ? false
-            : isInteractPressed(settings, keyStateRef.current, previousButtonsRef.current),
+            : input.isInteractPressed(settings),
         })
         syncFromSession(session, result.presentationRequests, result.events)
         return
       }
 
       if (snapshot.screen === "map") {
-        syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+        input.syncButtonEdges(settings)
         return
       }
 
       if (snapshot.screen === "battle") {
+        const mouseButtons = input.mouseButtons
         const result = session.stepBattle({
           dtMs,
-          move: readMovementVector(settings, keyStateRef.current),
-          fireMain: mouseStateRef.current.left,
-          fireSub: mouseStateRef.current.right,
-          focus: isPressedAny(
-            [settings.keybindings.dash, ...DASH_FALLBACK_CODES],
-            keyStateRef.current,
-          ),
+          move: input.readMovementVector(settings),
+          fireMain: mouseButtons.left,
+          fireSub: mouseButtons.right,
+          focus: input.isDashPressed(settings),
           pausePressed: false,
         })
         syncFromSession(session, result.presentationRequests)
         return
       }
 
-      syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+      input.syncButtonEdges(settings)
     }
 
     frameHandleRef.current = window.requestAnimationFrame(stepFrame)
@@ -777,7 +677,7 @@ export function useMagnoliaApp() {
     const archiveSnapshot = session.getArchiveSnapshot()
     const parsedPopups = buildCollectiblePopups(incomingEvents, content)
 
-    syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+    input.syncButtonEdges(settings)
 
     startTransition(() => {
       setState((current) => {
@@ -955,166 +855,6 @@ function buildSaveSlotSummaries(
   }))
 }
 
-function readMovementVector(
-  settings: SettingsRow,
-  keyState: Set<string>,
-): { x: number; y: number } {
-  const x =
-    Number(
-      isPressedAny(
-        [settings.keybindings.moveRight, ...FALLBACK_MOVE_CODES.right],
-        keyState,
-      ),
-    ) -
-    Number(
-      isPressedAny(
-        [settings.keybindings.moveLeft, ...FALLBACK_MOVE_CODES.left],
-        keyState,
-      ),
-    )
-  const y =
-    Number(
-      isPressedAny(
-        [settings.keybindings.moveDown, ...FALLBACK_MOVE_CODES.down],
-        keyState,
-      ),
-    ) -
-    Number(
-      isPressedAny(
-        [settings.keybindings.moveUp, ...FALLBACK_MOVE_CODES.up],
-        keyState,
-      ),
-    )
-
-  if (x === 0 && y === 0) {
-    return ZERO_VECTOR
-  }
-
-  // 斜め移動だけ速くならないよう、入力ベクトルは正規化します。
-  const length = Math.hypot(x, y)
-  return {
-    x: x / length,
-    y: y / length,
-  }
-}
-
-function isMapPressed(
-  settings: SettingsRow,
-  keyState: Set<string>,
-  previousButtons: Record<string, boolean>,
-): boolean {
-  return isJustPressedAny(
-    [settings.keybindings.openMap, ...MAP_FALLBACK_CODES],
-    keyState,
-    previousButtons,
-  )
-}
-
-function isEquipmentPressed(
-  settings: SettingsRow,
-  keyState: Set<string>,
-  previousButtons: Record<string, boolean>,
-): boolean {
-  return isJustPressedAny(
-    [settings.keybindings.openEquipment, ...EQUIPMENT_FALLBACK_CODES],
-    keyState,
-    previousButtons,
-  )
-}
-
-function isClosePanelPressed(
-  screen: RootSnapshot["screen"],
-  settings: SettingsRow,
-  keyState: Set<string>,
-  previousButtons: Record<string, boolean>,
-): boolean {
-  const codes =
-    screen === "map"
-      ? [settings.keybindings.openMap, ...MAP_FALLBACK_CODES, "Escape"]
-      : screen === "equipment"
-        ? [settings.keybindings.openEquipment, ...EQUIPMENT_FALLBACK_CODES, "Escape"]
-        : [settings.keybindings.openSettings, "Escape"]
-
-  return isJustPressedAny(
-    codes,
-    keyState,
-    previousButtons,
-  )
-}
-
-function isInteractPressed(
-  settings: SettingsRow,
-  keyState: Set<string>,
-  previousButtons: Record<string, boolean>,
-): boolean {
-  return isJustPressedAny(
-    [settings.keybindings.interact, ...INTERACT_FALLBACK_CODES],
-    keyState,
-    previousButtons,
-  )
-}
-
-function isPressedAny(
-  codes: Array<string | undefined>,
-  keyState: Set<string>,
-): boolean {
-  return codes.some((code) => {
-    if (!code) {
-      return false
-    }
-    return keyState.has(code)
-  })
-}
-
-function isJustPressedAny(
-  codes: Array<string | undefined>,
-  keyState: Set<string>,
-  previousButtons: Record<string, boolean>,
-): boolean {
-  return uniqueCodes(codes).some((code) => isJustPressed(code, keyState, previousButtons))
-}
-
-function isJustPressed(
-  code: string | undefined,
-  keyState: Set<string>,
-  previousButtons: Record<string, boolean>,
-): boolean {
-  if (!code) {
-    return false
-  }
-
-  const isCurrentlyPressed = keyState.has(code)
-  const wasPressed = previousButtons[code] ?? false
-  previousButtons[code] = isCurrentlyPressed
-  return isCurrentlyPressed && !wasPressed
-}
-
-function syncButtonEdges(
-  settings: SettingsRow,
-  keyState: Set<string>,
-  previousButtons: Record<string, boolean>,
-): void {
-  const trackedCodes = uniqueCodes([
-    ...Object.values(settings.keybindings),
-    ...FALLBACK_MOVE_CODES.up,
-    ...FALLBACK_MOVE_CODES.down,
-    ...FALLBACK_MOVE_CODES.left,
-    ...FALLBACK_MOVE_CODES.right,
-    ...INTERACT_FALLBACK_CODES,
-    ...MAP_FALLBACK_CODES,
-    ...EQUIPMENT_FALLBACK_CODES,
-    ...DASH_FALLBACK_CODES,
-  ])
-
-  for (const code of trackedCodes) {
-    previousButtons[code] = keyState.has(code)
-  }
-}
-
-function uniqueCodes(codes: Array<string | undefined>): string[] {
-  return Array.from(new Set(codes.filter((code): code is string => Boolean(code))))
-}
-
 function buildCollectiblePopups(
   events: DomainEvent[],
   content: ContentBundle,
@@ -1183,15 +923,4 @@ function describeCollectiblePopup(
     title: equipment?.name ?? "装備を取得",
     detail: equipment ? `${readEquipmentSlotLabel(equipment.slot)}を取得` : "装備を取得",
   }
-}
-
-function shouldPreventDefaultForKey(code: string): boolean {
-  return [
-    "ArrowUp",
-    "ArrowDown",
-    "ArrowLeft",
-    "ArrowRight",
-    "Enter",
-    "NumpadEnter",
-  ].includes(code)
 }

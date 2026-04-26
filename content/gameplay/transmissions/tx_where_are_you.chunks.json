@@ -1,92 +1,200 @@
 [
   {
-    "chunkId": "chunk_way_001",
+    "chunkId": "chunk_way_001a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_001",
     "startMs": 0,
-    "endMs": 7000,
+    "endMs": 3000,
     "speakerLabel": "カナ",
-    "text": "ユウキ、お母さんです。……聞こえてるかな。20-Aから送ってます。"
+    "text": "ユウキ、お母さんです。"
   },
   {
-    "chunkId": "chunk_way_002",
+    "chunkId": "chunk_way_001b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_001",
+    "startMs": 3000,
+    "endMs": 5000,
+    "speakerLabel": "カナ",
+    "text": "……聞こえてるかな。"
+  },
+  {
+    "chunkId": "chunk_way_001c",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_001",
+    "startMs": 5000,
+    "endMs": 7000,
+    "speakerLabel": "カナ",
+    "text": "20-Aから送ってます。"
+  },
+  {
+    "chunkId": "chunk_way_002a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_002",
     "startMs": 7000,
-    "endMs": 15000,
+    "endMs": 10500,
     "speakerLabel": "カナ",
-    "text": "昨日の配給で毛布が来たの。そっちにも届いてるといいんだけど。……夜、冷えるでしょう。"
+    "text": "昨日の配給で毛布が来たの。"
   },
   {
-    "chunkId": "chunk_way_003",
+    "chunkId": "chunk_way_002b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_002",
+    "startMs": 10500,
+    "endMs": 12500,
+    "speakerLabel": "カナ",
+    "text": "そっちにも届いてるといいんだけど。"
+  },
+  {
+    "chunkId": "chunk_way_002c",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_002",
+    "startMs": 12500,
+    "endMs": 15000,
+    "speakerLabel": "カナ",
+    "text": "……夜、冷えるでしょう。"
+  },
+  {
+    "chunkId": "chunk_way_003a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_003",
     "startMs": 15000,
-    "endMs": 24000,
+    "endMs": 19000,
     "speakerLabel": "カナ",
-    "text": "返事はなくても構わないから。元気でいてくれたら、それでいいから。"
+    "text": "返事はなくても構わないから。"
   },
   {
-    "chunkId": "chunk_way_004",
+    "chunkId": "chunk_way_003b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_003",
+    "startMs": 19000,
+    "endMs": 24000,
+    "speakerLabel": "カナ",
+    "text": "元気でいてくれたら、それでいいから。"
+  },
+  {
+    "chunkId": "chunk_way_004a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_004",
     "startMs": 26000,
-    "endMs": 33000,
+    "endMs": 29500,
     "speakerLabel": "タクミ",
-    "text": "あー……ソウタ、タクミ。生きてるか。"
+    "text": "あー……ソウタ、タクミ。"
   },
   {
-    "chunkId": "chunk_way_005",
+    "chunkId": "chunk_way_004b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_004",
+    "startMs": 29500,
+    "endMs": 33000,
+    "speakerLabel": "タクミ",
+    "text": "生きてるか。"
+  },
+  {
+    "chunkId": "chunk_way_005a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_005",
     "startMs": 33000,
-    "endMs": 42000,
+    "endMs": 37500,
     "speakerLabel": "タクミ",
-    "text": "こっちは飯も出てるし、普通。お前もちゃんと食えよ。列長いけどサボんな。"
+    "text": "こっちは飯も出てるし、普通。"
   },
   {
-    "chunkId": "chunk_way_006",
+    "chunkId": "chunk_way_005b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_005",
+    "startMs": 37500,
+    "endMs": 42000,
+    "speakerLabel": "タクミ",
+    "text": "お前もちゃんと食えよ。列長いけどサボんな。"
+  },
+  {
+    "chunkId": "chunk_way_006a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_006",
     "startMs": 42000,
-    "endMs": 52000,
+    "endMs": 46500,
     "speakerLabel": "タクミ",
-    "text": "……なんか、あれだ。あの漫画の続き、まだ読んでねえからな。帰ったら貸せよ。"
+    "text": "……なんか、あれだ。"
   },
   {
-    "chunkId": "chunk_way_007",
+    "chunkId": "chunk_way_006b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_006",
+    "startMs": 46500,
+    "endMs": 52000,
+    "speakerLabel": "タクミ",
+    "text": "あの漫画の続き、まだ読んでねえからな。帰ったら貸せよ。"
+  },
+  {
+    "chunkId": "chunk_way_007a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_007",
     "startMs": 54000,
-    "endMs": 62000,
+    "endMs": 58500,
     "speakerLabel": "ミサキ",
-    "text": "ハルカ、ミサキです。20-Aの中継所、やっと順番が回ってきた。"
+    "text": "ハルカ、ミサキです。"
   },
   {
-    "chunkId": "chunk_way_008",
+    "chunkId": "chunk_way_007b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_007",
+    "startMs": 58500,
+    "endMs": 62000,
+    "speakerLabel": "ミサキ",
+    "text": "20-Aの中継所、やっと順番が回ってきた。"
+  },
+  {
+    "chunkId": "chunk_way_008a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_008",
     "startMs": 62000,
-    "endMs": 72000,
+    "endMs": 67500,
     "speakerLabel": "ミサキ",
-    "text": "こっちにはサトウさんとコバヤシくんがいるよ。サトウさん、相変わらず声が大きくてすぐわかった。"
+    "text": "こっちにはサトウさんとコバヤシくんがいるよ。"
   },
   {
-    "chunkId": "chunk_way_009",
+    "chunkId": "chunk_way_008b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_008",
+    "startMs": 67500,
+    "endMs": 72000,
+    "speakerLabel": "ミサキ",
+    "text": "サトウさん、相変わらず声が大きくてすぐわかった。"
+  },
+  {
+    "chunkId": "chunk_way_009a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_009",
     "startMs": 72000,
-    "endMs": 80000,
+    "endMs": 76000,
     "speakerLabel": "ミサキ",
-    "text": "そっちの区画、通信まだ不安定だって聞いた。届いてないかもしれないけど、送るだけ送る。"
+    "text": "そっちの区画、通信まだ不安定だって聞いた。"
   },
   {
-    "chunkId": "chunk_way_010",
+    "chunkId": "chunk_way_009b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_009",
+    "startMs": 76000,
+    "endMs": 80000,
+    "speakerLabel": "ミサキ",
+    "text": "届いてないかもしれないけど、送るだけ送る。"
+  },
+  {
+    "chunkId": "chunk_way_010a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_010",
     "startMs": 80000,
+    "endMs": 83000,
+    "speakerLabel": "ミサキ",
+    "text": "……また会おうね。"
+  },
+  {
+    "chunkId": "chunk_way_010b",
+    "transmissionId": "tx_where_are_you",
+    "lineId": "line_010",
+    "startMs": 83000,
     "endMs": 85000,
     "speakerLabel": "ミサキ",
-    "text": "……また会おうね。絶対。"
+    "text": "絶対。"
   }
 ]

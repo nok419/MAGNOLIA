@@ -3,28 +3,21 @@ import {
   createEmptyArchiveAccessState,
   createDefaultSaveSlots,
   createDefaultSettings,
-  createEmptyEquipmentPanelViewModel,
   createEmptyEquippedItems,
   createEmptyFeatureAccessState,
   createEmptyMetadataUnlocked,
-  DEFAULT_EXPLORE_REVEAL_ASPECT,
-  DEFAULT_EXPLORE_VIEWPORT_HEIGHT,
   normalizeSettings,
 } from "@magnolia/contracts"
 import type {
   AreaId,
   AreaMaster,
-  AreaProgressRow,
   BattleFrameInput,
-  BattlefieldHazardState,
   BattleSnapshot,
   CollectItemCommand,
   CollectibleMapNode,
   ConditionId,
   ConditionSpec,
   ContentBundle,
-  BulletPattern,
-  Difficulty,
   DomainEvent,
   EquipmentId,
   EquipmentMaster,
@@ -32,12 +25,9 @@ import type {
   ExploreFrameResult,
   ExploreSnapshot,
   GameCommand,
-  MetadataUnlocked,
   MissionId,
-  MissionMaster,
   MissionResult,
   MissionRunRow,
-  NoiseState,
   OpenArchiveCommand,
   OpenEquipmentCommand,
   OpenMapCommand,
@@ -59,7 +49,6 @@ import type {
   TimeRange,
   TranscriptChunk,
   TransmissionId,
-  TransmissionMaster,
   TransmissionProgressRow,
   Vector2,
   WarpMapNode,
@@ -72,8 +61,20 @@ import {
   fireEquippedMainWeapon,
   resolveLoadout,
   runSubsystemHooks,
+  type RuntimeModifierPatch,
   useEquippedSubWeapon,
 } from "./equipment-runtime"
+import {
+  applyBattleEffectRequests,
+  detonatePlayerProjectile,
+  updateBattleProjectiles,
+} from "./battle-effects"
+import type {
+  InternalBattleState,
+  InternalEnemyState,
+  InternalPickupState,
+  InternalProjectileState,
+} from "./battle-state"
 import { buildBattleHazardViewModels, stepBattlefieldHazards } from "./hazards"
 import {
   buildArchiveAccessState,
@@ -81,13 +82,17 @@ import {
   buildWorldMapVisibilityState,
   createMissionReplaySeed,
   seedMissionStateWithReplayProgress,
-  selectVisibleWorldMapSnapshot,
 } from "./selectors"
 import {
-  computeAreaCompletionRate,
+  appendTimeRange,
+  computeRecoverableArchiveHeardRanges,
+  computeRecoverableRunHeardRanges,
+  computeRangesDuration,
+  computeRestorationRate,
   hasVisibleArchiveContent,
-  isTransmissionIncomplete,
+  mergeRanges,
   readTransmissionCompletionState,
+  unlockMetadata,
 } from "./progression"
 import {
   createBattleHitPresentation,
@@ -102,6 +107,44 @@ import {
   createWarpTransitionPresentation,
   flattenPresentationRequests,
 } from "./presentation"
+import {
+  clampToRect,
+  computeAreaBounds,
+  computeCompassTargetAreaId,
+  computeNearestTransmissionStrength,
+  computeRevealCompletionRate,
+  computeWorldBounds,
+  createExploreRevealViewport,
+  detectCurrentAreaId,
+  findNearbyNode,
+  isWithinRadius,
+  mergeRevealBitmaps,
+  normalizeVector,
+  readDisplayArea,
+  readExploreMoveSpeed,
+  revealViewportArea,
+} from "./explore-world"
+import {
+  BATTLE_HEIGHT,
+  BATTLE_WIDTH,
+  clamp01,
+  doesCircleIntersectHazardArea,
+  isCircleInsideCircle,
+  readEnemyPatternBaseRotation,
+  resolveEnemyPatternBaseDirection,
+  resolveHitRadius,
+  resolveSpawnPoint,
+  rotateVector,
+} from "./battle-world"
+import { createInitialProfileAggregate } from "./profile-factory"
+import {
+  createBattleSnapshotFromState,
+  createEmptyExploreSnapshot,
+  createEquipmentSnapshotForProfile,
+  createExploreSnapshotForProfile,
+  createMapSnapshotFromExplore,
+} from "./session-snapshots"
+import { toRecord } from "./record-utils"
 import type {
   BattlePickupRenderState,
   BattleRenderState,
@@ -115,16 +158,7 @@ import type {
   SubtitleRenderState,
 } from "./runtime-types"
 
-const WORLD_CELL_SIZE = 20
-// world map の拡張後も探索履歴を保持できるよう、reveal bitmap の範囲を広げる。
-// 旧サイズは area2 以降の座標を十分に覆っておらず、探索済みセルが保存されなかった。
-const WORLD_BITMAP_WIDTH = 128
-const WORLD_BITMAP_HEIGHT = 80
-const WORLD_BITMAP_ORIGIN_X = -640
-const WORLD_BITMAP_ORIGIN_Y = -520
 const DEFAULT_EXPLORE_VISION_RADIUS = 150
-const BATTLE_WIDTH = 480
-const BATTLE_HEIGHT = 520
 /**
  * 新規ゲーム開始時にターミナルへ流れるブートログ。
  * 「不調箇所や不完全な初期設定はあるが、かろうじて再起動できた」
@@ -150,108 +184,6 @@ const BOOT_LINES = [
 ]
 
 type SlotSelectMode = "new" | "continue"
-
-type InternalEnemyState = {
-  enemyInstanceId: string
-  enemyId: string
-  spawnPosition: Vector2
-  position: Vector2
-  hp: number
-  maxHp: number
-  enteredAtMs: number
-  pauseStartedAtMs?: number
-  patternLastFiredAtMs: Record<string, number>
-  burnDamagePerSec: number
-  burnUntilMs: number
-  radius: number
-  overrides?: Record<string, number | string | boolean>
-}
-
-type InternalProjectileState = {
-  projectileInstanceId: string
-  projectileId: string
-  side: "player" | "enemy"
-  position: Vector2
-  velocity: Vector2
-  radius: number
-  remainingMs: number
-  spawnDelayMs: number
-  damage: number
-  noiseDamage: number
-  explosiveRadius?: number
-  burnDamagePerSec?: number
-  burnDurationMs?: number
-  detonationDelayMs?: number
-  explosionDamageMultiplier?: number
-  explosionVisualProjectileId?: string
-  nonColliding?: boolean
-}
-
-type InternalBarrierState = {
-  barrierId: string
-  radius: number
-  remainingMs: number
-  maxMs: number
-  moveSpeedMultiplier: number
-  allowAttackDuringUse: boolean
-  blocksEnemyBullets: boolean
-}
-
-type InternalSupportFieldState = {
-  fieldInstanceId: string
-  fieldId: string
-  position: Vector2
-  velocity: Vector2
-  radius: number
-  remainingMs: number
-  dpsInField: number
-  blocksEnemyBullets: boolean
-  blocksMagneticDisaster: boolean
-  mainCadenceMultiplier: number
-}
-
-type InternalPickupState = {
-  pickupInstanceId: string
-  kind: "selfRepairPoints"
-  amount: number
-  position: Vector2
-  velocity: Vector2
-  radius: number
-  remainingMs: number
-}
-
-type InternalBattleState = {
-  mission: MissionMaster
-  transmission: TransmissionMaster
-  transcript: TranscriptChunk[]
-  loadout: ReturnType<typeof resolveLoadout>
-  bindings: ReturnType<typeof createEquipmentRuntimeBindings>
-  noiseState: NoiseState
-  elapsedMs: number
-  audioPlaybackMs: number
-  phase: "intro" | "playing" | "outro"
-  heardRanges: TimeRange[]
-  damageRanges: TimeRange[]
-  seededHeardRanges: TimeRange[]
-  restorationRate: number
-  destroyedAnalysisValue: number
-  score: number
-  selfRepairPointsEarned: number
-  cleared: boolean
-  spawnedWaveIndexes: Set<number>
-  playerPosition: Vector2
-  mainCooldownMs: number
-  subCooldownMs: number
-  barrier?: InternalBarrierState
-  supportFields: InternalSupportFieldState[]
-  pickups: InternalPickupState[]
-  enemies: InternalEnemyState[]
-  projectiles: InternalProjectileState[]
-  activeResult?: MissionResult
-  previousNoiseAudible: boolean
-  previousSubPressed: boolean
-  hazards: BattlefieldHazardState[]
-}
 
 export class MagnoliaGameSession {
   private readonly content: ContentBundle
@@ -753,7 +685,7 @@ export class MagnoliaGameSession {
       battle.barrier = undefined
     }
 
-    const spawnedEffects = this.applyEffectRequests(battle, effectRequests)
+    const spawnedEffects = this.applyEffectRequests(battle, effectRequests, battlePassives)
     this.updateSupportFields(battle, input.dtMs)
     this.updateEnemies(battle, input.dtMs)
     this.updateProjectiles(battle, input.dtMs, battlePassives.statModifiers)
@@ -771,7 +703,7 @@ export class MagnoliaGameSession {
     const collisionEvents = this.resolveBattleCollisions(battle)
     if (collisionEvents.effectRequests.length > 0) {
       effectRequests.push(...collisionEvents.effectRequests)
-      this.applyEffectRequests(battle, collisionEvents.effectRequests)
+      this.applyEffectRequests(battle, collisionEvents.effectRequests, battlePassives)
     }
 
     const fieldProtectsFromMagneticDisaster = battle.supportFields.some(
@@ -789,6 +721,7 @@ export class MagnoliaGameSession {
     if (!fieldProtectsFromMagneticDisaster) {
       inflictedNoise += hazardResult.playerNoiseDamage
     }
+    let receivedRestorationDamage = false
     if (inflictedNoise > 0 && battle.noiseState.invincibleUntilMs <= battle.elapsedMs) {
       const hitHookResult = runSubsystemHooks({
         bindings: battle.bindings,
@@ -804,17 +737,28 @@ export class MagnoliaGameSession {
       battle.noiseState.noiseLevel = clamp01(battle.noiseState.noiseLevel + totalNoiseDamage)
       battle.noiseState.invincibleUntilMs =
         battle.elapsedMs + this.content.playerShipSpec.invincibilityMs
+      receivedRestorationDamage = totalNoiseDamage > 0
+      if (hitHookResult.effectRequests?.length) {
+        this.applyEffectRequests(battle, hitHookResult.effectRequests, battlePassives)
+      }
     }
 
     const currentAudible = battle.noiseState.noiseLevel < battle.noiseState.hearingThreshold
     const audioWindow = this.resolveAudioWindow(battle, input.dtMs)
     if (audioWindow && battle.phase === "playing") {
-      if (currentAudible) {
+      if (currentAudible && !receivedRestorationDamage) {
         battle.heardRanges = appendTimeRange(battle.heardRanges, audioWindow)
       } else {
         battle.damageRanges = appendTimeRange(battle.damageRanges, audioWindow)
       }
-      battle.restorationRate = computeRestorationRate(battle, battle.transcript)
+      battle.restorationRate = computeRestorationRate(
+        computeRecoverableArchiveHeardRanges({
+          heardRanges: battle.heardRanges,
+          seededHeardRanges: battle.seededHeardRanges,
+          damageRanges: battle.damageRanges,
+        }),
+        battle.transcript,
+      )
     }
 
     const presentationRequests = flattenPresentationRequests([
@@ -1316,126 +1260,28 @@ export class MagnoliaGameSession {
   }
 
   private createExploreSnapshot(): ExploreSnapshot {
-    const fallbackProfile = this.activeProfile ?? createInitialProfileAggregate({
-      slotId: 1,
-      difficulty: this.settings.difficulty,
-      content: this.content,
-    })
-    const mapLogic =
-      this.content.mapLogic[this.content.areas[fallbackProfile.profile.currentAreaId].mapId]
-    const displayArea = readDisplayArea({
-      mapLogic,
-      areas: this.content.areas,
-      playerPosition: fallbackProfile.profile.playerPosition,
-    })
-    const featureAccess = this.activeProfile
-      ? this.buildFeatureAccess()
-      : createEmptyFeatureAccessState()
-    const mapState = buildWorldMapVisibilityState({
-      revealBitmap: mergeRevealBitmaps(fallbackProfile.areaProgress),
-      mapLogic,
-      loadout: this.resolveLoadout(),
-      featureAccess,
-      profile: fallbackProfile.profile,
-      conditions: this.content.conditions,
-      areaProgress: toRecord(fallbackProfile.areaProgress, "areaId"),
-      transmissionProgress: toRecord(fallbackProfile.transmissionProgress, "transmissionId"),
-    })
-    const mapSnapshot = selectVisibleWorldMapSnapshot({
-      mapState,
-      playerPosition: fallbackProfile.profile.playerPosition,
-      mapLogic,
-    })
-    const transmissionProgressById = toRecord(
-      fallbackProfile.transmissionProgress,
-      "transmissionId",
-    )
-
-    return {
-      screen: "explore",
-      playerPosition: fallbackProfile.profile.playerPosition,
-      map: mapSnapshot,
-      hud: {
-        currentAreaId: displayArea?.areaId,
-        equipped: fallbackProfile.profile.equipped,
-        communicationStrength: computeNearestTransmissionStrength({
-          playerPosition: fallbackProfile.profile.playerPosition,
-          mapLogic,
-          featureAccess,
-          transmissionProgress: transmissionProgressById,
-        }),
-        compassTargetAreaId: featureAccess.compassEnabled
-          ? computeCompassTargetAreaId({
-              profile: fallbackProfile.profile,
-              areas: this.content.areas,
-              transmissions: this.content.transmissions,
-              transmissionProgress: transmissionProgressById,
-            })
-          : undefined,
-        currentAreaCompletionRate: computeAreaCompletionRate({
-          area: displayArea,
-          transmissionProgress: transmissionProgressById,
-        }),
-        selfRepairPoints: fallbackProfile.profile.selfRepairPoints,
-      },
-      featureAccess,
+    if (!this.activeProfile) {
+      return createEmptyExploreSnapshot()
     }
+
+    return createExploreSnapshotForProfile({
+      content: this.content,
+      profileAggregate: this.activeProfile,
+      featureAccess: this.buildFeatureAccess(),
+      loadout: this.resolveLoadout(),
+    })
   }
 
   private createMapSnapshot() {
-    const exploreSnapshot = this.createExploreSnapshot()
-    return {
-      ...exploreSnapshot,
-      screen: "map" as const,
-    }
+    return createMapSnapshotFromExplore(this.createExploreSnapshot())
   }
 
   private createBattleSnapshot(): BattleSnapshot {
-    if (!this.battleState) {
-      return {
-        screen: "battle",
-        missionId: Object.keys(this.content.missions)[0] ?? "mission_missing",
-        phase: "intro",
-        playerPosition: { x: BATTLE_WIDTH / 2, y: BATTLE_HEIGHT - 64 },
-        hud: {
-          missionId: Object.keys(this.content.missions)[0] ?? "mission_missing",
-          phase: "intro",
-          analysisRate: 0,
-          restorationRate: 0,
-          noiseLevel: 0,
-          equipped: this.activeProfile?.profile.equipped ?? createEmptyEquippedItems(),
-          dangerLevel: 1,
-          selfRepairPointsEarned: 0,
-        },
-        hazards: [],
-      }
-    }
-    const transcriptDurationMs = this.getTranscriptDurationMs(this.battleState.transcript)
-    return {
-      screen: "battle",
-      missionId: this.battleState.mission.missionId,
-      phase: this.battleState.phase,
-      playerPosition: this.battleState.playerPosition,
-      hud: {
-        missionId: this.battleState.mission.missionId,
-        phase: this.battleState.phase,
-        analysisRate: Math.min(
-          1,
-          this.battleState.destroyedAnalysisValue / this.battleState.mission.analysisTotal,
-        ),
-        restorationRate:
-          transcriptDurationMs > 0
-            ? computeRangesDuration(this.battleState.heardRanges) / transcriptDurationMs
-            : 0,
-        noiseLevel: this.battleState.noiseState.noiseLevel,
-        equipped: this.activeProfile?.profile.equipped ?? createEmptyEquippedItems(),
-        dangerLevel: this.battleState.mission.dangerLevel,
-        selfRepairPointsEarned: this.battleState.selfRepairPointsEarned,
-      },
-      hazards: buildBattleHazardViewModels({
-        hazards: this.buildMissionState().hazards,
-      }),
-    }
+    return createBattleSnapshotFromState({
+      battleState: this.battleState,
+      activeProfile: this.activeProfile,
+      fallbackMissionId: Object.keys(this.content.missions)[0] ?? "mission_missing",
+    })
   }
 
   private createArchiveSnapshot() {
@@ -1490,16 +1336,7 @@ export class MagnoliaGameSession {
   }
 
   private createEquipmentSnapshot() {
-    if (!this.activeProfile) {
-      return createEmptyEquipmentPanelViewModel()
-    }
-    return {
-      screen: "equipment" as const,
-      ownedEquipmentIds: this.activeProfile.profile.ownedEquipmentIds,
-      equipped: this.activeProfile.profile.equipped,
-      equipmentLevels: this.activeProfile.profile.equipmentLevels,
-      selfRepairPoints: this.activeProfile.profile.selfRepairPoints,
-    }
+    return createEquipmentSnapshotForProfile(this.activeProfile)
   }
 
   private handleExploreMenu(input: ExploreFrameInput): DomainEvent[] {
@@ -1653,176 +1490,18 @@ export class MagnoliaGameSession {
   private applyEffectRequests(
     battle: InternalBattleState,
     effectRequests: RuntimeEffectRequest[],
+    modifierPatch: RuntimeModifierPatch = {},
   ): {
     presentationRequests: ReturnType<typeof flattenPresentationRequests>
   } {
-    const presentationRequests = [] as ReturnType<typeof flattenPresentationRequests>
-
-    for (const request of effectRequests) {
-      switch (request.kind) {
-        case "spawnProjectile":
-          this.spawnProjectilesFromRequest(battle, request)
-          break
-        case "spawnBarrier":
-          battle.barrier = {
-            barrierId: request.barrierId,
-            radius: request.radius,
-            remainingMs: request.durationMs,
-            maxMs: request.durationMs,
-            moveSpeedMultiplier: request.moveSpeedMultiplier ?? 1,
-            allowAttackDuringUse: request.allowAttackDuringUse,
-            blocksEnemyBullets: request.blocksEnemyBullets,
-          }
-          break
-        case "spawnSupportField":
-          battle.supportFields.push({
-            fieldInstanceId: this.nextInstanceId(request.fieldId),
-            fieldId: request.fieldId,
-            position: { ...request.position },
-            velocity: { x: 0, y: -request.launchSpeed },
-            radius: request.radius,
-            remainingMs: request.durationMs,
-            dpsInField: request.dpsInField ?? 0,
-            blocksEnemyBullets: request.blocksEnemyBullets ?? false,
-            blocksMagneticDisaster: request.blocksMagneticDisaster ?? false,
-            mainCadenceMultiplier: request.mainCadenceMultiplier ?? 1,
-          })
-          break
-        case "applyCooldown":
-          if (request.slot === "main") {
-            battle.mainCooldownMs = request.durationMs * this.readMainCadenceMultiplier(battle)
-          }
-          if (request.slot === "sub") {
-            battle.subCooldownMs = request.durationMs
-          }
-          break
-        case "playEffect":
-          // 見た目の詳細は presentation 側へ寄せる前提のため、ここでは queue を増やしません。
-          break
-        case "clearEnemyProjectiles":
-          battle.projectiles = battle.projectiles.filter(
-            (projectile) =>
-              projectile.side !== "enemy" ||
-              !isWithinRadius(
-                projectile.position,
-                request.position ?? battle.playerPosition,
-                request.radius ?? 9999,
-              ),
-          )
-          break
-      }
-    }
-
-    return {
-      presentationRequests,
-    }
-  }
-
-  private spawnProjectilesFromRequest(
-    battle: InternalBattleState,
-    request: Extract<RuntimeEffectRequest, { kind: "spawnProjectile" }>,
-  ): void {
-    const projectileSpec = this.content.projectiles[request.projectileId]
-    const burnEffect = battle.loadout.subsystems
-      .flatMap((binding) => binding?.passiveEffects ?? [])
-      .find((effect) => effect.runtimeHandlerId === "subsystem.shot.modifier.burn")
-    const spreadDeg = request.spreadDeg ?? 0
-    const count = Math.max(1, request.count)
-    for (let index = 0; index < count; index += 1) {
-      const spreadOffset =
-        count === 1 ? 0 : ((index / (count - 1)) * spreadDeg - spreadDeg / 2) * (Math.PI / 180)
-      const direction = rotateVector(normalizeVector(request.direction), spreadOffset)
-      battle.projectiles.push({
-        projectileInstanceId: this.nextInstanceId(request.projectileId),
-        projectileId: request.projectileId,
-        side: projectileSpec?.side ?? "player",
-        position: { ...request.position },
-        velocity: {
-          x: direction.x * request.speed,
-          y: direction.y * request.speed,
-        },
-        radius: resolveHitRadius(projectileSpec?.hitboxPresetId),
-        remainingMs: request.lifetimeMs ?? projectileSpec?.lifetimeMs ?? 2000,
-        damage: request.damage ?? projectileSpec?.damage ?? 0,
-        noiseDamage: request.noiseDamage ?? projectileSpec?.noiseDamage ?? 0,
-        explosiveRadius:
-          request.params && typeof request.params.explosionRadius === "number"
-            ? request.params.explosionRadius
-            : undefined,
-        burnDamagePerSec: burnEffect
-          ? Number(burnEffect.params?.burnDamagePerSec ?? 0)
-          : undefined,
-        burnDurationMs: burnEffect
-          ? Number(burnEffect.params?.burnDurationMs ?? 0)
-          : undefined,
-        spawnDelayMs: request.delayMs ?? 0,
-        detonationDelayMs:
-          request.params && typeof request.params.explosionDelayMs === "number"
-            ? request.params.explosionDelayMs
-            : undefined,
-        explosionDamageMultiplier:
-          request.params && typeof request.params.explosionDamageMultiplier === "number"
-            ? request.params.explosionDamageMultiplier
-            : undefined,
-        explosionVisualProjectileId:
-          request.params && typeof request.params.explosionVisualProjectileId === "string"
-            ? request.params.explosionVisualProjectileId
-            : undefined,
-        nonColliding:
-          request.params && typeof request.params.visualOnly === "boolean"
-            ? request.params.visualOnly
-            : false,
-      })
-    }
-
-    if (
-      request.params?.meleeEnabled &&
-      typeof request.params.meleeProjectileId === "string" &&
-      hasEnemyWithinRange(
-        battle.enemies,
-        request.position,
-        typeof request.params.meleeRange === "number" ? request.params.meleeRange : 80,
-      )
-    ) {
-      const meleeProjectileId = request.params.meleeProjectileId
-      const meleeProjectileSpec = this.content.projectiles[meleeProjectileId]
-      const meleeCount =
-        typeof request.params.meleeShotCount === "number" ? request.params.meleeShotCount : 3
-      const meleeSpreadDeg =
-        typeof request.params.meleeSpreadDeg === "number" ? request.params.meleeSpreadDeg : 120
-
-      for (let index = 0; index < meleeCount; index += 1) {
-        const spreadOffset =
-          meleeCount === 1
-            ? 0
-            : ((index / (meleeCount - 1)) * meleeSpreadDeg - meleeSpreadDeg / 2) *
-              (Math.PI / 180)
-        const direction = rotateVector(normalizeVector(request.direction), spreadOffset)
-        battle.projectiles.push({
-          projectileInstanceId: this.nextInstanceId(meleeProjectileId),
-          projectileId: meleeProjectileId,
-          side: meleeProjectileSpec?.side ?? "player",
-          position: { ...request.position },
-          velocity: {
-            x: direction.x * 320,
-            y: direction.y * 320,
-          },
-          radius: resolveHitRadius(meleeProjectileSpec?.hitboxPresetId),
-          remainingMs: 150,
-          spawnDelayMs: (request.delayMs ?? 0) + index * (typeof request.params.meleeSequentialDelayMs === "number" ? request.params.meleeSequentialDelayMs : 0),
-          damage:
-            typeof request.params.meleeDamage === "number" ? request.params.meleeDamage : 8,
-          noiseDamage: meleeProjectileSpec?.noiseDamage ?? 0,
-          burnDamagePerSec: burnEffect
-            ? Number(burnEffect.params?.burnDamagePerSec ?? 0)
-            : undefined,
-          burnDurationMs: burnEffect
-            ? Number(burnEffect.params?.burnDurationMs ?? 0)
-            : undefined,
-          nonColliding: false,
-        })
-      }
-    }
+    return applyBattleEffectRequests({
+      battle,
+      effectRequests,
+      modifierPatch,
+      projectiles: this.content.projectiles,
+      nextInstanceId: (prefix) => this.nextInstanceId(prefix),
+      mainCadenceMultiplier: this.readMainCadenceMultiplier(battle),
+    })
   }
 
   private updateSupportFields(battle: InternalBattleState, dtMs: number): void {
@@ -1980,76 +1659,13 @@ export class MagnoliaGameSession {
     dtMs: number,
     statModifiers: Record<string, number> | undefined,
   ): void {
-    const dtSeconds = dtMs / 1000
-    const remainingProjectiles: InternalProjectileState[] = []
-    const spawnedVisualProjectiles: InternalProjectileState[] = []
-
-    for (const projectile of battle.projectiles) {
-      if (projectile.spawnDelayMs > 0) {
-        projectile.spawnDelayMs -= dtMs
-        remainingProjectiles.push(projectile)
-        continue
-      }
-
-      if (projectile.side === "player" && statModifiers?.homingStrength && statModifiers.homingRange) {
-        const nearestEnemy = findNearestEnemyInRange(
-          battle.enemies,
-          projectile.position,
-          statModifiers.homingRange,
-        )
-        if (nearestEnemy) {
-          const targetDirection = normalizeVector({
-            x: nearestEnemy.position.x - projectile.position.x,
-            y: nearestEnemy.position.y - projectile.position.y,
-          })
-          const currentDirection = normalizeVector(projectile.velocity)
-          const homingStrength = Math.min(1, statModifiers.homingStrength * dtSeconds)
-          const mixedDirection = normalizeVector({
-            x: currentDirection.x * (1 - homingStrength) + targetDirection.x * homingStrength,
-            y: currentDirection.y * (1 - homingStrength) + targetDirection.y * homingStrength,
-          })
-          const speed = Math.hypot(projectile.velocity.x, projectile.velocity.y)
-          projectile.velocity = {
-            x: mixedDirection.x * speed,
-            y: mixedDirection.y * speed,
-          }
-        }
-      }
-
-      projectile.position.x += projectile.velocity.x * dtSeconds
-      projectile.position.y += projectile.velocity.y * dtSeconds
-      projectile.remainingMs -= dtMs
-      if (typeof projectile.detonationDelayMs === "number") {
-        projectile.detonationDelayMs -= dtMs
-        if (projectile.detonationDelayMs <= 0) {
-          const explosionVisual = this.detonatePlayerProjectile(battle, projectile)
-          if (explosionVisual) {
-            spawnedVisualProjectiles.push(explosionVisual)
-          }
-          continue
-        }
-      }
-      if (projectile.remainingMs <= 0) {
-        if (projectile.side === "player" && projectile.explosiveRadius) {
-          const explosionVisual = this.detonatePlayerProjectile(battle, projectile)
-          if (explosionVisual) {
-            spawnedVisualProjectiles.push(explosionVisual)
-          }
-        }
-        continue
-      }
-      if (
-        projectile.position.x < -80 ||
-        projectile.position.x > BATTLE_WIDTH + 80 ||
-        projectile.position.y < -80 ||
-        projectile.position.y > BATTLE_HEIGHT + 80
-      ) {
-        continue
-      }
-      remainingProjectiles.push(projectile)
-    }
-
-    battle.projectiles = [...remainingProjectiles, ...spawnedVisualProjectiles]
+    updateBattleProjectiles({
+      battle,
+      dtMs,
+      statModifiers,
+      projectiles: this.content.projectiles,
+      nextInstanceId: (prefix) => this.nextInstanceId(prefix),
+    })
   }
 
   private resolveBattleCollisions(battle: InternalBattleState): {
@@ -2126,9 +1742,14 @@ export class MagnoliaGameSession {
           enemy.burnUntilMs = battle.elapsedMs + projectile.burnDurationMs
         }
         if (projectile.explosiveRadius) {
-          const explosionVisual = this.detonatePlayerProjectile(battle, {
-            ...projectile,
-            position: { ...projectile.position },
+          const explosionVisual = detonatePlayerProjectile({
+            battle,
+            projectile: {
+              ...projectile,
+              position: { ...projectile.position },
+            },
+            projectiles: this.content.projectiles,
+            nextInstanceId: (prefix) => this.nextInstanceId(prefix),
           })
           if (explosionVisual) {
             spawnedVisualProjectiles.push(explosionVisual)
@@ -2194,49 +1815,6 @@ export class MagnoliaGameSession {
     }
   }
 
-  private detonatePlayerProjectile(
-    battle: InternalBattleState,
-    projectile: InternalProjectileState,
-  ): InternalProjectileState | null {
-    if (!projectile.explosiveRadius || projectile.explosiveRadius <= 0) {
-      return null
-    }
-
-    const damageMultiplier = projectile.explosionDamageMultiplier ?? 0.75
-    const explosionDamage = projectile.damage * damageMultiplier
-
-    for (const enemy of battle.enemies) {
-      if (
-        isWithinRadius(
-          enemy.position,
-          projectile.position,
-          enemy.radius + projectile.explosiveRadius,
-        )
-      ) {
-        enemy.hp -= explosionDamage
-      }
-    }
-
-    if (!projectile.explosionVisualProjectileId) {
-      return null
-    }
-
-    const projectileSpec = this.content.projectiles[projectile.explosionVisualProjectileId]
-    return {
-      projectileInstanceId: this.nextInstanceId(projectile.explosionVisualProjectileId),
-      projectileId: projectile.explosionVisualProjectileId,
-      side: "player",
-      position: { ...projectile.position },
-      velocity: { x: 0, y: 0 },
-      radius: projectile.explosiveRadius,
-      remainingMs: projectileSpec?.lifetimeMs ?? 180,
-      spawnDelayMs: 0,
-      damage: 0,
-      noiseDamage: 0,
-      nonColliding: true,
-    }
-  }
-
   private finalizeMission(battle: InternalBattleState): MissionResult {
     if (!this.activeProfile) {
       throw new Error("active profile is required to finalize mission")
@@ -2246,17 +1824,19 @@ export class MagnoliaGameSession {
       1,
       battle.destroyedAnalysisValue / battle.mission.analysisTotal,
     )
-    const restorationRate =
-      transcriptDurationMs > 0
-        ? computeRangesDuration(battle.heardRanges) / transcriptDurationMs
-        : 0
+    const recoverableRunHeardRanges = computeRecoverableRunHeardRanges({
+      heardRanges: battle.heardRanges,
+      seededHeardRanges: battle.seededHeardRanges,
+      damageRanges: battle.damageRanges,
+    })
+    const restorationRate = computeRestorationRate(recoverableRunHeardRanges, battle.transcript)
     const transmissionProgress = this.getOrCreateTransmissionProgress(
       battle.transmission.transmissionId,
       battle.transmission.areaId,
     )
     const mergedHeardRanges = mergeRanges([
       ...transmissionProgress.heardRanges,
-      ...battle.heardRanges,
+      ...recoverableRunHeardRanges,
     ])
     const previousArchiveHeardMs = computeRangesDuration(transmissionProgress.heardRanges)
     transmissionProgress.heardRanges = mergedHeardRanges
@@ -2316,7 +1896,7 @@ export class MagnoliaGameSession {
       rngSeed: 0,
       analysisRate,
       restorationRate,
-      heardRanges: battle.heardRanges,
+      heardRanges: recoverableRunHeardRanges,
       damageRanges: battle.damageRanges,
       destroyedAnalysisValue: battle.destroyedAnalysisValue,
       score: Math.round(analysisRate * 10000 + restorationRate * 10000),
@@ -2331,7 +1911,7 @@ export class MagnoliaGameSession {
       missionId: battle.mission.missionId,
       analysisRate,
       restorationRate,
-      heardRanges: battle.heardRanges,
+      heardRanges: recoverableRunHeardRanges,
       damageRanges: battle.damageRanges,
       destroyedAnalysisValue: battle.destroyedAnalysisValue,
       score: run.score,
@@ -2359,7 +1939,7 @@ export class MagnoliaGameSession {
         heardRanges: [],
         damageRanges: [],
         seededHeardRanges: [],
-      hazards: [],
+        hazards: [],
         destroyedAnalysisValue: 0,
         score: 0,
         selfRepairPointsEarned: 0,
@@ -2386,14 +1966,9 @@ export class MagnoliaGameSession {
   }
 
   private resolveLoadout() {
-    const profile = this.activeProfile?.profile ?? createInitialProfileAggregate({
-      slotId: 1,
-      difficulty: this.settings.difficulty,
-      content: this.content,
-    }).profile
     return resolveLoadout({
-      equipped: profile.equipped,
-      equipmentLevels: profile.equipmentLevels,
+      equipped: this.activeProfile?.profile.equipped ?? createEmptyEquippedItems(),
+      equipmentLevels: this.activeProfile?.profile.equipmentLevels ?? {},
       equipment: this.content.equipment,
       effects: this.content.effects,
     })
@@ -2653,686 +2228,6 @@ export class MagnoliaGameSession {
   }
 }
 
-function createInitialProfileAggregate(input: {
-  slotId: SaveSlotId
-  difficulty: Difficulty
-  content: ContentBundle
-}): ProfileAggregate {
-  const createdAt = new Date().toISOString()
-  const profileId = `profile:${input.slotId}:${createdAt}`
-  const initialAreaId =
-    Object.values(input.content.areas).find((area) => area.initialState === "visible")?.areaId ??
-    Object.keys(input.content.areas)[0]
-  const ownedEquipmentIds = Object.values(input.content.equipment)
-    .filter((equipment) => equipment.unlockSource.kind === "initial")
-    .map((equipment) => equipment.equipmentId)
-  return {
-    profile: {
-      profileId,
-      slotId: input.slotId,
-      schemaVersion: 1,
-      createdAt,
-      updatedAt: createdAt,
-      difficulty: input.difficulty,
-      currentAreaId: initialAreaId,
-      playerPosition: { ...input.content.areas[initialAreaId].worldPosition },
-      equipped: {
-        main: ownedEquipmentIds.find((id) => input.content.equipment[id].slot === "main"),
-        sub: ownedEquipmentIds.find((id) => input.content.equipment[id].slot === "sub"),
-        // 初期OS「破損」を最初から装備しておき、MAGNOLIA へ換装することで進行させます。
-        os: ownedEquipmentIds.find((id) => input.content.equipment[id].slot === "os"),
-        subsystems: [
-          ownedEquipmentIds.find((id) => input.content.equipment[id].slot === "subsystem") ?? null,
-          null,
-        ],
-      },
-      ownedEquipmentIds,
-      equipmentLevels: Object.fromEntries(ownedEquipmentIds.map((equipmentId) => [equipmentId, 1])),
-      selfRepairPoints: 0,
-      collectedNodeIds: [],
-      unlockedFlags: [],
-      clearedMissionIds: [],
-    },
-    saveSlot: {
-      slotId: input.slotId,
-      profileId,
-      label: `SLOT ${input.slotId}`,
-      updatedAt: createdAt,
-      currentAreaId: initialAreaId,
-      playTimeMs: 0,
-    },
-    areaProgress: Object.values(input.content.areas).map((area) => ({
-      profileId,
-      areaId: area.areaId,
-      discoveredAt: area.initialState === "visible" ? createdAt : undefined,
-      nameRevealed: area.initialState === "visible",
-      revealBitmap:
-        area.initialState === "visible"
-          ? revealViewportArea(
-              createEmptyBitmap(),
-              createExploreRevealViewport(area.worldPosition),
-            )
-          : createEmptyBitmap(),
-      completionRateCache: 0,
-    })),
-    transmissionProgress: [],
-    missionRuns: [],
-  }
-}
-
-function createEmptyBitmap(): string {
-  return Array.from({ length: WORLD_BITMAP_HEIGHT }, () => "0".repeat(WORLD_BITMAP_WIDTH)).join("|")
-}
-
-function mergeRevealBitmaps(rows: AreaProgressRow[]): string {
-  const merged = Array.from({ length: WORLD_BITMAP_HEIGHT }, () =>
-    Array.from({ length: WORLD_BITMAP_WIDTH }, () => "0"),
-  )
-  for (const row of rows) {
-    normalizeBitmapRows(row.revealBitmap).forEach((line, y) => {
-      line.split("").forEach((cell, x) => {
-        if (cell === "1") {
-          merged[y][x] = "1"
-        }
-      })
-    })
-  }
-  return merged.map((line) => line.join("")).join("|")
-}
-
-function revealAroundPosition(bitmap: string, position: Vector2, radius = 1): string {
-  const rows = normalizeBitmapRows(bitmap).map((row) => row.split(""))
-  const cell = worldToBitmapCell(position)
-  for (let dy = -radius; dy <= radius; dy += 1) {
-    for (let dx = -radius; dx <= radius; dx += 1) {
-      const targetX = cell.x + dx
-      const targetY = cell.y + dy
-      if (targetX < 0 || targetY < 0 || targetX >= WORLD_BITMAP_WIDTH || targetY >= WORLD_BITMAP_HEIGHT) {
-        continue
-      }
-      rows[targetY][targetX] = "1"
-    }
-  }
-  return rows.map((row) => row.join("")).join("|")
-}
-
-function revealViewportArea(
-  bitmap: string,
-  viewport: Rect,
-): string {
-  const rows = normalizeBitmapRows(bitmap).map((row) => row.split(""))
-  const topLeft = worldToBitmapCell({ x: viewport.x, y: viewport.y })
-  const bottomRight = worldToBitmapCell({
-    x: viewport.x + viewport.width,
-    y: viewport.y + viewport.height,
-  })
-
-  for (let y = topLeft.y; y <= bottomRight.y; y += 1) {
-    for (let x = topLeft.x; x <= bottomRight.x; x += 1) {
-      rows[y][x] = "1"
-    }
-  }
-
-  return revealAroundPosition(
-    rows.map((row) => row.join("")).join("|"),
-    {
-      x: viewport.x + viewport.width / 2,
-      y: viewport.y + viewport.height / 2,
-    },
-    1,
-  )
-}
-
-function createExploreRevealViewport(playerPosition: Vector2): Rect {
-  return {
-    x: playerPosition.x - (DEFAULT_EXPLORE_VIEWPORT_HEIGHT * DEFAULT_EXPLORE_REVEAL_ASPECT) / 2,
-    y: playerPosition.y - DEFAULT_EXPLORE_VIEWPORT_HEIGHT / 2,
-    width: DEFAULT_EXPLORE_VIEWPORT_HEIGHT * DEFAULT_EXPLORE_REVEAL_ASPECT,
-    height: DEFAULT_EXPLORE_VIEWPORT_HEIGHT,
-  }
-}
-
-function worldToBitmapCell(position: Vector2): { x: number; y: number } {
-  return {
-    x: Math.max(
-      0,
-      Math.min(
-        WORLD_BITMAP_WIDTH - 1,
-        Math.floor((position.x - WORLD_BITMAP_ORIGIN_X) / WORLD_CELL_SIZE),
-      ),
-    ),
-    y: Math.max(
-      0,
-      Math.min(
-        WORLD_BITMAP_HEIGHT - 1,
-        Math.floor((position.y - WORLD_BITMAP_ORIGIN_Y) / WORLD_CELL_SIZE),
-      ),
-    ),
-  }
-}
-
-function normalizeBitmapRows(bitmap: string): string[] {
-  const sourceRows = bitmap
-    .split("|")
-    .map((row) => row.trim())
-    .filter(Boolean)
-
-  return Array.from({ length: WORLD_BITMAP_HEIGHT }, (_, y) => {
-    const sourceRow = sourceRows[y] ?? ""
-    if (sourceRow.length >= WORLD_BITMAP_WIDTH) {
-      return sourceRow.slice(0, WORLD_BITMAP_WIDTH)
-    }
-    return sourceRow.padEnd(WORLD_BITMAP_WIDTH, "0")
-  })
-}
-
-function computeRevealCompletionRate(bitmap: string): number {
-  const cells = bitmap.replaceAll("|", "")
-  const revealed = cells.split("").filter((cell) => cell === "1").length
-  return cells.length === 0 ? 0 : revealed / cells.length
-}
-
-function toRecord<T extends Record<string, unknown>, K extends keyof T>(
-  rows: T[],
-  key: K,
-): Record<string, T> {
-  return Object.fromEntries(rows.map((row) => [String(row[key]), row]))
-}
-
-function computeWorldBounds(mapLogic: WorldMapLogic): Rect {
-  const allNodes = [
-    ...mapLogic.areaNodes,
-    ...mapLogic.transmissionNodes,
-    ...mapLogic.warpNodes,
-    ...mapLogic.collectibleNodes,
-  ]
-  const xs = allNodes.map((node) => node.x)
-  const ys = allNodes.map((node) => node.y)
-  const minX = Math.min(...xs) - 180
-  const maxX = Math.max(...xs) + 180
-  const minY = Math.min(...ys) - 180
-  const maxY = Math.max(...ys) + 180
-  return {
-    x: minX,
-    y: minY,
-    width: maxX - minX,
-    height: maxY - minY,
-  }
-}
-
-function computeAreaBounds(mapLogic: WorldMapLogic, areaId: AreaId, fallback: Rect): Rect {
-  const relatedNodes = [
-    ...mapLogic.areaNodes.filter((node) => node.areaId === areaId),
-    ...mapLogic.transmissionNodes.filter((node) => node.areaId === areaId),
-    // 行動制限は「現在エリアに属するノード」だけで決め、遷移先側のワープ入口では広げません。
-    ...mapLogic.warpNodes.filter((node) => node.areaId === areaId),
-    ...mapLogic.collectibleNodes.filter((node) => node.areaId === areaId),
-  ]
-  if (relatedNodes.length === 0) {
-    return fallback
-  }
-  const xs = relatedNodes.map((node) => node.x)
-  const ys = relatedNodes.map((node) => node.y)
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-  const centerX = (minX + maxX) / 2
-  const centerY = (minY + maxY) / 2
-
-  if (areaId === "area_central_tower") {
-    // MAGNOLIA 入手前の制限エリアは、初期通信と初期アイテムを収めつつ、
-    // 視界半径の拡張後でも窮屈になりすぎないサイズへ固定します。
-    // 中心は散らしたノード群ではなく area ノード基準に固定し、
-    // 境界解除演出の寄り先も毎回同じ正方形を参照できるようにします。
-    const areaNode = mapLogic.areaNodes.find((node) => node.areaId === areaId)
-    const baseCenterX = areaNode?.x ?? centerX
-    const baseCenterY = areaNode?.y ?? centerY
-    return clampRectInsideBounds(
-      {
-        x: baseCenterX - 380,
-        y: baseCenterY - 380,
-        width: 760,
-        height: 760,
-      },
-      fallback,
-    )
-  }
-
-  // 初期制限境界は docs の前提どおり正方形とし、解除演出でも同じ矩形を使います。
-  // world の外へ少しでもはみ出すと camera clamp と境界描画の基準がずれるため、
-  // 正方形を作った後に worldBounds 内へ平行移動だけで収めます。
-  // 初期制限エリアは窮屈にしすぎず、ただし広がりすぎない値へ寄せる。
-  // 以前の値だと探索可能範囲が少し広かったため、余白を一段だけ詰める。
-  const paddingX = 180
-  const paddingY = 150
-  const halfSize = Math.max(
-    (maxX - minX) / 2 + paddingX,
-    (maxY - minY) / 2 + paddingY,
-  )
-  return clampRectInsideBounds(
-    {
-      x: centerX - halfSize,
-      y: centerY - halfSize,
-      width: halfSize * 2,
-      height: halfSize * 2,
-    },
-    fallback,
-  )
-}
-
-function computeAreaContextBounds(
-  mapLogic: WorldMapLogic,
-  areaId: AreaId,
-): Rect | null {
-  const relatedNodes = [
-    ...mapLogic.areaNodes.filter((node) => node.areaId === areaId),
-    ...mapLogic.transmissionNodes.filter((node) => node.areaId === areaId),
-    ...mapLogic.warpNodes.filter((node) => node.areaId === areaId),
-    ...mapLogic.collectibleNodes.filter((node) => node.areaId === areaId),
-  ]
-  if (relatedNodes.length === 0) {
-    return null
-  }
-
-  const xs = relatedNodes.map((node) => node.x)
-  const ys = relatedNodes.map((node) => node.y)
-  const paddingX = 120
-  const paddingY = 110
-
-  return {
-    x: Math.min(...xs) - paddingX,
-    y: Math.min(...ys) - paddingY,
-    width: Math.max(...xs) - Math.min(...xs) + paddingX * 2,
-    height: Math.max(...ys) - Math.min(...ys) + paddingY * 2,
-  }
-}
-
-function clampRectInsideBounds(rect: Rect, bounds: Rect): Rect {
-  if (rect.width >= bounds.width || rect.height >= bounds.height) {
-    return { ...bounds }
-  }
-
-  return {
-    x: Math.max(bounds.x, Math.min(bounds.x + bounds.width - rect.width, rect.x)),
-    y: Math.max(bounds.y, Math.min(bounds.y + bounds.height - rect.height, rect.y)),
-    width: rect.width,
-    height: rect.height,
-  }
-}
-
-function isPointInsideRect(point: Vector2, rect: Rect): boolean {
-  return (
-    point.x >= rect.x &&
-    point.x <= rect.x + rect.width &&
-    point.y >= rect.y &&
-    point.y <= rect.y + rect.height
-  )
-}
-
-function clampToRect(position: Vector2, rect: Rect): Vector2 {
-  return {
-    x: Math.max(rect.x, Math.min(rect.x + rect.width, position.x)),
-    y: Math.max(rect.y, Math.min(rect.y + rect.height, position.y)),
-  }
-}
-
-function normalizeVector(vector: Vector2): Vector2 {
-  const length = Math.hypot(vector.x, vector.y)
-  if (length <= 0.001) {
-    return { x: 0, y: 0 }
-  }
-  return {
-    x: vector.x / length,
-    y: vector.y / length,
-  }
-}
-
-function detectCurrentAreaId(
-  mapLogic: WorldMapLogic,
-  areas: Record<AreaId, AreaMaster>,
-  playerPosition: Vector2,
-  fallbackAreaId: AreaId,
-): AreaId {
-  const nearestArea = mapLogic.areaNodes
-    .map((node) => ({
-      areaId: node.areaId,
-      distance: Math.hypot(node.x - playerPosition.x, node.y - playerPosition.y),
-    }))
-    .sort((left, right) => left.distance - right.distance)[0]
-  return nearestArea && areas[nearestArea.areaId] ? nearestArea.areaId : fallbackAreaId
-}
-
-function readDisplayArea(input: {
-  mapLogic: WorldMapLogic
-  areas: Record<AreaId, AreaMaster>
-  playerPosition: Vector2
-}): AreaMaster | undefined {
-  const candidates = Object.values(input.areas)
-    .map((area) => ({
-      area,
-      bounds: computeAreaContextBounds(input.mapLogic, area.areaId),
-    }))
-    .filter(
-      (entry): entry is { area: AreaMaster; bounds: Rect } => entry.bounds !== null,
-    )
-    .filter(
-      (entry) => isPointInsideRect(input.playerPosition, entry.bounds),
-    )
-    .sort(
-      (left, right) =>
-        Math.hypot(
-          left.area.worldPosition.x - input.playerPosition.x,
-          left.area.worldPosition.y - input.playerPosition.y,
-        ) -
-        Math.hypot(
-          right.area.worldPosition.x - input.playerPosition.x,
-          right.area.worldPosition.y - input.playerPosition.y,
-        ),
-    )
-
-  return candidates[0]?.area
-}
-
-function readExploreMoveSpeed(
-  content: ContentBundle,
-  featureAccess: ReturnType<MagnoliaGameSession["buildFeatureAccess"]>,
-  dashPressed: boolean,
-): number {
-  if (dashPressed && featureAccess.mapVisionUnlocked) {
-    return content.playerShipSpec.exploreDashSpeed
-  }
-  return content.playerShipSpec.baseExploreSpeed
-}
-
-function computeNearestTransmissionStrength(input: {
-  playerPosition: Vector2
-  mapLogic: WorldMapLogic
-  featureAccess: ReturnType<MagnoliaGameSession["buildFeatureAccess"]>
-  transmissionProgress: Record<TransmissionId, TransmissionProgressRow>
-}): number {
-  const candidates = input.mapLogic.transmissionNodes
-    .filter((node) => input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId))
-    .filter((node) =>
-      isTransmissionIncomplete(input.transmissionProgress[node.transmissionId]),
-    )
-  if (candidates.length === 0) {
-    return 0
-  }
-  const nearestDistance = Math.min(
-    ...candidates.map((node) => Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)),
-  )
-  return clamp01(1 - nearestDistance / 300)
-}
-
-function computeCompassTargetAreaId(input: {
-  profile: ProfileRow
-  areas: Record<AreaId, AreaMaster>
-  transmissions: Record<TransmissionId, TransmissionMaster>
-  transmissionProgress: Record<TransmissionId, TransmissionProgressRow>
-}): AreaId | undefined {
-  const unfinishedAreas = Object.values(input.areas).filter((area) =>
-    area.transmissionIds.some(
-      (transmissionId) => isTransmissionIncomplete(input.transmissionProgress[transmissionId]),
-    ),
-  )
-  if (unfinishedAreas.length === 0) {
-    return undefined
-  }
-  return unfinishedAreas
-    .sort(
-      (left, right) =>
-        Math.hypot(
-          left.worldPosition.x - input.profile.playerPosition.x,
-          left.worldPosition.y - input.profile.playerPosition.y,
-        ) -
-        Math.hypot(
-          right.worldPosition.x - input.profile.playerPosition.x,
-          right.worldPosition.y - input.profile.playerPosition.y,
-        ),
-    )[0]
-    ?.areaId
-}
-
-function findNearbyNode<T extends { x: number; y: number; interactionRadius: number }>(
-  nodes: T[],
-  playerPosition: Vector2,
-): T | undefined {
-  return nodes.find((node) =>
-    isWithinRadius(playerPosition, { x: node.x, y: node.y }, node.interactionRadius),
-  )
-}
-
-function isWithinRadius(position: Vector2, target: Vector2, radius: number): boolean {
-  return Math.hypot(position.x - target.x, position.y - target.y) <= radius
-}
-
-function resolveSpawnPoint(spawnPointId: string): Vector2 {
-  // 戦闘フィールド比率を変更しても敵配置の意味が崩れないよう、代表 spawn は画面比率で再計算します。
-  const leftX = Math.round(BATTLE_WIDTH * 0.15)
-  const centerX = Math.round(BATTLE_WIDTH * 0.5)
-  const rightX = Math.round(BATTLE_WIDTH * 0.85)
-  const midLeftX = Math.round(BATTLE_WIDTH * 0.2)
-  const midRightX = Math.round(BATTLE_WIDTH * 0.8)
-
-  switch (spawnPointId) {
-    case "spawn_top_left":
-      return { x: leftX, y: -24 }
-    case "spawn_top_center":
-      return { x: centerX, y: -24 }
-    case "spawn_top_right":
-      return { x: rightX, y: -24 }
-    case "spawn_mid_left":
-      return { x: midLeftX, y: 96 }
-    case "spawn_mid_right":
-      return { x: midRightX, y: 96 }
-    // 画面横断用 — 画面外から侵入して反対側へ抜けるドリフト演出
-    case "spawn_side_left":
-      return { x: -24, y: 80 }
-    case "spawn_side_right":
-      return { x: BATTLE_WIDTH + 24, y: 80 }
-    default:
-      return { x: centerX, y: -24 }
-  }
-}
-
-function resolveHitRadius(hitboxPresetId: string | undefined): number {
-  if (!hitboxPresetId) {
-    return 8
-  }
-  if (hitboxPresetId.includes("small")) {
-    return 8
-  }
-  if (hitboxPresetId.includes("medium")) {
-    return 12
-  }
-  if (hitboxPresetId.includes("large")) {
-    return 18
-  }
-  if (hitboxPresetId.includes("thin")) {
-    return 5
-  }
-  return 8
-}
-
-function computeRangesDuration(ranges: TimeRange[]): number {
-  return mergeRanges(ranges).reduce((total, range) => total + (range.endMs - range.startMs), 0)
-}
-
-function appendTimeRange(ranges: TimeRange[], range: TimeRange): TimeRange[] {
-  return mergeRanges([...ranges, range])
-}
-
-function mergeRanges(ranges: TimeRange[]): TimeRange[] {
-  const sorted = [...ranges].sort((left, right) => left.startMs - right.startMs)
-  const merged: TimeRange[] = []
-  for (const range of sorted) {
-    const last = merged[merged.length - 1]
-    if (!last || range.startMs > last.endMs) {
-      merged.push({ ...range })
-      continue
-    }
-    last.endMs = Math.max(last.endMs, range.endMs)
-  }
-  return merged
-}
-
-function computeRestorationRate(
-  battle: InternalBattleState,
-  transcript: TranscriptChunk[],
-): number {
-  const totalDuration = transcript[transcript.length - 1]?.endMs ?? 0
-  if (totalDuration <= 0) {
-    return 0
-  }
-  return computeRangesDuration(battle.heardRanges) / totalDuration
-}
-
-function unlockMetadata(
-  analysisRate: number,
-  thresholds: TransmissionMaster["metadataUnlockThresholds"],
-  current: MetadataUnlocked,
-): MetadataUnlocked {
-  return {
-    title: current.title || analysisRate >= thresholds.title,
-    sender: current.sender || analysisRate >= thresholds.sender,
-    recipient: current.recipient || analysisRate >= thresholds.recipient,
-    sentAt: current.sentAt || analysisRate >= thresholds.sentAt,
-  }
-}
-
 function uniqueIds<T>(values: T[]): T[] {
   return Array.from(new Set(values))
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
-
-function readPatternNumericParam(
-  pattern: BulletPattern,
-  key: string,
-  fallback: number,
-): number {
-  const value = pattern.params[key]
-  return typeof value === "number" ? value : fallback
-}
-
-function resolveEnemyPatternBaseDirection(input: {
-  battleElapsedMs: number
-  enemy: InternalEnemyState
-  pattern: BulletPattern
-}): Vector2 {
-  const baseAngleDeg = readPatternNumericParam(input.pattern, "baseAngleDeg", 90)
-  const oscillationDeg = readPatternNumericParam(input.pattern, "oscillationDeg", 0)
-  const oscillationMs = Math.max(1, readPatternNumericParam(input.pattern, "oscillationMs", 2400))
-  const phaseOffsetDeg =
-    readPatternNumericParam(input.pattern, "phaseOffsetDeg", 0) +
-    pseudoRandomUnit(hashString(input.enemy.enemyInstanceId)) * 28
-  const oscillation =
-    oscillationDeg === 0
-      ? 0
-      : Math.sin(((input.battleElapsedMs + Math.abs(phaseOffsetDeg) * 8) / oscillationMs) * Math.PI * 2) *
-        oscillationDeg
-
-  return vectorFromAngleDeg(baseAngleDeg + phaseOffsetDeg + oscillation)
-}
-
-function readEnemyPatternBaseRotation(input: {
-  battleElapsedMs: number
-  enemy: InternalEnemyState
-  pattern: BulletPattern
-}): number {
-  const baseAngleDeg = readPatternNumericParam(input.pattern, "baseAngleDeg", 90)
-  const rotationDegPerSec = readPatternNumericParam(input.pattern, "rotationDegPerSec", 0)
-  const phaseOffsetDeg =
-    readPatternNumericParam(input.pattern, "phaseOffsetDeg", 0) +
-    pseudoRandomUnit(hashString(`${input.enemy.enemyInstanceId}:rot`)) * 32
-
-  return ((baseAngleDeg + phaseOffsetDeg + (input.battleElapsedMs / 1000) * rotationDegPerSec) * Math.PI) / 180
-}
-
-function vectorFromAngleDeg(angleDeg: number): Vector2 {
-  const radians = (angleDeg * Math.PI) / 180
-  return {
-    x: Math.cos(radians),
-    y: Math.sin(radians),
-  }
-}
-
-function hashString(input: string): number {
-  let hash = 2166136261
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index)
-    hash = Math.imul(hash, 16777619)
-  }
-  return hash >>> 0
-}
-
-function pseudoRandomUnit(seed: number): number {
-  return (seed % 1000) / 1000 - 0.5
-}
-
-function rotateVector(vector: Vector2, radians: number): Vector2 {
-  return {
-    x: vector.x * Math.cos(radians) - vector.y * Math.sin(radians),
-    y: vector.x * Math.sin(radians) + vector.y * Math.cos(radians),
-  }
-}
-
-function isCircleInsideCircle(
-  position: Vector2,
-  radius: number,
-  targetPosition: Vector2,
-  targetRadius: number,
-): boolean {
-  return Math.hypot(position.x - targetPosition.x, position.y - targetPosition.y) <= radius + targetRadius
-}
-
-function isPointInsideHazardArea(
-  position: Vector2,
-  area: { x: number; y: number; width: number; height: number },
-): boolean {
-  return (
-    position.x >= area.x &&
-    position.x <= area.x + area.width &&
-    position.y >= area.y &&
-    position.y <= area.y + area.height
-  )
-}
-
-function doesCircleIntersectHazardArea(
-  position: Vector2,
-  radius: number,
-  area: { x: number; y: number; width: number; height: number },
-): boolean {
-  const nearestX = Math.max(area.x, Math.min(position.x, area.x + area.width))
-  const nearestY = Math.max(area.y, Math.min(position.y, area.y + area.height))
-  const dx = position.x - nearestX
-  const dy = position.y - nearestY
-  return dx * dx + dy * dy <= radius * radius
-}
-
-function findNearestEnemyInRange(
-  enemies: InternalEnemyState[],
-  position: Vector2,
-  range: number,
-): InternalEnemyState | undefined {
-  return enemies
-    .map((enemy) => ({
-      enemy,
-      distance: Math.hypot(enemy.position.x - position.x, enemy.position.y - position.y),
-    }))
-    .filter((entry) => entry.distance <= range)
-    .sort((left, right) => left.distance - right.distance)[0]?.enemy
-}
-
-function hasEnemyWithinRange(
-  enemies: InternalEnemyState[],
-  position: Vector2,
-  range: number,
-): boolean {
-  return enemies.some((enemy) =>
-    isWithinRadius(position, enemy.position, range + enemy.radius),
-  )
 }
