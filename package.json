@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "build": "tsc -b && npm run build --workspace @magnolia/web",
-    "check": "tsc -b"
+    "check": "tsc -b",
+    "dev": "npm run dev --workspace @magnolia/web"
   },
   "devDependencies": {
     "typescript": "^5.8.2"

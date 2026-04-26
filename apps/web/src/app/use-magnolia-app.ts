@@ -60,6 +60,7 @@ type MagnoliaAppState = {
   itemPopups: ExploreItemPopup[]
   equipmentModalNodeId: string | null
   seenEquipmentIds: string[]
+  equipmentHintDismissed: boolean
 }
 
 type CommandTarget =
@@ -76,6 +77,7 @@ const ZERO_VECTOR = { x: 0, y: 0 }
 const OVERLAY_CHANNEL = "overlay"
 const ITEM_POPUP_DURATION_MS = 2200
 const SEEN_EQUIPMENT_STORAGE_PREFIX = "magnolia.seenEquipment:"
+const EQUIPMENT_HINT_DISMISSED_STORAGE_PREFIX = "magnolia.equipmentHintDismissed:"
 const MISSION_GOOD_MORNING_ID = "mission_good_morning"
 
 function readSeenEquipmentFromStorage(profileId: string | null | undefined): string[] {
@@ -108,6 +110,37 @@ function writeSeenEquipmentToStorage(profileId: string | null | undefined, ids: 
   }
 }
 
+function readEquipmentHintDismissedFromStorage(profileId: string | null | undefined): boolean {
+  if (!profileId || typeof window === "undefined") {
+    return false
+  }
+  try {
+    return (
+      window.localStorage.getItem(`${EQUIPMENT_HINT_DISMISSED_STORAGE_PREFIX}${profileId}`) ===
+      "1"
+    )
+  } catch {
+    return false
+  }
+}
+
+function writeEquipmentHintDismissedToStorage(
+  profileId: string | null | undefined,
+  dismissed: boolean,
+): void {
+  if (!profileId || typeof window === "undefined") {
+    return
+  }
+  try {
+    window.localStorage.setItem(
+      `${EQUIPMENT_HINT_DISMISSED_STORAGE_PREFIX}${profileId}`,
+      dismissed ? "1" : "0",
+    )
+  } catch {
+    // localStorage が使えない環境でも、現在の React state だけで誘導は閉じます。
+  }
+}
+
 type ExploreItemPopup = {
   id: string
   title: string
@@ -133,6 +166,7 @@ export function useMagnoliaApp() {
     itemPopups: [],
     equipmentModalNodeId: null,
     seenEquipmentIds: [],
+    equipmentHintDismissed: false,
   })
   const sessionRef = useRef<MagnoliaGameSession | null>(null)
   const lastFrameAtRef = useRef<number | null>(null)
@@ -318,7 +352,10 @@ export function useMagnoliaApp() {
         if (equipmentPressed && !inputsLocked) {
           // E 押下を消費し、equipment 画面へ入った直後の即時 close を防ぎます。
           input.syncButtonEdges(settings)
-          void session.dispatch({ type: "openEquipment" }).then(() => syncFromSession(session))
+          void session.dispatch({ type: "openEquipment" }).then(() => {
+            dismissEquipmentHintIfVisible()
+            syncFromSession(session)
+          })
           return
         }
 
@@ -381,10 +418,18 @@ export function useMagnoliaApp() {
   const ownedEquipmentIds = state.profile?.profile.ownedEquipmentIds ?? []
   const seenEquipmentSet = new Set(state.seenEquipmentIds)
   const unseenEquipmentIds = ownedEquipmentIds.filter((id) => !seenEquipmentSet.has(id))
-  // mission 01 をクリア済みでまだ未確認装備がある間だけ、探索画面で E キー誘導を出す。
+  const missionGoodMorningRewardEquipmentIds = state.content
+    ? state.content.transmissions.tx_good_morning?.rewardEquipmentIds ?? []
+    : []
+  const unseenMissionGoodMorningRewardEquipmentIds = missionGoodMorningRewardEquipmentIds.filter(
+    (id) => ownedEquipmentIds.includes(id) && !seenEquipmentSet.has(id),
+  )
+  // mission 01 の報酬装備をまだ確認していないときだけ誘導する。
+  // NEW バッジは装備単位で残すため、E 誘導の閉じた状態とは分けて持つ。
   const shouldShowEquipmentHint =
     (state.profile?.profile.clearedMissionIds.includes(MISSION_GOOD_MORNING_ID) ?? false) &&
-    unseenEquipmentIds.length > 0
+    !state.equipmentHintDismissed &&
+    unseenMissionGoodMorningRewardEquipmentIds.length > 0
 
   return {
     ready: state.ready,
@@ -473,6 +518,7 @@ export function useMagnoliaApp() {
           break
         case "equipment":
           await session.dispatch({ type: "openEquipment" })
+          dismissEquipmentHintIfVisible()
           break
         case "settings":
           await session.dispatch({ type: "openSettings" })
@@ -657,6 +703,31 @@ export function useMagnoliaApp() {
     },
   }
 
+  function dismissEquipmentHintIfVisible() {
+    const current = stateRef.current
+    const profileId = current.profile?.profile.profileId
+    if (!profileId || current.equipmentHintDismissed) {
+      return
+    }
+    const ownedIds = current.profile?.profile.ownedEquipmentIds ?? []
+    const seenIds = new Set(current.seenEquipmentIds)
+    const rewardIds = current.content?.transmissions.tx_good_morning?.rewardEquipmentIds ?? []
+    const hasUnseenMissionGoodMorningReward = rewardIds.some(
+      (id) => ownedIds.includes(id) && !seenIds.has(id),
+    )
+    const missionGoodMorningCleared =
+      current.profile?.profile.clearedMissionIds.includes(MISSION_GOOD_MORNING_ID) ?? false
+    if (!missionGoodMorningCleared || !hasUnseenMissionGoodMorningReward) {
+      return
+    }
+
+    writeEquipmentHintDismissedToStorage(profileId, true)
+    setState((latest) => ({
+      ...latest,
+      equipmentHintDismissed: true,
+    }))
+  }
+
   function syncFromSession(
     session: MagnoliaGameSession,
     incomingPresentationRequests: PresentationRequest[] = [],
@@ -689,6 +760,10 @@ export function useMagnoliaApp() {
           previousProfileId === nextProfileId
             ? current.seenEquipmentIds
             : readSeenEquipmentFromStorage(nextProfileId)
+        const equipmentHintDismissed =
+          previousProfileId === nextProfileId
+            ? current.equipmentHintDismissed
+            : readEquipmentHintDismissedFromStorage(nextProfileId)
 
         return {
           ...current,
@@ -703,6 +778,7 @@ export function useMagnoliaApp() {
           battleRenderState,
           archiveSnapshot,
           seenEquipmentIds,
+          equipmentHintDismissed,
           itemPopups: [
             ...current.itemPopups.filter((popup) => popup.expiresAt > Date.now()),
             ...parsedPopups.popups,
