@@ -1,0 +1,182 @@
+{
+  "generated_at": "2026-04-28",
+  "source_root": "apps/web/src",
+  "color_literal_total_uses": 1010,
+  "color_literal_unique_values": 610,
+  "files_by_color_uses": [
+    {
+      "file": "apps/web/src/components/battle-renderer.ts",
+      "color_uses": 167,
+      "unique_colors": 146
+    },
+    {
+      "file": "apps/web/src/components/ExploreCanvas.tsx",
+      "color_uses": 159,
+      "unique_colors": 137
+    },
+    {
+      "file": "apps/web/src/styles/explore.css",
+      "color_uses": 137,
+      "unique_colors": 101
+    },
+    {
+      "file": "apps/web/src/styles/menu-equipment.css",
+      "color_uses": 102,
+      "unique_colors": 57
+    },
+    {
+      "file": "apps/web/src/styles/battle.css",
+      "color_uses": 61,
+      "unique_colors": 45
+    },
+    {
+      "file": "apps/web/src/styles/explore-map.css",
+      "color_uses": 51,
+      "unique_colors": 36
+    },
+    {
+      "file": "apps/web/src/styles/overlays-keyvisual.css",
+      "color_uses": 51,
+      "unique_colors": 36
+    },
+    {
+      "file": "apps/web/src/components/title/SignalBackdropCanvas.tsx",
+      "color_uses": 42,
+      "unique_colors": 33
+    },
+    {
+      "file": "apps/web/src/app/canvas-markers.ts",
+      "color_uses": 35,
+      "unique_colors": 32
+    },
+    {
+      "file": "apps/web/src/styles/title.css",
+      "color_uses": 33,
+      "unique_colors": 27
+    },
+    {
+      "file": "apps/web/src/styles/base.css",
+      "color_uses": 33,
+      "unique_colors": 28
+    },
+    {
+      "file": "apps/web/src/components/MiniMap.tsx",
+      "color_uses": 31,
+      "unique_colors": 22
+    },
+    {
+      "file": "apps/web/src/components/KeyVisualModal.tsx",
+      "color_uses": 24,
+      "unique_colors": 23
+    },
+    {
+      "file": "apps/web/src/styles/common-ui.css",
+      "color_uses": 21,
+      "unique_colors": 16
+    },
+    {
+      "file": "apps/web/src/screens/map/MapScreen.tsx",
+      "color_uses": 19,
+      "unique_colors": 15
+    },
+    {
+      "file": "apps/web/src/styles/interaction-prompt.css",
+      "color_uses": 16,
+      "unique_colors": 8
+    },
+    {
+      "file": "apps/web/src/styles/archive-settings.css",
+      "color_uses": 15,
+      "unique_colors": 13
+    },
+    {
+      "file": "apps/web/src/screens/menu/ShipStatusPanel.tsx",
+      "color_uses": 11,
+      "unique_colors": 10
+    },
+    {
+      "file": "apps/web/src/screens/menu/MenuBackdropCanvas.tsx",
+      "color_uses": 2,
+      "unique_colors": 2
+    }
+  ],
+  "css_keyframes": [
+    {
+      "file": "apps/web/src/styles/explore-map.css",
+      "count": 3,
+      "names": [
+        "ehud-reboot-settle",
+        "ehud-scanline",
+        "ehud-help-breathe"
+      ]
+    },
+    {
+      "file": "apps/web/src/styles/menu-equipment.css",
+      "count": 4,
+      "names": [
+        "mg-new-badge-pulse",
+        "mg-pulse-glow",
+        "equip-detail-scan",
+        "mg-spin-slow"
+      ]
+    },
+    {
+      "file": "apps/web/src/styles/overlays-keyvisual.css",
+      "count": 1,
+      "names": [
+        "kv-icon-breathe"
+      ]
+    },
+    {
+      "file": "apps/web/src/styles/battle.css",
+      "count": 3,
+      "names": [
+        "mg-reward-glow",
+        "mg-reward-banner-sheen",
+        "mg-reward-key-pulse"
+      ]
+    },
+    {
+      "file": "apps/web/src/styles/explore.css",
+      "count": 10,
+      "names": [
+        "boot-console-wake",
+        "boot-scan-fast",
+        "boot-scan-slow",
+        "boot-noise-flicker",
+        "boot-stage-enter",
+        "boot-line-enter",
+        "boot-type",
+        "boot-cursor-blink",
+        "boot-ready-pulse",
+        "boot-cta-call"
+      ]
+    },
+    {
+      "file": "apps/web/src/styles/interaction-prompt.css",
+      "count": 6,
+      "names": [
+        "mg-interaction-prompt-draw",
+        "mg-interaction-prompt-fade-in",
+        "mg-interaction-prompt-anchor-pulse",
+        "mg-interaction-prompt-ring-pulse",
+        "mg-interaction-prompt-key-pulse",
+        "mg-interaction-prompt-label-in"
+      ]
+    },
+    {
+      "file": "apps/web/src/styles/base.css",
+      "count": 8,
+      "names": [
+        "mg-scanline",
+        "mg-glow-pulse",
+        "mg-text-glow",
+        "mg-flicker",
+        "mg-fade-in",
+        "mg-slide-up",
+        "mg-border-glow",
+        "mg-blue-call"
+      ]
+    }
+  ]
+}

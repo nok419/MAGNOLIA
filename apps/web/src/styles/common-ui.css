@@ -23,7 +23,7 @@
 .screen-shell__sidebar {
   padding: 32px 24px;
   border-left: 1px solid var(--mg-border);
-  background: rgba(6, 13, 26, 0.92);
+  background: rgba(var(--mg-abyss-rgb), 0.92);
 }
 
 .screen-shell__eyebrow {
@@ -72,8 +72,8 @@
   position: relative;
   display: block;
   min-height: 100px;
-  border: 1px solid rgba(93, 164, 209, 0.15);
-  background: rgba(8, 18, 34, 0.5);
+  border: 1px solid rgba(var(--mg-signal-rgb), 0.15);
+  background: rgba(var(--mg-panel-rgb), 0.5);
   backdrop-filter: blur(12px);
   color: inherit;
   text-align: left;
@@ -87,15 +87,15 @@
 }
 .slot-card:hover:not(:disabled),
 .slot-card--focused {
-  border-color: rgba(93, 164, 209, 0.6);
-  background: rgba(93, 164, 209, 0.1);
-  box-shadow: 0 8px 32px rgba(93, 164, 209, 0.15);
+  border-color: rgba(var(--mg-signal-rgb), 0.6);
+  background: rgba(var(--mg-signal-rgb), 0.1);
+  box-shadow: 0 8px 32px rgba(var(--mg-signal-rgb), 0.15);
   transform: translateY(-2px);
 }
 .slot-card--focused .slot-card__indicator {
-  background: var(--mg-accent) !important;
+  background: var(--mg-signal) !important;
   opacity: 1 !important;
-  box-shadow: 0 0 12px var(--mg-glow-blue);
+  box-shadow: 0 0 12px var(--mg-signal-glow);
 }
 .slot-card:disabled {
   opacity: 0.35;
@@ -114,9 +114,9 @@
   transition: background var(--dur-normal), opacity var(--dur-normal), box-shadow var(--dur-normal);
 }
 .slot-card--active .slot-card__indicator {
-  background: var(--mg-accent);
+  background: var(--mg-signal);
   opacity: 1;
-  box-shadow: 0 0 8px var(--mg-glow-blue);
+  box-shadow: 0 0 8px var(--mg-signal-glow);
 }
 
 .slot-card__body {
@@ -169,7 +169,7 @@
   top: 8px;
   bottom: 8px;
   width: 2px;
-  background: var(--mg-accent);
+  background: var(--mg-signal);
   opacity: 0.4;
 }
 
@@ -188,7 +188,7 @@
 /* hint / help variant */
 .hint-card {
   border: 1px solid var(--mg-border);
-  background: rgba(6, 13, 26, 0.6);
+  background: rgba(var(--mg-abyss-rgb), 0.6);
   padding: 14px 16px;
 }
 .hint-card__title {
@@ -210,10 +210,10 @@
    RESULT PANEL
    ========================================================= */
 .panel-card--result {
-  border-color: rgba(240, 198, 116, 0.25);
+  border-color: rgba(var(--mg-memory-rgb), 0.25);
 }
 .panel-card--result::before {
-  background: var(--mg-warm);
+  background: var(--mg-memory);
   opacity: 0.6;
 }
 
@@ -242,7 +242,7 @@
   position: relative;
   padding: 14px 16px 14px 20px;
   border: 1px solid var(--mg-border);
-  background: rgba(8, 18, 34, 0.5);
+  background: rgba(var(--mg-panel-rgb), 0.5);
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -264,16 +264,16 @@
 }
 .list-card:hover {
   border-color: var(--mg-border-hi);
-  background: rgba(93, 164, 209, 0.04);
+  background: rgba(var(--mg-signal-rgb), 0.04);
 }
 .list-card--selected {
-  border-color: rgba(93, 164, 209, 0.5);
-  background: rgba(93, 164, 209, 0.06);
+  border-color: rgba(var(--mg-signal-rgb), 0.5);
+  background: rgba(var(--mg-signal-rgb), 0.06);
 }
 .list-card--selected::before {
-  background: var(--mg-accent);
+  background: var(--mg-signal);
   opacity: 1;
-  box-shadow: 0 0 6px var(--mg-glow-blue);
+  box-shadow: 0 0 6px var(--mg-signal-glow);
 }
 
 .list-card p { margin: 2px 0; font-size: 14px; }
@@ -290,7 +290,7 @@
 .feed-item {
   padding: 10px 14px;
   border: 1px solid var(--mg-border);
-  background: rgba(8, 18, 34, 0.4);
+  background: rgba(var(--mg-panel-rgb), 0.4);
 }
 .feed-item__label {
   margin: 0 0 4px;
@@ -319,7 +319,7 @@
   overflow-y: auto;
   padding: 16px;
   border: 1px solid var(--mg-border);
-  background: rgba(4, 8, 16, 0.6);
+  background: rgba(var(--mg-void-rgb), 0.6);
 }
 .scroll-block::-webkit-scrollbar { width: 4px; }
 .scroll-block::-webkit-scrollbar-track { background: transparent; }
@@ -355,8 +355,8 @@
   transition: background var(--dur-fast), box-shadow var(--dur-fast);
 }
 .volume-segment--active {
-  background: var(--mg-accent);
-  box-shadow: 0 0 4px var(--mg-glow-blue);
+  background: var(--mg-signal);
+  box-shadow: 0 0 4px var(--mg-signal-glow);
 }
 
 /* Toggle switch */
@@ -365,13 +365,13 @@
   width: 36px;
   height: 18px;
   border: 1px solid var(--mg-border-hi);
-  background: rgba(8, 18, 34, 0.6);
+  background: rgba(var(--mg-panel-rgb), 0.6);
   cursor: pointer;
   transition: background var(--dur-normal), border-color var(--dur-normal);
 }
 .toggle-switch--on {
-  background: rgba(93, 164, 209, 0.2);
-  border-color: var(--mg-accent);
+  background: rgba(var(--mg-signal-rgb), 0.2);
+  border-color: var(--mg-signal);
 }
 .toggle-switch__knob {
   position: absolute;
@@ -384,16 +384,16 @@
 }
 .toggle-switch--on .toggle-switch__knob {
   left: 20px;
-  background: var(--mg-accent);
-  box-shadow: 0 0 6px var(--mg-glow-blue);
+  background: var(--mg-signal);
+  box-shadow: 0 0 6px var(--mg-signal-glow);
 }
 
 .toggle-pill-group {
   display: inline-flex;
   gap: 6px;
   padding: 4px;
-  border: 1px solid rgba(93, 164, 209, 0.2);
-  background: rgba(6, 14, 26, 0.7);
+  border: 1px solid rgba(var(--mg-signal-rgb), 0.2);
+  background: rgba(var(--mg-abyss-rgb), 0.7);
 }
 
 .toggle-pill {
@@ -414,8 +414,8 @@
 }
 
 .toggle-pill--active {
-  border-color: rgba(93, 164, 209, 0.5);
-  background: rgba(93, 164, 209, 0.12);
-  color: var(--mg-accent);
-  box-shadow: 0 0 8px rgba(93, 164, 209, 0.15);
+  border-color: rgba(var(--mg-signal-rgb), 0.5);
+  background: rgba(var(--mg-signal-rgb), 0.12);
+  color: var(--mg-signal);
+  box-shadow: 0 0 8px rgba(var(--mg-signal-rgb), 0.15);
 }

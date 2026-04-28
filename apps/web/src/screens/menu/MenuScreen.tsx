@@ -13,7 +13,7 @@ import type {
 import { KeyVisualModal } from "@/components/KeyVisualModal"
 import type { DisplayOptions } from "@/app/display-options"
 import { ArchivePanel } from "@/screens/menu/ArchivePanel"
-import { EquipmentPanel } from "@/screens/menu/EquipmentPanel"
+import { EquipmentPanel } from "@/screens/menu/internal/EquipmentPanelImpl"
 import { MenuBackdropCanvas } from "@/screens/menu/MenuBackdropCanvas"
 import { SettingsPanel } from "@/screens/menu/SettingsPanel"
 
@@ -110,7 +110,7 @@ export function MenuScreen({
 
   return (
     <main className="menu-screen">
-      <MenuBackdropCanvas displayOptions={displayOptions} />
+      <MenuBackdropCanvas activeTab={activeTab} displayOptions={displayOptions} />
 
       {/* tab bar */}
       <nav className="menu-tabs">
@@ -156,6 +156,7 @@ export function MenuScreen({
             archiveAccess={archiveAccess}
             selectedTransmissionId={selectedTransmissionId}
             onSelectTransmission={onSelectTransmission}
+            displayOptions={displayOptions}
           />
         ) : (
           <SettingsPanel

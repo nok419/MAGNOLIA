@@ -1,7 +1,9 @@
 {
   "bulletPatternId": "bp_b1_core_burst",
+  "staged": true,
   "patternKind": "radial",
   "projectileId": "proj_enemy_core",
+  "visualRole": "enemyCore",
   "cadenceMs": 3100,
   "burstCount": 16,
   "params": {

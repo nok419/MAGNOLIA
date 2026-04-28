@@ -1,7 +1,9 @@
 {
   "bulletPatternId": "bp_b1_lance_stream",
+  "staged": true,
   "patternKind": "radial",
   "projectileId": "proj_enemy_lance",
+  "visualRole": "enemyLance",
   "cadenceMs": 360,
   "burstCount": 3,
   "params": {

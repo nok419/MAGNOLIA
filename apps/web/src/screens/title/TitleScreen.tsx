@@ -98,7 +98,7 @@ export function TitleScreen({
 
       <section className="title-screen__panel">
         <p className="title-screen__eyebrow">transmission system</p>
-        <MagnoliaLogo />
+        <MagnoliaLogo reduceFlashing={displayOptions.reduceFlashing} />
 
         <div className="title-phases">
           <div className={`title-phase ${phase === "title" ? "title-phase--active" : ""}`}>

@@ -9,11 +9,22 @@ import { MenuScreen } from "@/screens/menu/MenuScreen"
 import { MagnoliaLogo } from "@/components/title/MagnoliaLogo"
 import { PresentationOverlay } from "@/components/PresentationOverlay"
 import { EquipmentModal } from "@/components/EquipmentModal"
+import { ModeTransitionLayer } from "@/components/ModeTransitionLayer"
 import { applyAudioSettings } from "@/app/audio-controller"
 import { resolveDisplayOptions } from "@/app/display-options"
 import { useMagnoliaApp } from "@/app/use-magnolia-app"
+import { readRequestedVisualFixtureId, VisualFixtureViewer } from "@/dev/VisualFixtureViewer"
 
 export function App() {
+  const visualFixtureId = import.meta.env.DEV ? readRequestedVisualFixtureId() : null
+  if (visualFixtureId) {
+    return <VisualFixtureViewer initialFixtureId={visualFixtureId} />
+  }
+
+  return <MagnoliaRuntimeApp />
+}
+
+function MagnoliaRuntimeApp() {
   const app = useMagnoliaApp()
   const displayOptions = useMemo(
     () => (app.settings ? resolveDisplayOptions(app.settings) : null),
@@ -22,7 +33,6 @@ export function App() {
       app.settings?.reduceFlashing,
     ],
   )
-
   useEffect(() => {
     if (!app.settings) {
       return
@@ -79,17 +89,13 @@ export function App() {
       )
       break
     case "map":
-      if (!app.exploreSnapshot || !app.exploreRenderState || !app.profile) {
+      if (!app.mapViewModel) {
         screen = null
         break
       }
       screen = (
         <MapScreen
-          content={app.content}
-          profile={app.profile}
-          snapshot={app.exploreSnapshot}
-          renderState={app.exploreRenderState}
-          displayOptions={displayOptions}
+          viewModel={app.mapViewModel}
           onBack={() => void app.runCommand("closePanel")}
           onWarpToArea={(areaId) => void app.warpToArea(areaId)}
           onOpenArchive={(areaId, transmissionId) => void app.openArchiveAt(areaId, transmissionId)}
@@ -103,7 +109,6 @@ export function App() {
       }
       screen = (
         <BattleScreen
-          content={app.content}
           renderState={app.battleRenderState}
           shipVariant={app.settings.shipVariant}
           displayOptions={displayOptions}
@@ -168,6 +173,7 @@ export function App() {
   return (
     <div className={appClassName}>
       {screen}
+      <ModeTransitionLayer screenKey={app.screen} displayOptions={displayOptions} />
       {app.activeOverlayPresentation ? (
         <PresentationOverlay
           presentation={app.activeOverlayPresentation}

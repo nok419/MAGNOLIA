@@ -1,5 +1,7 @@
 import type { ArchiveAccessState, AreaMaster, ProfileAggregate, TransmissionMaster } from "@magnolia/contracts"
 import { hasVisibleArchiveContent } from "@magnolia/game-session"
+import type { DisplayOptions } from "@/app/display-options"
+import { resolveTextSignalDistortion } from "@/app/signal-distortion"
 
 export function ArchivePanel({
   areas,
@@ -8,6 +10,7 @@ export function ArchivePanel({
   archiveAccess,
   selectedTransmissionId,
   onSelectTransmission,
+  displayOptions,
 }: {
   areas: Record<string, AreaMaster>
   transmissions: Record<string, TransmissionMaster>
@@ -15,6 +18,7 @@ export function ArchivePanel({
   archiveAccess: ArchiveAccessState
   selectedTransmissionId?: string
   onSelectTransmission: (areaId: string, transmissionId: string) => void
+  displayOptions: DisplayOptions
 }) {
   const selected = selectedTransmissionId ? transmissions[selectedTransmissionId] : undefined
   const unlockedEntries = profile.transmissionProgress
@@ -69,7 +73,13 @@ export function ArchivePanel({
                   <div key={chunk.chunkId} className="archive-log__line">
                     {chunk.speakerLabel ? <p className="archive-log__speaker">{chunk.speakerLabel}</p> : null}
                     <p className={`archive-log__text ${chunk.audible ? "" : "archive-log__text--damaged"}`}>
-                      {chunk.text}
+                      {chunk.audible
+                        ? chunk.text
+                        : resolveArchiveTextDistortion(
+                            chunk.text,
+                            `${selected.transmissionId}:${chunk.chunkId}`,
+                            displayOptions.reduceFlashing,
+                          )}
                     </p>
                   </div>
                 ))
@@ -84,4 +94,21 @@ export function ArchivePanel({
       </div>
     </div>
   )
+}
+
+function resolveArchiveTextDistortion(text: string, seed: string, reduceFlashing: boolean): string {
+  return Array.from(text)
+    .map((character, index) => {
+      if (character.trim().length === 0) {
+        return character
+      }
+      const distortion = resolveTextSignalDistortion({
+        seed,
+        index,
+        severity: 0.72,
+        reduceFlashing,
+      })
+      return distortion.visible ? distortion.replacement : character
+    })
+    .join("")
 }

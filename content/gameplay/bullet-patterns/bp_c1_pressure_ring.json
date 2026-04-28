@@ -1,7 +1,9 @@
 {
   "bulletPatternId": "bp_c1_pressure_ring",
+  "staged": true,
   "patternKind": "radial",
   "projectileId": "proj_enemy_core",
+  "visualRole": "enemyCore",
   "cadenceMs": 2600,
   "burstCount": 10,
   "params": {

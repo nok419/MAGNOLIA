@@ -184,8 +184,9 @@ export function computeAreaBounds(mapLogic: WorldMapLogic, areaId: AreaId, fallb
   const centerX = (minX + maxX) / 2
   const centerY = (minY + maxY) / 2
 
-  if (areaId === "area_central_tower") {
-    // MAGNOLIA 入手前の制限エリアは、初期通信と初期アイテムを収めつつ、
+  if (areaId === resolveInitialRestrictedAreaId(mapLogic)) {
+    // MAGNOLIA 入手前の制限エリアは、初期 spawn area の content 配置を基準に、
+    // 初期通信と初期アイテムを収めつつ、
     // 視界半径の拡張後でも窮屈になりすぎないサイズへ固定します。
     const areaNode = mapLogic.areaNodes.find((node) => node.areaId === areaId)
     const baseCenterX = areaNode?.x ?? centerX
@@ -218,6 +219,10 @@ export function computeAreaBounds(mapLogic: WorldMapLogic, areaId: AreaId, fallb
     },
     fallback,
   )
+}
+
+function resolveInitialRestrictedAreaId(mapLogic: WorldMapLogic): AreaId | undefined {
+  return mapLogic.areaNodes.find((node) => node.nodeId === mapLogic.playerSpawnNodeId)?.areaId
 }
 
 function computeAreaContextBounds(

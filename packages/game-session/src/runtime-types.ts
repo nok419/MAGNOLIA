@@ -1,17 +1,22 @@
 import type {
   AreaId,
   BattleFragmentViewModel,
+  BulletVisualRoleSpec,
   EquipmentId,
+  EquipmentSlot,
   ExploreScanPulseViewModel,
   ExploreSignalHintViewModel,
   HazardId,
   HazardPhase,
   MissionId,
   MissionResult,
+  MissionVisualProfile,
+  ProjectileVisualRole,
   TranscriptViewChunk,
   ThemeId,
   TransmissionId,
   Vector2,
+  VisualProfileId,
   WorldMapNodeId,
 } from "@magnolia/contracts"
 
@@ -36,6 +41,14 @@ export type ExploreNodeRenderState = {
   markerKind?: "equipment" | "resource" | "investigation"
 }
 
+export type ExploreInteractionTargetRenderState = {
+  nodeId: WorldMapNodeId
+  x: number
+  y: number
+  radius: number
+  distanceToPlayer: number
+}
+
 export type ExploreRenderState = {
   worldBounds: Rect
   currentAreaId?: AreaId
@@ -48,12 +61,15 @@ export type ExploreRenderState = {
   visibleTransmissions: ExploreNodeRenderState[]
   visibleWarps: ExploreNodeRenderState[]
   visibleCollectibles: ExploreNodeRenderState[]
+  interactionTargets: ExploreInteractionTargetRenderState[]
   nearestTransmissionStrength: number
   /** 全通信（クリア済み含む）に対する近接度。波形表示用。 */
   nearestAnyTransmissionStrength: number
   elapsedMs: number
   signalHints: ExploreSignalHintViewModel[]
   scanPulses: ExploreScanPulseViewModel[]
+  /** User Interface（UI）の初回 scan 誘導は session 側の進行状態で一度だけ許可します。 */
+  shouldShowScanHint: boolean
   tutorialRestricted: boolean
 }
 
@@ -85,11 +101,15 @@ export type EnemyRenderState = {
 export type ProjectileRenderState = {
   projectileInstanceId: string
   projectileId: string
+  visualRole?: ProjectileVisualRole
   side: "player" | "enemy"
   position: Vector2
   velocity: Vector2
   radius: number
   progress?: number
+  meleeSweep?: {
+    arcDeg: number
+  }
   inversePhaseVisual?: boolean
 }
 
@@ -109,6 +129,12 @@ export type BattlePickupRenderState = {
   position: Vector2
   radius: number
   amount: number
+}
+
+export type BattleRewardEquipmentRenderState = {
+  equipmentId: EquipmentId
+  name: string
+  slot: EquipmentSlot
 }
 
 export type SubtitleRenderState = {
@@ -132,6 +158,9 @@ export type HazardRenderState = {
 
 export type BattleRenderState = {
   missionId: MissionId
+  visualProfileId?: VisualProfileId
+  missionVisualProfile?: MissionVisualProfile
+  bulletVisualRoles?: Partial<Record<ProjectileVisualRole, BulletVisualRoleSpec>>
   missionDurationMs: number
   elapsedMs: number
   player: PlayerRenderState
@@ -143,6 +172,7 @@ export type BattleRenderState = {
   hazards: HazardRenderState[]
   activeSubtitle?: SubtitleRenderState
   pendingResult?: MissionResult
+  grantedEquipment?: BattleRewardEquipmentRenderState[]
   resultTranscriptPreview?: TranscriptViewChunk[]
   equippedMainId?: EquipmentId
   equippedSubId?: EquipmentId

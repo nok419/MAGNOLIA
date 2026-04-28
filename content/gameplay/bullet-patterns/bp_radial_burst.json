@@ -1,7 +1,9 @@
 {
   "bulletPatternId": "bp_radial_burst",
+  "staged": true,
   "patternKind": "radial",
   "projectileId": "proj_enemy_petal",
+  "visualRole": "enemyShard",
   "cadenceMs": 3200,
   "burstCount": 13,
   "params": {

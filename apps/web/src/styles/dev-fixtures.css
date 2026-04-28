@@ -1,0 +1,220 @@
+.fixture-viewer {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  background:
+    radial-gradient(ellipse at 70% 12%, rgba(var(--mg-memory-rgb), 0.06), transparent 44%),
+    var(--mg-void);
+  color: var(--mg-text);
+}
+
+.fixture-viewer__rail {
+  padding: 28px 20px;
+  border-right: 1px solid var(--mg-border);
+  background: rgba(var(--mg-abyss-rgb), 0.9);
+}
+
+.fixture-viewer__nav {
+  display: grid;
+  gap: 8px;
+}
+
+.fixture-viewer__nav-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--mg-border);
+  background: rgba(var(--mg-panel-rgb), 0.54);
+  color: var(--mg-text-dim);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-normal) var(--ease-out-expo),
+    background var(--dur-normal) var(--ease-out-expo),
+    color var(--dur-normal) var(--ease-out-expo);
+}
+
+.fixture-viewer__nav-item:hover,
+.fixture-viewer__nav-item--active {
+  border-color: var(--mg-border-hi);
+  background: rgba(var(--mg-signal-rgb), 0.12);
+  color: var(--mg-text);
+}
+
+.fixture-viewer__nav-item span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mg-text-muted);
+}
+
+.fixture-viewer__nav-item strong {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.fixture-viewer__stage {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 18px;
+  padding: 28px;
+}
+
+.fixture-viewer__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr);
+  gap: 18px 28px;
+  align-items: start;
+}
+
+.fixture-viewer__header h2 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(20px, 2vw, 28px);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.fixture-viewer__header p {
+  margin: 0;
+  color: var(--mg-text-dim);
+}
+
+.fixture-viewer__meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mg-border);
+  background: rgba(var(--mg-panel-rgb), 0.58);
+}
+
+.fixture-viewer__meta div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.fixture-viewer__meta dt,
+.fixture-viewer__meta dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.fixture-viewer__meta dt {
+  color: var(--mg-text-muted);
+}
+
+.fixture-viewer__meta dd {
+  color: var(--mg-text);
+  overflow-wrap: anywhere;
+}
+
+.fixture-viewer__surface {
+  min-height: min(720px, calc(100vh - 184px));
+  position: relative;
+  border: 1px solid var(--mg-border);
+  background: rgba(var(--mg-panel-rgb), 0.42);
+  overflow: hidden;
+}
+
+.fixture-title,
+.fixture-transition {
+  position: relative;
+  min-height: min(720px, calc(100vh - 184px));
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.fixture-title__panel,
+.fixture-transition__panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.fixture-embed {
+  height: min(720px, calc(100vh - 184px));
+  min-height: 520px;
+}
+
+.fixture-embed--fullscreen > main {
+  min-height: 100%;
+}
+
+.fixture-battle {
+  min-height: min(720px, calc(100vh - 184px));
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(var(--mg-abyss-rgb), 0.76), rgba(var(--mg-void-rgb), 0.94));
+}
+
+.fixture-battle .play-canvas--battle {
+  width: min(100%, 720px);
+  aspect-ratio: 10 / 13;
+  border: 1px solid var(--mg-border);
+  background: var(--mg-void);
+}
+
+.fixture-archive {
+  min-height: min(720px, calc(100vh - 184px));
+  display: grid;
+  align-content: center;
+  gap: 18px;
+  padding: clamp(28px, 6vw, 72px);
+  background:
+    linear-gradient(90deg, rgba(var(--mg-danger-rgb), 0.08), transparent 44%),
+    rgba(var(--mg-void-rgb), 0.78);
+}
+
+.fixture-archive__speaker {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--mg-signal-bright);
+}
+
+.fixture-archive__line {
+  max-width: 42ch;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(22px, 4vw, 44px);
+  line-height: 1.34;
+  color: var(--mg-text);
+}
+
+.fixture-archive__mask {
+  color: var(--mg-danger-bright);
+  text-shadow: 0 0 12px var(--mg-danger-soft);
+}
+
+@media (max-width: 900px) {
+  .fixture-viewer {
+    grid-template-columns: 1fr;
+  }
+
+  .fixture-viewer__rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--mg-border);
+  }
+
+  .fixture-viewer__header {
+    grid-template-columns: 1fr;
+  }
+}

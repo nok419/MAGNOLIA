@@ -3,7 +3,10 @@
   "private": true,
   "scripts": {
     "build": "tsc -b && npm run build --workspace @magnolia/web",
-    "check": "tsc -b"
+    "check": "tsc -b",
+    "design:audit": "node scripts/design-audit.mjs",
+    "lint": "tsc -b --pretty false",
+    "test": "npm run check"
   },
   "devDependencies": {
     "typescript": "^5.8.2"

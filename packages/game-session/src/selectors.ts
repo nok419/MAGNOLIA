@@ -30,6 +30,7 @@ import type {
 } from "@magnolia/contracts"
 import { evaluateCondition } from "./conditions"
 import type { ResolvedEquipmentBinding, ResolvedLoadout } from "./equipment-runtime"
+import { MAP_ENABLED_FLAG } from "./progression-rules"
 import {
   hasUnlockedTransmissionMetadata,
   isTransmissionSignalIdentified,
@@ -99,7 +100,7 @@ export function buildFeatureAccessState(input: {
 
   const passiveEffects = collectPassiveEffects(input.loadout)
   const mapUiUnlocked =
-    input.profile.unlockedFlags.includes("ui.map.enabled") ||
+    input.profile.unlockedFlags.includes(MAP_ENABLED_FLAG) ||
     hasVisibilityUnlock(passiveEffects, "unlocksAreaVision")
   // アーカイブは最初から開ける前提にし、未開放通信は selector 側で空として返します。
   const archiveUiUnlocked = true

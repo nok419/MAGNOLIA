@@ -1,61 +1,22 @@
 import { useEffect, useRef } from "react"
-
-type GlitchChannel = "r" | "c"
-
-type GlitchFrame = {
-  top: number
-  bottom: number
-  left: number
-  right: number
-  shift: number
-  skew: number
-  scale: number
-  opacity: number
-}
+import {
+  resolveTitleSignalDistortion,
+  type TitleSignalDistortionFrame,
+  type TitleSignalGlitchChannel,
+} from "@/app/signal-distortion"
+import { seededRange, seededUnit } from "@/app/visual-seed"
 
 type MagnoliaLogoProps = {
   as?: "h1" | "div"
   className?: string
   text?: string
-}
-
-function hiddenGlitchFrame(): GlitchFrame {
-  return {
-    top: 100,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    shift: 0,
-    skew: 0,
-    scale: 1,
-    opacity: 0,
-  }
-}
-
-function createRandomGlitchFrame(direction: -1 | 1): GlitchFrame {
-  const bandHeight = 8 + Math.random() * 22
-  const top = Math.random() * (78 - bandHeight)
-  const bottom = 100 - top - bandHeight
-  const bandWidth = 10 + Math.random() * 24
-  const left = Math.random() * (100 - bandWidth)
-  const right = 100 - left - bandWidth
-  const shiftBase = 8 + Math.random() * 18
-  return {
-    top,
-    bottom,
-    left,
-    right,
-    shift: direction * shiftBase * (0.8 + Math.random() * 0.7),
-    skew: direction * (0.6 + Math.random() * 2.8),
-    scale: 1 + Math.random() * 0.035,
-    opacity: 0.4 + Math.random() * 0.55,
-  }
+  reduceFlashing?: boolean
 }
 
 function applyGlitchFrame(
   wrap: HTMLDivElement,
-  channel: GlitchChannel,
-  frame: GlitchFrame,
+  channel: TitleSignalGlitchChannel,
+  frame: TitleSignalDistortionFrame,
 ): void {
   wrap.style.setProperty(`--title-glitch-${channel}-top`, `${frame.top.toFixed(2)}%`)
   wrap.style.setProperty(`--title-glitch-${channel}-bottom`, `${frame.bottom.toFixed(2)}%`)
@@ -71,6 +32,7 @@ export function MagnoliaLogo({
   as = "h1",
   className,
   text = "MAGNOLIA",
+  reduceFlashing = false,
 }: MagnoliaLogoProps) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const HeadingTag = as
@@ -80,23 +42,40 @@ export function MagnoliaLogo({
     if (!wrap) return
 
     let burstTimer = 0
+    let burstIndex = 0
     const frameTimers = new Set<number>()
 
     const clearGlitch = () => {
-      applyGlitchFrame(wrap, "r", hiddenGlitchFrame())
-      applyGlitchFrame(wrap, "c", hiddenGlitchFrame())
+      const frames = resolveTitleSignalDistortion({
+        seed: `title-logo:${text}:hidden`,
+        severity: 0,
+        reduceFlashing,
+      })
+      applyGlitchFrame(wrap, "r", frames.r)
+      applyGlitchFrame(wrap, "c", frames.c)
     }
 
     const scheduleBurst = () => {
+      if (reduceFlashing) {
+        clearGlitch()
+        return
+      }
       burstTimer = window.setTimeout(() => {
-        const burstSteps = 2 + Math.floor(Math.random() * 4)
+        const burstSeed = `title-logo:${text}:${burstIndex}`
+        burstIndex += 1
+        const burstSteps = 2 + Math.floor(seededUnit(`${burstSeed}:steps`) * 3)
         let elapsed = 0
 
         for (let stepIndex = 0; stepIndex < burstSteps; stepIndex += 1) {
-          elapsed += 24 + Math.random() * 56
+          elapsed += seededRange(`${burstSeed}:step:${stepIndex}:delay`, 42, 94)
           const stepTimer = window.setTimeout(() => {
-            applyGlitchFrame(wrap, "r", createRandomGlitchFrame(1))
-            applyGlitchFrame(wrap, "c", createRandomGlitchFrame(-1))
+            const frames = resolveTitleSignalDistortion({
+              seed: `${burstSeed}:step:${stepIndex}`,
+              severity: 3,
+              reduceFlashing,
+            })
+            applyGlitchFrame(wrap, "r", frames.r)
+            applyGlitchFrame(wrap, "c", frames.c)
             frameTimers.delete(stepTimer)
           }, elapsed)
           frameTimers.add(stepTimer)
@@ -106,12 +85,12 @@ export function MagnoliaLogo({
           clearGlitch()
           frameTimers.delete(settleTimer)
           scheduleBurst()
-        }, elapsed + 80 + Math.random() * 160)
+        }, elapsed + seededRange(`${burstSeed}:settle`, 90, 180))
         frameTimers.add(settleTimer)
-      }, 700 + Math.random() * 2600)
+      }, seededRange(`title-logo:${text}:wait:${burstIndex}`, 1200, 3600))
     }
 
-    // グリッチはロゴごとの局所演出なので、この部品内で完結させます。
+    // DOM 操作は部品内で行い、グリッチ値の決定は SignalDistortion helper に寄せます。
     clearGlitch()
     scheduleBurst()
 
@@ -121,7 +100,7 @@ export function MagnoliaLogo({
       frameTimers.clear()
       clearGlitch()
     }
-  }, [])
+  }, [reduceFlashing, text])
 
   return (
     <div

@@ -116,8 +116,8 @@ export function useMagnoliaInput() {
 
     function handleContextMenu(event: MouseEvent) {
       event.preventDefault()
-      queueMouseButtonPress(2)
-      releaseMouseButton(2)
+      // contextmenu は右ボタン長押し中にも発火するため、ここで release すると
+      // 戦闘中のサブ装備が 1 フレームで切れます。入力状態は pointer/mouse up で閉じます。
     }
 
     window.addEventListener("pointerdown", handlePointerDown, true)

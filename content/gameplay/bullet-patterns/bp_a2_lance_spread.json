@@ -1,7 +1,9 @@
 {
   "bulletPatternId": "bp_a2_lance_spread",
+  "staged": true,
   "patternKind": "radial",
   "projectileId": "proj_enemy_lance",
+  "visualRole": "enemyLance",
   "cadenceMs": 1900,
   "burstCount": 5,
   "params": {

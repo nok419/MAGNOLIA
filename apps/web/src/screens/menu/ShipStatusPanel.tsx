@@ -7,6 +7,7 @@ import type {
 } from "@magnolia/contracts"
 import { SHIP_VARIANTS } from "@magnolia/contracts"
 import { drawShip } from "@/app/ship-renderer"
+import { tokenRgba } from "@/app/visual-tokens"
 
 const TAU = Math.PI * 2
 
@@ -33,7 +34,7 @@ function drawStatusShip(
   const cx = W / 2
   const cy = H / 2 - 2
 
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.05)"
+  ctx.strokeStyle = tokenRgba("signal", 0.05)
   ctx.lineWidth = 0.5
   const g = 14
   for (let x = g; x < W; x += g) {
@@ -43,17 +44,17 @@ function drawStatusShip(
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
   }
 
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.08)"
+  ctx.strokeStyle = tokenRgba("signal", 0.08)
   for (const r of [26, 52]) {
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke()
   }
 
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.1)"
+  ctx.strokeStyle = tokenRgba("signal", 0.1)
   ctx.beginPath(); ctx.moveTo(cx - 68, cy); ctx.lineTo(cx + 68, cy); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(cx, cy - 68); ctx.lineTo(cx, cy + 68); ctx.stroke()
 
   const outerR = 66
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.12)"
+  ctx.strokeStyle = tokenRgba("signal", 0.12)
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * TAU
     const inner = i % 6 === 0 ? outerR - 7 : outerR - 3
@@ -65,7 +66,7 @@ function drawStatusShip(
   ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, TAU); ctx.stroke()
 
   const scanY = cy - 66 + ((t * 0.018) % 132)
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.1)"
+  ctx.strokeStyle = tokenRgba("signal", 0.1)
   ctx.lineWidth = 1
   ctx.beginPath(); ctx.moveTo(cx - 62, scanY); ctx.lineTo(cx + 62, scanY); ctx.stroke()
 
@@ -74,19 +75,19 @@ function drawStatusShip(
     variant,
     center: { x: cx, y: cy },
     scale: 3.0,
-    stroke: "#e8f4ff",
-    fill: "rgba(180, 220, 255, 0.07)",
+    stroke: tokenRgba("text", 0.94),
+    fill: tokenRgba("signalBright", 0.07),
     lineWidth: 1.5,
-    glow: { color: "rgba(93, 164, 209, 0.5)", blur: 14 },
+    glow: { color: tokenRgba("signal", 0.5), blur: 14 },
     core: {
-      color: `rgba(93, 164, 209, ${0.6 + 0.4 * pulse})`,
-      glowColor: "rgba(93, 164, 209, 0.7)",
+      color: tokenRgba("signal", 0.6 + 0.4 * pulse),
+      glowColor: tokenRgba("signal", 0.7),
       glowBlur: 12 + 8 * pulse,
       radius: 3.5,
       pulse,
     },
     engineExhaust: {
-      color: "rgba(93, 164, 209, 0.15)",
+      color: tokenRgba("signal", 0.15),
       blur: 10,
       jitter: 3,
     },

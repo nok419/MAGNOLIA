@@ -1,5 +1,6 @@
 {
   "enemyId": "a1",
+  "staged": true,
   "hp": 32,
   "collisionDamage": 5,
   "analysisValue": 5,

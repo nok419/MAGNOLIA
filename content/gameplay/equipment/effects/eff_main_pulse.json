@@ -15,7 +15,7 @@
     "meleeStyle": "swordSweep",
     "meleeRange": 92,
     "meleeProjectileId": "proj_player_pulse_melee",
-    "meleeDamage": 22,
+    "meleeDamage": 96,
     "meleeSpreadDeg": 132,
     "meleeSweepDurationMs": 660,
     "meleeCooldownMs": 920

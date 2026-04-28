@@ -14,6 +14,9 @@
       ],
       "@magnolia/game-session": [
         "../../packages/game-session/src/index.ts"
+      ],
+      "@magnolia/persistence": [
+        "../../packages/persistence/src/index.ts"
       ]
     },
     "types": [

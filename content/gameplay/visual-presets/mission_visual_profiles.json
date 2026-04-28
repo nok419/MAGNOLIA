@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "kind": "missionVisualProfiles",
+  "runtimeStatus": "runtimeData",
+  "notes": [
+    "Loaded into ContentBundle.missionVisualProfiles at runtime.",
+    "Every active mission visualProfileId must resolve to one profile entry."
+  ],
+  "profiles": [
+    {
+      "visualProfileId": "mission_good_morning",
+      "missionIds": ["mission_good_morning"],
+      "motif": "sparse-carrier-wave",
+      "particleDensity": "sparse",
+      "carrierDensity": 7,
+      "memoryTone": 0.18,
+      "dangerTone": 0.08,
+      "backgroundSink": 0.86,
+      "seedKey": "battle:mission_good_morning",
+      "tokenRoles": {
+        "background": "void",
+        "line": "line",
+        "signal": "signal",
+        "memory": "memory",
+        "danger": "danger"
+      },
+      "primitiveRefs": [
+        "drawVoidGradient",
+        "drawCarrierLineField",
+        "drawSignalParticleField",
+        "drawPeripheralVignette"
+      ]
+    },
+    {
+      "visualProfileId": "mission_where_are_you",
+      "missionIds": ["mission_where_are_you"],
+      "motif": "interrupted-arc",
+      "particleDensity": "normal",
+      "carrierDensity": 10,
+      "memoryTone": 0.26,
+      "dangerTone": 0.12,
+      "backgroundSink": 0.8,
+      "seedKey": "battle:mission_where_are_you",
+      "tokenRoles": {
+        "background": "void",
+        "line": "line",
+        "signal": "signal",
+        "memory": "memory",
+        "danger": "danger"
+      },
+      "primitiveRefs": [
+        "drawVoidGradient",
+        "drawCarrierLineField",
+        "drawSignalParticleField",
+        "drawPeripheralVignette"
+      ]
+    },
+    {
+      "visualProfileId": "mission_evacuation",
+      "missionIds": ["mission_evacuation"],
+      "motif": "compression-band",
+      "particleDensity": "dense",
+      "carrierDensity": 13,
+      "memoryTone": 0.12,
+      "dangerTone": 0.18,
+      "backgroundSink": 0.74,
+      "seedKey": "battle:mission_evacuation",
+      "tokenRoles": {
+        "background": "void",
+        "line": "line",
+        "signal": "signal",
+        "memory": "memory",
+        "danger": "danger"
+      },
+      "primitiveRefs": [
+        "drawVoidGradient",
+        "drawCarrierLineField",
+        "drawSignalParticleField",
+        "drawPeripheralVignette"
+      ]
+    }
+  ]
+}

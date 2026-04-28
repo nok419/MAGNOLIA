@@ -1,5 +1,6 @@
 {
   "missionId": "mission_where_are_you",
+  "visualProfileId": "mission_where_are_you",
   "transmissionId": "tx_where_are_you",
   "durationMs": 90000,
   "scrollSpeed": 150,

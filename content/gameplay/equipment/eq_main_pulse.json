@@ -33,7 +33,7 @@
         "spreadDeg": 28,
         "foldBendAfterMs": 130,
         "meleeRange": 92,
-        "meleeDamage": 22,
+        "meleeDamage": 96,
         "meleeSpreadDeg": 132,
         "meleeSweepDurationMs": 660,
         "meleeCooldownMs": 920
@@ -49,7 +49,7 @@
         "spreadDeg": 30,
         "foldBendAfterMs": 125,
         "meleeRange": 108,
-        "meleeDamage": 28,
+        "meleeDamage": 128,
         "meleeSpreadDeg": 136,
         "meleeSweepDurationMs": 640,
         "meleeCooldownMs": 840
@@ -65,7 +65,7 @@
         "spreadDeg": 32,
         "foldBendAfterMs": 120,
         "meleeRange": 124,
-        "meleeDamage": 34,
+        "meleeDamage": 160,
         "meleeSpreadDeg": 140,
         "meleeSweepDurationMs": 620,
         "meleeCooldownMs": 760

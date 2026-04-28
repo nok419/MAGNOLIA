@@ -2,6 +2,7 @@
   "bulletPatternId": "bp_scout_single",
   "patternKind": "goldenStream",
   "projectileId": "proj_enemy_basic",
+  "visualRole": "enemyNoise",
   "cadenceMs": 280,
   "burstCount": 1,
   "params": {
