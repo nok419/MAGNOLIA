@@ -1,0 +1,11 @@
+{
+  "presetId": "vis_enemy_a2",
+  "category": "enemy",
+  "rendererKind": "shardCore",
+  "paletteRole": "enemyPrototype",
+  "orbitScale": 1,
+  "glyphCount": 2,
+  "glowIntensity": 0.5,
+  "motionProfile": "prototypeOrbit",
+  "accessibilityVariant": "reducedGlow"
+}

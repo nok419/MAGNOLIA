@@ -68,7 +68,9 @@ export function ArchivePanel({
                 archiveAccess.transcriptView.map((chunk) => (
                   <div key={chunk.chunkId} className="archive-log__line">
                     {chunk.speakerLabel ? <p className="archive-log__speaker">{chunk.speakerLabel}</p> : null}
-                    <p className="archive-log__text">{chunk.text}</p>
+                    <p className={`archive-log__text ${chunk.audible ? "" : "archive-log__text--damaged"}`}>
+                      {chunk.text}
+                    </p>
                   </div>
                 ))
               ) : (

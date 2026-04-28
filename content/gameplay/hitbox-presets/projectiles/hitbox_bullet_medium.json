@@ -1,0 +1,6 @@
+{
+  "presetId": "hitbox_bullet_medium",
+  "category": "projectile",
+  "shape": "circle",
+  "radius": 9
+}

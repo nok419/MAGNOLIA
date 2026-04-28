@@ -1,15 +1,14 @@
 import { useEffect, useRef } from "react"
-import type { ExploreSnapshot } from "@magnolia/contracts"
-import type { ExploreRenderState } from "@magnolia/game-session"
 import {
   drawCollectibleMarker,
   drawTransmissionMarker,
 } from "@/app/canvas-markers"
 import type { DisplayOptions } from "@/app/display-options"
+import { worldToCanvasPoint } from "@/render/shared/coordinates"
+import type { MiniMapViewModel } from "@/view-models/map-view-model"
 
 type MiniMapProps = {
-  snapshot: ExploreSnapshot
-  renderState: ExploreRenderState
+  viewModel: MiniMapViewModel
   displayOptions: DisplayOptions
 }
 
@@ -21,7 +20,7 @@ const TAU = Math.PI * 2
 const TICK_COUNT = 72 // every 5 degrees
 const CARDINAL_TICKS = [0, 18, 36, 54] // N, E, S, W indices
 
-export function MiniMap({ snapshot, renderState, displayOptions }: MiniMapProps) {
+export function MiniMap({ viewModel, displayOptions }: MiniMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const sweepAngleRef = useRef(0)
   const animRef = useRef(0)
@@ -47,7 +46,7 @@ export function MiniMap({ snapshot, renderState, displayOptions }: MiniMapProps)
       ctx.clearRect(0, 0, SIZE, SIZE)
 
       // rotating sweep
-      sweepAngleRef.current = (sweepAngleRef.current + 0.008) % TAU
+      sweepAngleRef.current = (sweepAngleRef.current + (displayOptions.reduceFlashing ? 0.002 : 0.008)) % TAU
       const sweepAngle = sweepAngleRef.current
 
       ctx.save()
@@ -60,7 +59,7 @@ export function MiniMap({ snapshot, renderState, displayOptions }: MiniMapProps)
       ctx.fillRect(0, 0, SIZE, SIZE)
 
       // fog cells
-      drawCells(ctx, snapshot.map.fogBitmap)
+      drawCells(ctx, viewModel.fogBitmap)
 
       // subtle grid within circle
       drawInternalGrid(ctx)
@@ -69,42 +68,48 @@ export function MiniMap({ snapshot, renderState, displayOptions }: MiniMapProps)
       drawRangeRings(ctx)
 
       // radar sweep cone
-      drawSweepCone(ctx, sweepAngle)
+      if (!displayOptions.reduceFlashing) {
+        drawSweepCone(ctx, sweepAngle)
+      }
 
       // transmission diamonds
-      for (const node of renderState.visibleTransmissions) {
-        const p = project(renderState, node.x, node.y)
+      for (const node of viewModel.transmissions) {
+        const p = project(viewModel, node.position.x, node.position.y)
         drawTransmissionMarker(ctx, {
           x: p.x,
           y: p.y,
           size: 4.8,
-          state: node.state ?? "locked",
+          state: node.state,
           timeMs,
           variant: "mini",
         })
       }
 
       // collectibles
-      for (const node of renderState.visibleCollectibles) {
-        const p = project(renderState, node.x, node.y)
+      for (const node of viewModel.collectibles) {
+        const p = project(viewModel, node.position.x, node.position.y)
         drawCollectibleMarker(ctx, {
           x: p.x,
           y: p.y,
           size: 4.2,
-          kind: node.markerKind ?? "investigation",
+          kind: node.markerKind,
           timeMs,
           variant: "mini",
         })
       }
 
+      for (const hint of viewModel.signalHints) {
+        drawSignalHintGhost(ctx, hint.bearingRad, hint.strength, hint.confidence)
+      }
+
       // player
-      const pp = project(renderState, renderState.playerPosition.x, renderState.playerPosition.y)
-      const angle = Math.atan2(renderState.playerFacing.y, renderState.playerFacing.x) + Math.PI / 2
+      const pp = project(viewModel, viewModel.player.position.x, viewModel.player.position.y)
+      const angle = Math.atan2(viewModel.player.facing.y, viewModel.player.facing.x) + Math.PI / 2
       const visionRadiusPx =
-        (renderState.visionRadius / Math.max(1, renderState.worldBounds.width)) * SIZE
+        (viewModel.player.visionRadius / Math.max(1, viewModel.worldBounds.width)) * SIZE
 
       drawPlayerGlow(ctx, pp.x, pp.y, timeMs)
-      drawVisionCircle(ctx, pp.x, pp.y, visionRadiusPx, renderState.tutorialRestricted, timeMs)
+      drawVisionCircle(ctx, pp.x, pp.y, visionRadiusPx, viewModel.player.tutorialRestricted, timeMs)
       drawMiniPlayer(ctx, pp.x, pp.y, angle, timeMs)
 
       ctx.restore() // end clip
@@ -127,7 +132,7 @@ export function MiniMap({ snapshot, renderState, displayOptions }: MiniMapProps)
       running = false
       cancelAnimationFrame(animRef.current)
     }
-  }, [displayOptions, snapshot.map.fogBitmap, renderState])
+  }, [displayOptions, viewModel])
 
   return <canvas ref={canvasRef} className="mini-map-canvas" />
 }
@@ -299,10 +304,33 @@ function drawCompassTicks(ctx: CanvasRenderingContext2D, _sweepAngle: number) {
 /* ============================================================
    MAP PROJECTION
    ============================================================ */
-function project(rs: ExploreRenderState, x: number, y: number) {
-  const rx = (x - rs.worldBounds.x) / Math.max(1, rs.worldBounds.width)
-  const ry = (y - rs.worldBounds.y) / Math.max(1, rs.worldBounds.height)
-  return { x: rx * SIZE, y: ry * SIZE }
+function project(viewModel: MiniMapViewModel, x: number, y: number) {
+  return worldToCanvasPoint({
+    bounds: viewModel.worldBounds,
+    size: { width: SIZE, height: SIZE },
+    worldPosition: { x, y },
+  })
+}
+
+function drawSignalHintGhost(
+  ctx: CanvasRenderingContext2D,
+  bearingRad: number,
+  strength: number,
+  confidence: number,
+) {
+  const safeStrength = Math.max(0, Math.min(1, strength))
+  const safeConfidence = Math.max(0, Math.min(1, confidence))
+  const safeBearingRad = Number.isFinite(bearingRad) ? bearingRad : 0
+  const radius = RADIUS * (0.7 + (1 - safeStrength) * 0.18)
+  const arcWidth = 0.18 + Math.min(0.8, safeConfidence) * 0.18
+  const alpha = 0.06 + safeStrength * 0.16
+  ctx.save()
+  ctx.strokeStyle = `rgba(170, 230, 255, ${alpha.toFixed(3)})`
+  ctx.lineWidth = 1.2
+  ctx.beginPath()
+  ctx.arc(CENTER, CENTER, radius, safeBearingRad - arcWidth, safeBearingRad + arcWidth)
+  ctx.stroke()
+  ctx.restore()
 }
 
 function drawVisionCircle(

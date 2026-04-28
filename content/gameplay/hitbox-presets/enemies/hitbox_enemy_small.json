@@ -1,0 +1,6 @@
+{
+  "presetId": "hitbox_enemy_small",
+  "category": "enemy",
+  "shape": "circle",
+  "radius": 12
+}

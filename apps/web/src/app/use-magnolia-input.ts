@@ -12,6 +12,7 @@ const INTERACT_FALLBACK_CODES = ["Enter", "NumpadEnter"]
 const MAP_FALLBACK_CODES = ["KeyM"]
 const EQUIPMENT_FALLBACK_CODES = ["KeyE"]
 const DASH_FALLBACK_CODES = ["ShiftRight"]
+const SCAN_FALLBACK_CODES = ["KeyR"]
 
 type MouseButtons = {
   left: boolean
@@ -21,6 +22,10 @@ type MouseButtons = {
 export function useMagnoliaInput() {
   const keyStateRef = useRef(new Set<string>())
   const mouseButtonsRef = useRef<MouseButtons>({
+    left: false,
+    right: false,
+  })
+  const queuedMousePressRef = useRef<MouseButtons>({
     left: false,
     right: false,
   })
@@ -50,6 +55,8 @@ export function useMagnoliaInput() {
       keyStateRef.current.clear()
       mouseButtonsRef.current.left = false
       mouseButtonsRef.current.right = false
+      queuedMousePressRef.current.left = false
+      queuedMousePressRef.current.right = false
       previousMouseButtonsRef.current.left = false
       previousMouseButtonsRef.current.right = false
       previousButtonsRef.current = {}
@@ -67,36 +74,66 @@ export function useMagnoliaInput() {
   }, [])
 
   useEffect(() => {
-    function handleMouseDown(event: MouseEvent) {
-      if (event.button === 0) {
+    function queueMouseButtonPress(button: number) {
+      if (button === 0) {
+        queuedMousePressRef.current.left = true
         mouseButtonsRef.current.left = true
       }
-      if (event.button === 2) {
+      if (button === 2) {
+        queuedMousePressRef.current.right = true
         mouseButtonsRef.current.right = true
       }
     }
 
-    function handleMouseUp(event: MouseEvent) {
-      if (event.button === 0) {
+    function releaseMouseButton(button: number) {
+      if (button === 0) {
         mouseButtonsRef.current.left = false
       }
-      if (event.button === 2) {
+      if (button === 2) {
         mouseButtonsRef.current.right = false
       }
     }
 
-    function handleContextMenu(event: MouseEvent) {
-      event.preventDefault()
+    function handleMouseDown(event: MouseEvent) {
+      queueMouseButtonPress(event.button)
     }
 
-    window.addEventListener("mousedown", handleMouseDown)
-    window.addEventListener("mouseup", handleMouseUp)
-    window.addEventListener("contextmenu", handleContextMenu)
+    function handleMouseUp(event: MouseEvent) {
+      releaseMouseButton(event.button)
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      queueMouseButtonPress(event.button)
+    }
+
+    function handlePointerUp(event: PointerEvent) {
+      releaseMouseButton(event.button)
+    }
+
+    function handlePointerCancel(event: PointerEvent) {
+      releaseMouseButton(event.button)
+    }
+
+    function handleContextMenu(event: MouseEvent) {
+      event.preventDefault()
+      queueMouseButtonPress(2)
+      releaseMouseButton(2)
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown, true)
+    window.addEventListener("pointerup", handlePointerUp, true)
+    window.addEventListener("pointercancel", handlePointerCancel, true)
+    window.addEventListener("mousedown", handleMouseDown, true)
+    window.addEventListener("mouseup", handleMouseUp, true)
+    window.addEventListener("contextmenu", handleContextMenu, true)
 
     return () => {
-      window.removeEventListener("mousedown", handleMouseDown)
-      window.removeEventListener("mouseup", handleMouseUp)
-      window.removeEventListener("contextmenu", handleContextMenu)
+      window.removeEventListener("pointerdown", handlePointerDown, true)
+      window.removeEventListener("pointerup", handlePointerUp, true)
+      window.removeEventListener("pointercancel", handlePointerCancel, true)
+      window.removeEventListener("mousedown", handleMouseDown, true)
+      window.removeEventListener("mouseup", handleMouseUp, true)
+      window.removeEventListener("contextmenu", handleContextMenu, true)
     }
   }, [])
 
@@ -144,14 +181,35 @@ export function useMagnoliaInput() {
         previousButtonsRef.current,
       )
     },
+    isScanPressed(settings: SettingsRow): boolean {
+      // scan は任意タイミングで 1 回だけ出す操作なので、押下の立ち上がりだけを拾います。
+      return isJustPressedAny(
+        [settings.keybindings.scan, ...SCAN_FALLBACK_CODES],
+        keyStateRef.current,
+        previousButtonsRef.current,
+      )
+    },
     isPrimaryMouseJustPressed(): boolean {
+      const queuedPress = queuedMousePressRef.current.left
+      queuedMousePressRef.current.left = false
       const currentlyPressed = mouseButtonsRef.current.left
       const wasPressed = previousMouseButtonsRef.current.left
       previousMouseButtonsRef.current.left = currentlyPressed
-      return currentlyPressed && !wasPressed
+      return queuedPress || (currentlyPressed && !wasPressed)
+    },
+    isSecondaryMouseJustPressed(): boolean {
+      // 探索では副ボタンを scan に使うため、左クリックとは独立した edge を持ちます。
+      const queuedPress = queuedMousePressRef.current.right
+      queuedMousePressRef.current.right = false
+      const currentlyPressed = mouseButtonsRef.current.right
+      const wasPressed = previousMouseButtonsRef.current.right
+      previousMouseButtonsRef.current.right = currentlyPressed
+      return queuedPress || (currentlyPressed && !wasPressed)
     },
     syncButtonEdges(settings: SettingsRow): void {
       syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+      queuedMousePressRef.current.left = false
+      queuedMousePressRef.current.right = false
       previousMouseButtonsRef.current.left = mouseButtonsRef.current.left
       previousMouseButtonsRef.current.right = mouseButtonsRef.current.right
     },
@@ -251,6 +309,7 @@ function syncButtonEdges(
     ...MAP_FALLBACK_CODES,
     ...EQUIPMENT_FALLBACK_CODES,
     ...DASH_FALLBACK_CODES,
+    ...SCAN_FALLBACK_CODES,
   ])
 
   for (const code of trackedCodes) {
@@ -270,5 +329,6 @@ function shouldPreventDefaultForKey(code: string): boolean {
     "ArrowRight",
     "Enter",
     "NumpadEnter",
+    "Space",
   ].includes(code)
 }

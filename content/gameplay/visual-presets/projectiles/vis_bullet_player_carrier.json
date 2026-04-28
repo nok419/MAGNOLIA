@@ -1,0 +1,12 @@
+{
+  "presetId": "vis_bullet_player_carrier",
+  "category": "projectile",
+  "rendererKind": "carrier",
+  "paletteRole": "playerSignal",
+  "trailKind": "longSignal",
+  "auraKind": "clear",
+  "radiusScale": 1,
+  "glowIntensity": 0.58,
+  "motionSmear": 0.36,
+  "accessibilityVariant": "solidCore"
+}

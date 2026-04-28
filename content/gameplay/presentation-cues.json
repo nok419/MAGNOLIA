@@ -1,0 +1,198 @@
+[
+  {
+    "id": "system.boot.message",
+    "channel": "overlay",
+    "renderer": "react",
+    "blocking": true,
+    "skippable": false,
+    "defaultDurationMs": 1800,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1800,
+      "motionScale": 0.4,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "system.reboot.sequence",
+    "channel": "overlay",
+    "renderer": "shared",
+    "blocking": true,
+    "skippable": false,
+    "defaultDurationMs": 5200,
+    "maxFlashHz": 1,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 5200,
+      "motionScale": 0.45,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "system.reboot.settle",
+    "channel": "overlay",
+    "renderer": "shared",
+    "blocking": true,
+    "skippable": false,
+    "defaultDurationMs": 2200,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 2200,
+      "motionScale": 0.5,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "tutorial.restriction.enter",
+    "channel": "overlay",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 1200,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1200,
+      "motionScale": 0.6,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "tutorial.restriction.release",
+    "channel": "overlay",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 6200,
+    "maxFlashHz": 1,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 6200,
+      "motionScale": 0.5,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "explore.player.trail",
+    "channel": "explore",
+    "renderer": "phaser",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 300,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 240,
+      "motionScale": 0.35,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "transmission.connect.sequence",
+    "channel": "transition",
+    "renderer": "shared",
+    "blocking": true,
+    "skippable": true,
+    "defaultDurationMs": 1400,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1400,
+      "motionScale": 0.5,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "warp.transition.sequence",
+    "channel": "transition",
+    "renderer": "shared",
+    "blocking": true,
+    "skippable": true,
+    "defaultDurationMs": 1000,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1000,
+      "motionScale": 0.5,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "battle.player.hit",
+    "channel": "battle",
+    "renderer": "phaser",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 250,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 250,
+      "motionScale": 0.35,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "battle.noise.peak",
+    "channel": "battle",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 350,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 350,
+      "motionScale": 0.35,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "battle.noise.clear",
+    "channel": "battle",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 350,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 350,
+      "motionScale": 0.45,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "battle.fragment.recovered",
+    "channel": "battle",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 420,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 420,
+      "motionScale": 0.45,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "battle.noiseSource.clear",
+    "channel": "battle",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 320,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 320,
+      "motionScale": 0.45,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "battle.invincible.start",
+    "channel": "battle",
+    "renderer": "phaser",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 400,
+    "maxFlashHz": 1,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 400,
+      "motionScale": 0.4,
+      "flashEnabled": false
+    }
+  }
+]

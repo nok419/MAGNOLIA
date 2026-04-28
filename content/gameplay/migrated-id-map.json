@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "migrations": [],
+  "notes": [
+    {
+      "id": "proj_enemy_petal",
+      "status": "kept",
+      "reason": "現在の見た目は花弁というより小型ノイズ片に近いが、active mission と save 互換性を優先して ID は維持する。見た目の差は visual preset の description で管理する。"
+    }
+  ]
+}

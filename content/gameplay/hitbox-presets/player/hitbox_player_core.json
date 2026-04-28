@@ -1,0 +1,6 @@
+{
+  "presetId": "hitbox_player_core",
+  "category": "player",
+  "shape": "circle",
+  "radius": 6
+}

@@ -1,0 +1,9 @@
+{
+  "presetId": "bg_central_tower",
+  "theme": "centralTower",
+  "residualWarmth": 0.34,
+  "structureDensity": 0.56,
+  "dustDensity": 0.28,
+  "scanlineIntensity": 0.28,
+  "vignetteStrength": 0.48
+}

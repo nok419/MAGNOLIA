@@ -22,7 +22,20 @@
     "tx_evacuation_01c",
     "tx_evacuation_02a",
     "tx_evacuation_02b",
-    "tx_evacuation_02c"
+    "tx_evacuation_02c",
+    "tx_evacuation_03a",
+    "tx_evacuation_03b",
+    "tx_evacuation_04a",
+    "tx_evacuation_04b",
+    "tx_evacuation_05a",
+    "tx_evacuation_05b",
+    "tx_evacuation_06a",
+    "tx_evacuation_06b",
+    "tx_evacuation_07a",
+    "tx_evacuation_07b",
+    "tx_evacuation_08a",
+    "tx_evacuation_08b",
+    "tx_evacuation_09a"
   ],
   "metadataUnlockThresholds": {
     "title": 0.12,

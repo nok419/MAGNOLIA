@@ -1,0 +1,11 @@
+{
+  "presetId": "vis_enemy_b1",
+  "category": "enemy",
+  "rendererKind": "bossLattice",
+  "paletteRole": "enemyPrototype",
+  "orbitScale": 1.6,
+  "glyphCount": 6,
+  "glowIntensity": 0.8,
+  "motionProfile": "bossLattice",
+  "accessibilityVariant": "reducedGlow"
+}

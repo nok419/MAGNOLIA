@@ -19,6 +19,7 @@ import type {
   ProfileRow,
   TimeRange,
   TranscriptChunk,
+  TranscriptSpan,
   TransmissionId,
   TransmissionMaster,
   TransmissionProgressRow,
@@ -29,7 +30,14 @@ import type {
 } from "@magnolia/contracts"
 import { evaluateCondition } from "./conditions"
 import type { ResolvedEquipmentBinding, ResolvedLoadout } from "./equipment-runtime"
-import { hasUnlockedTransmissionMetadata, mergeRanges } from "./progression"
+import {
+  hasUnlockedTransmissionMetadata,
+  isTransmissionSignalIdentified,
+  mergeRanges,
+  mergeTranscriptSpans,
+  readTranscriptChunkRestorationRatio,
+  transcriptSpansFromTimeRanges,
+} from "./progression"
 
 const WORLD_CELL_SIZE = 20
 const WORLD_BITMAP_ORIGIN_X = -640
@@ -166,7 +174,10 @@ export function buildWorldMapVisibilityState(input: {
     .filter((node) => isWorldNodeVisible(node.accessConditionId, input))
     .filter(
       (node) =>
-        visibleCellSet.has(toWorldCellKey(node.x, node.y)) ||
+        (
+          visibleCellSet.has(toWorldCellKey(node.x, node.y)) &&
+          isTransmissionSignalIdentified(input.transmissionProgress[node.transmissionId])
+        ) ||
         extraNodeIds.has(node.nodeId),
     )
     .map((node) => node.nodeId)
@@ -237,26 +248,79 @@ export function buildArchiveAccessState(input: {
       input.areaId,
       input.transmissionId,
     )
-  // アーカイブから未聴取本文の長さや位置が推測されないよう、聴けた chunk だけを返します。
-  const transcriptView = input.chunks
-    .filter((chunk) => isChunkHeard(chunk, progress.heardRanges))
-    .map((chunk) => ({
-      ...chunk,
-      audible: true,
-    }))
+  const restoredSpans = readRestoredTranscriptSpans(input.chunks, progress)
+  const hasTranscriptProgress = restoredSpans.length > 0 || progress.heardRanges.length > 0
+  // いったん本文を一部でも復元した通信は、欠けた本文として全体像を返します。
+  // UI 側は content を直接読まず、ここで伏せ字化済みの text だけを表示します。
+  const transcriptView = hasTranscriptProgress
+    ? buildTranscriptViewChunks(input.chunks, restoredSpans)
+    : []
 
   return {
     visibleAreaIds:
-      transcriptView.length > 0 || hasUnlockedTransmissionMetadata(progress)
+      hasTranscriptProgress || hasUnlockedTransmissionMetadata(progress)
         ? [input.areaId]
         : [],
     visibleTransmissionIds:
-      transcriptView.length > 0 || hasUnlockedTransmissionMetadata(progress)
+      hasTranscriptProgress || hasUnlockedTransmissionMetadata(progress)
         ? [input.transmissionId]
         : [],
     metadataUnlocked: progress.metadataUnlocked,
     transcriptView,
   }
+}
+
+export function buildTranscriptViewChunks(
+  chunks: TranscriptChunk[],
+  restoredSpans: TranscriptSpan[],
+) {
+  return chunks.map((chunk) => {
+    const chunkSpans = restoredSpans.filter((span) => span.chunkId === chunk.chunkId)
+    const restorationRatio = readTranscriptChunkRestorationRatio(chunk, chunkSpans)
+    return {
+      ...chunk,
+      text: maskTranscriptChunkText(chunk.text, chunkSpans, restorationRatio),
+      audible: restorationRatio >= 0.85,
+      restorationRatio,
+      restoredSpans: chunkSpans,
+    }
+  })
+}
+
+function readRestoredTranscriptSpans(
+  chunks: TranscriptChunk[],
+  progress: TransmissionProgressRow,
+): TranscriptSpan[] {
+  if (progress.transcriptSpans.length > 0) {
+    return mergeTranscriptSpans(progress.transcriptSpans)
+  }
+  return transcriptSpansFromTimeRanges(chunks, progress.heardRanges)
+}
+
+function maskTranscriptChunkText(
+  text: string,
+  spans: TranscriptSpan[],
+  restorationRatio: number,
+): string {
+  if (restorationRatio >= 0.85) {
+    return text
+  }
+  const glyphs = Array.from(text)
+  if (glyphs.length === 0) {
+    return text
+  }
+  const mergedSpans = mergeTranscriptSpans(spans)
+  return glyphs
+    .map((glyph, index) => {
+      if (/\s/u.test(glyph)) {
+        return glyph
+      }
+      const ratio = (index + 0.5) / glyphs.length
+      return mergedSpans.some((span) => ratio >= span.startRatio && ratio <= span.endRatio)
+        ? glyph
+        : "█"
+    })
+    .join("")
 }
 
 export function createMissionReplaySeed(input: {
@@ -504,6 +568,7 @@ function createEmptyTransmissionProgress(
     bestRunRestorationRate: 0,
     archiveRestorationRate: 0,
     heardRanges: [],
+    transcriptSpans: [],
     metadataUnlocked: createEmptyMetadataUnlocked(),
   }
 }

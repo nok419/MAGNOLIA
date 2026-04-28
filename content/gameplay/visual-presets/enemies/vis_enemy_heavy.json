@@ -1,0 +1,11 @@
+{
+  "presetId": "vis_enemy_heavy",
+  "category": "enemy",
+  "rendererKind": "shardCore",
+  "paletteRole": "enemyNoise",
+  "orbitScale": 1.25,
+  "glyphCount": 3,
+  "glowIntensity": 0.65,
+  "motionProfile": "weightedOrbit",
+  "accessibilityVariant": "reducedGlow"
+}

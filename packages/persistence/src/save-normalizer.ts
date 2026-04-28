@@ -17,6 +17,8 @@ import type {
   SaveSlotId,
   SettingsRow,
   TimeRange,
+  TranscriptChunk,
+  TranscriptSpan,
   TransmissionProgressRow,
   Vector2,
 } from "@magnolia/contracts"
@@ -250,6 +252,20 @@ function normalizeTransmissionProgressRows(input: {
     const durationMs = transmission
       ? readTransmissionDurationMs(input.content, transmission.missionId)
       : undefined
+    const chunks = transmission && input.content
+      ? readTranscriptChunksForTransmission(input.content, transmission.transmissionId)
+      : []
+    const heardRanges = normalizeTimeRanges(row.heardRanges, durationMs)
+    const transcriptSpans = normalizeTranscriptSpans(
+      Array.isArray(row.transcriptSpans) ? row.transcriptSpans : [],
+      chunks,
+    )
+    const restoredSpans = transcriptSpans.length > 0
+      ? transcriptSpans
+      : transcriptSpansFromTimeRanges(chunks, heardRanges)
+    const restoredRanges = chunks.length > 0 && restoredSpans.length > 0
+      ? timeRangesFromTranscriptSpans(chunks, restoredSpans)
+      : heardRanges
 
     return {
       profileId: input.profileId,
@@ -263,7 +279,12 @@ function normalizeTransmissionProgressRows(input: {
       bestAnalysisRate: clampRate(row.bestAnalysisRate),
       bestRunRestorationRate: clampRate(row.bestRunRestorationRate),
       archiveRestorationRate: clampRate(row.archiveRestorationRate),
-      heardRanges: normalizeTimeRanges(row.heardRanges, durationMs),
+      heardRanges: restoredRanges,
+      transcriptSpans: restoredSpans,
+      signalConfidence: normalizeOptionalRate(row.signalConfidence),
+      signalDiscoveredAt: row.signalDiscoveredAt
+        ? readTimestamp(row.signalDiscoveredAt, undefined)
+        : undefined,
       metadataUnlocked: {
         ...createEmptyMetadataUnlocked(),
         ...(isRecord(row.metadataUnlocked) ? row.metadataUnlocked : {}),
@@ -300,6 +321,20 @@ function normalizeMissionRuns(input: {
     })
     .map((row) => {
       const durationMs = input.content?.missions[row.missionId]?.durationMs
+      const chunks = input.content
+        ? readTranscriptChunksForMission(input.content, row.missionId)
+        : []
+      const heardRanges = normalizeTimeRanges(row.heardRanges, durationMs)
+      const transcriptSpans = normalizeTranscriptSpans(
+        Array.isArray(row.transcriptSpans) ? row.transcriptSpans : [],
+        chunks,
+      )
+      const restoredSpans = transcriptSpans.length > 0
+        ? transcriptSpans
+        : transcriptSpansFromTimeRanges(chunks, heardRanges)
+      const restoredRanges = chunks.length > 0 && restoredSpans.length > 0
+        ? timeRangesFromTranscriptSpans(chunks, restoredSpans)
+        : heardRanges
 
       return {
         id: input.resetIds
@@ -316,7 +351,8 @@ function normalizeMissionRuns(input: {
         rngSeed: Math.trunc(readNumber(row.rngSeed, 0)),
         analysisRate: clampRate(row.analysisRate),
         restorationRate: clampRate(row.restorationRate),
-        heardRanges: normalizeTimeRanges(row.heardRanges, durationMs),
+        heardRanges: restoredRanges,
+        transcriptSpans: restoredSpans,
         damageRanges: normalizeTimeRanges(row.damageRanges, durationMs),
         destroyedAnalysisValue: Math.max(0, readNumber(row.destroyedAnalysisValue, 0)),
         score: Math.max(0, readNumber(row.score, 0)),
@@ -455,6 +491,107 @@ function normalizeTimeRanges(
   return merged
 }
 
+function normalizeTranscriptSpans(
+  spans: TranscriptSpan[] | undefined,
+  chunks: TranscriptChunk[],
+): TranscriptSpan[] {
+  if (!Array.isArray(spans)) {
+    return []
+  }
+  const chunkIds = new Set(chunks.map((chunk) => chunk.chunkId))
+  const sorted = spans
+    .map((span) => ({
+      chunkId: typeof span?.chunkId === "string" ? span.chunkId : "",
+      startRatio: clampRate(Math.min(
+        readNumber(span?.startRatio, 0),
+        readNumber(span?.endRatio, 0),
+      )),
+      endRatio: clampRate(Math.max(
+        readNumber(span?.startRatio, 0),
+        readNumber(span?.endRatio, 0),
+      )),
+    }))
+    .filter((span) => span.chunkId.length > 0)
+    .filter((span) => chunks.length === 0 || chunkIds.has(span.chunkId))
+    .filter((span) => span.endRatio > span.startRatio)
+    .sort((left, right) =>
+      left.chunkId.localeCompare(right.chunkId) || left.startRatio - right.startRatio,
+    )
+
+  const merged: TranscriptSpan[] = []
+  for (const span of sorted) {
+    const previous = merged.at(-1)
+    if (!previous || previous.chunkId !== span.chunkId || previous.endRatio < span.startRatio) {
+      merged.push(span)
+      continue
+    }
+    previous.endRatio = Math.max(previous.endRatio, span.endRatio)
+  }
+  return merged
+}
+
+function transcriptSpansFromTimeRanges(
+  chunks: TranscriptChunk[],
+  ranges: TimeRange[],
+): TranscriptSpan[] {
+  const spans: TranscriptSpan[] = []
+  for (const chunk of chunks) {
+    const durationMs = Math.max(1, chunk.endMs - chunk.startMs)
+    for (const range of ranges) {
+      const overlapStart = Math.max(chunk.startMs, range.startMs)
+      const overlapEnd = Math.min(chunk.endMs, range.endMs)
+      if (overlapEnd <= overlapStart) {
+        continue
+      }
+      spans.push({
+        chunkId: chunk.chunkId,
+        startRatio: (overlapStart - chunk.startMs) / durationMs,
+        endRatio: (overlapEnd - chunk.startMs) / durationMs,
+      })
+    }
+  }
+  return normalizeTranscriptSpans(spans, chunks)
+}
+
+function timeRangesFromTranscriptSpans(
+  chunks: TranscriptChunk[],
+  spans: TranscriptSpan[],
+): TimeRange[] {
+  const chunksById = new Map(chunks.map((chunk) => [chunk.chunkId, chunk]))
+  return normalizeTimeRanges(
+    normalizeTranscriptSpans(spans, chunks).flatMap((span) => {
+      const chunk = chunksById.get(span.chunkId)
+      if (!chunk) {
+        return []
+      }
+      const durationMs = Math.max(1, chunk.endMs - chunk.startMs)
+      return [{
+        startMs: chunk.startMs + durationMs * span.startRatio,
+        endMs: chunk.startMs + durationMs * span.endRatio,
+      }]
+    }),
+  )
+}
+
+function readTranscriptChunksForTransmission(
+  content: ContentBundle,
+  transmissionId: string,
+): TranscriptChunk[] {
+  const transmission = content.transmissions[transmissionId]
+  return (transmission?.transcriptChunkIds ?? [])
+    .map((chunkId) => content.transcriptChunks[chunkId])
+    .filter((chunk): chunk is TranscriptChunk => Boolean(chunk))
+    .sort((left, right) => left.startMs - right.startMs)
+}
+
+function readTranscriptChunksForMission(
+  content: ContentBundle,
+  missionId: string,
+): TranscriptChunk[] {
+  const mission = content.missions[missionId]
+  return mission ? readTranscriptChunksForTransmission(content, mission.transmissionId) : []
+}
+
 function readTransmissionDurationMs(
   content: ContentBundle | undefined,
   missionId: string,
@@ -519,6 +656,13 @@ function normalizeVector(value: unknown, fallback: Vector2): Vector2 {
 
 function clampRate(value: unknown): number {
   return Math.min(1, Math.max(0, readNumber(value, 0)))
+}
+
+function normalizeOptionalRate(value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+  return clampRate(value)
 }
 
 function readNumber(value: unknown, fallback: number): number {

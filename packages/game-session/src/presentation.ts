@@ -1,10 +1,13 @@
 import type {
   AreaId,
+  FragmentRecoveredPresentationRequest,
   HitPresentationRequest,
   InvincibleStartPresentationRequest,
   MotionTrailPresentationRequest,
+  NoiseBandKind,
   NoiseClearPresentationRequest,
   NoisePeakPresentationRequest,
+  NoiseSourceClearPresentationRequest,
   PresentationRequest,
   RebootSequencePresentationRequest,
   ReleasePresentationRequest,
@@ -174,6 +177,42 @@ export function createBattleNoiseClearPresentation(): NoiseClearPresentationRequ
       cueId: "battle.noise.clear",
       channel: "battle",
       blocking: false,
+    },
+  ]
+}
+
+export function createBattleFragmentRecoveredPresentation(input: {
+  fragmentId: string
+  chunkId: string
+}): FragmentRecoveredPresentationRequest[] {
+  return [
+    {
+      requestId: nextPresentationRequestId("battle.fragment.recovered"),
+      cueId: "battle.fragment.recovered",
+      channel: "battle",
+      blocking: false,
+      fragmentId: input.fragmentId,
+      chunkId: input.chunkId,
+    },
+  ]
+}
+
+export function createBattleNoiseSourceClearPresentation(input: {
+  enemyId: string
+  worldPosition: Vector2
+  noiseBandKind?: NoiseBandKind
+  analysisDelta: number
+}): NoiseSourceClearPresentationRequest[] {
+  return [
+    {
+      requestId: nextPresentationRequestId("battle.noiseSource.clear"),
+      cueId: "battle.noiseSource.clear",
+      channel: "battle",
+      blocking: false,
+      enemyId: input.enemyId,
+      worldPosition: input.worldPosition,
+      noiseBandKind: input.noiseBandKind,
+      analysisDelta: input.analysisDelta,
     },
   ]
 }

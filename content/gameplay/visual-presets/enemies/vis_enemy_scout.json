@@ -1,0 +1,11 @@
+{
+  "presetId": "vis_enemy_scout",
+  "category": "enemy",
+  "rendererKind": "circleSignal",
+  "paletteRole": "enemyNoise",
+  "orbitScale": 0.8,
+  "glyphCount": 1,
+  "glowIntensity": 0.45,
+  "motionProfile": "slowOrbit",
+  "accessibilityVariant": "reducedGlow"
+}

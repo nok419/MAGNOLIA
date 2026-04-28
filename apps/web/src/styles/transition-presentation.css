@@ -1,0 +1,120 @@
+.transition-presentation {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  background: rgba(3, 7, 10, 0.86);
+  color: #d8fff3;
+  animation: transition-presentation-fade 900ms ease-out both;
+}
+
+.transition-presentation__field {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent, rgba(120, 255, 218, 0.16), transparent),
+    repeating-linear-gradient(
+      0deg,
+      rgba(216, 255, 243, 0.08) 0,
+      rgba(216, 255, 243, 0.08) 1px,
+      transparent 1px,
+      transparent 16px
+    );
+  animation: transition-presentation-sweep 1100ms ease-out both;
+}
+
+.transition-presentation__source {
+  position: absolute;
+  left: var(--transition-source-x, 50vw);
+  top: var(--transition-source-y, 50vh);
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(216, 255, 243, 0.78);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 24px rgba(86, 255, 211, 0.46);
+  pointer-events: none;
+  animation: transition-presentation-source 760ms ease-out both;
+}
+
+.transition-presentation__panel {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  width: min(420px, calc(100vw - 48px));
+  padding: 18px 20px;
+  border: 1px solid rgba(216, 255, 243, 0.55);
+  background: rgba(4, 13, 16, 0.82);
+  box-shadow: 0 0 28px rgba(86, 255, 211, 0.24);
+}
+
+.transition-presentation__label {
+  font-size: 0.8rem;
+  letter-spacing: 0;
+}
+
+.transition-presentation__line {
+  display: block;
+  height: 2px;
+  transform-origin: left;
+  background: linear-gradient(90deg, #d8fff3, rgba(216, 255, 243, 0));
+  animation: transition-presentation-line 760ms ease-out both;
+}
+
+.transition-presentation--reduced,
+.transition-presentation--reduced .transition-presentation__field,
+.transition-presentation--reduced .transition-presentation__line,
+.transition-presentation--reduced .transition-presentation__source {
+  animation: none;
+}
+
+@keyframes transition-presentation-fade {
+  from {
+    opacity: 0;
+  }
+  18%,
+  78% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes transition-presentation-sweep {
+  from {
+    transform: translateX(-18%);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(18%);
+    opacity: 0.45;
+  }
+}
+
+@keyframes transition-presentation-line {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes transition-presentation-source {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+  36% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.6);
+  }
+}

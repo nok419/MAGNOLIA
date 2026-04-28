@@ -1,0 +1,12 @@
+{
+  "presetId": "vis_bullet_player_carrier_blast",
+  "category": "projectile",
+  "rendererKind": "pulse",
+  "paletteRole": "playerSignal",
+  "trailKind": "none",
+  "auraKind": "clear",
+  "radiusScale": 1.25,
+  "glowIntensity": 0.5,
+  "motionSmear": 0,
+  "accessibilityVariant": "solidCore"
+}

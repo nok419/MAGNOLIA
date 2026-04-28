@@ -1,3 +1,4 @@
+@import "./tokens.css";
 @import "./base.css";
 @import "./title.css";
 @import "./common-ui.css";
@@ -8,4 +9,5 @@
 @import "./explore-map.css";
 @import "./menu-equipment.css";
 @import "./overlays-keyvisual.css";
+@import "./transition-presentation.css";
 @import "./responsive.css";

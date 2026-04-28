@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "build": "tsc -b && npm run build --workspace @magnolia/web",
-    "check": "tsc -b"
+    "check": "tsc -b",
+    "content:validate": "tsc -p tools/content-validator/tsconfig.json && node tools/content-validator/dist/validate-content.js"
   },
   "devDependencies": {
     "typescript": "^5.8.2"

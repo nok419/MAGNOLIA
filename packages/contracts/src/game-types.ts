@@ -65,6 +65,45 @@ export type TimeRange = {
   endMs: number
 }
 
+export type TranscriptSpan = {
+  chunkId: TranscriptChunkId
+  startRatio: number
+  endRatio: number
+}
+
+export type BattleFragmentViewModel = {
+  fragmentId: string
+  chunkId: TranscriptChunkId
+  startRatio: number
+  endRatio: number
+  x: number
+  y: number
+  originX?: number
+  originY?: number
+  createdAtMs?: number
+  expiresAtMs: number
+  strength: number
+}
+
+export type ExploreSignalHintViewModel = {
+  nodeId: WorldMapNodeId
+  kind: "transmission" | "collectible" | "equipment" | "repair"
+  category?: "private" | "broadcast" | "automated" | "maintenance"
+  bearingRad: number
+  distanceBand: "near" | "mid" | "far"
+  strength: number
+  confidence: number
+  expiresAtMs?: number
+  detectedState?: "hint" | "ghost" | "identified"
+}
+
+export type ExploreScanPulseViewModel = {
+  pulseId: string
+  startedAtMs: number
+  radius: number
+  durationMs: number
+}
+
 export type MetadataUnlocked = {
   title: boolean
   sender: boolean
@@ -105,6 +144,7 @@ export type SettingsKeybindings = {
   fireMain: string
   fireSub: string
   interact: string
+  scan: string
   dash: string
   openMap: string
   openArchive: string
@@ -243,6 +283,8 @@ export type TranscriptChunk = {
 
 export type TranscriptViewChunk = TranscriptChunk & {
   audible: boolean
+  restorationRatio: number
+  restoredSpans: TranscriptSpan[]
 }
 
 export type MissionMaster = {
@@ -301,6 +343,11 @@ export type BattlefieldHazardMotion =
 
 export type EnemyWave = {
   atMs: number
+  /**
+   * ミッション固有の TypeScript 分岐を増やさず、content 上で意図を読めるようにするタグ。
+   * runtime はこの値に依存せず、validator と design review が beat を確認するために使う。
+   */
+  intentTag?: string
   entries: EnemySpawn[]
 }
 
@@ -344,6 +391,71 @@ export type ProjectileSpec = {
   visualPresetId: VisualPresetId
   hitboxPresetId: HitboxPresetId
   trailPresetId?: VisualPresetId
+}
+
+export type ContentLifecycle = "active" | "prototype" | "deprecated"
+
+export type EnemyContentVisualPreset = {
+  presetId: VisualPresetId
+  category: "enemy"
+  rendererKind: "circleSignal" | "shardCore" | "bossLattice"
+  paletteRole: string
+  orbitScale?: number
+  glyphCount?: number
+  glowIntensity?: number
+  motionProfile?: string
+  accessibilityVariant: string
+}
+
+export type ProjectileContentVisualPreset = {
+  presetId: VisualPresetId
+  category: "projectile"
+  rendererKind: "orb" | "shard" | "lance" | "pulse" | "carrier"
+  paletteRole: string
+  trailKind?: string
+  auraKind?: string
+  radiusScale?: number
+  glowIntensity?: number
+  motionSmear?: number
+  accessibilityVariant: string
+  description?: string
+}
+
+export type HazardContentVisualPreset = {
+  presetId: VisualPresetId
+  category: "hazard"
+  rendererKind: "magneticDisaster"
+  paletteRole: string
+  glowIntensity?: number
+  motionProfile?: string
+  accessibilityVariant: string
+}
+
+export type ContentVisualPreset =
+  | EnemyContentVisualPreset
+  | ProjectileContentVisualPreset
+  | HazardContentVisualPreset
+
+export type ContentHitboxPreset = {
+  presetId: HitboxPresetId
+  category: "player" | "enemy" | "projectile" | "hazard"
+  shape: "circle" | "ellipse" | "rect" | "polygon"
+  radius?: number
+  radiusX?: number
+  radiusY?: number
+  width?: number
+  height?: number
+  points?: Vector2[]
+}
+
+export type BackgroundPreset = {
+  presetId: VisualPresetId
+  theme: "centralTower" | "broadcastFacility" | "voidField"
+  residualWarmth: number
+  structureDensity: number
+  dustDensity: number
+  scanlineIntensity: number
+  vignetteStrength: number
 }
 
 export type EquipmentUnlockSource =
@@ -612,6 +724,9 @@ export type TransmissionProgressRow = {
   bestRunRestorationRate: number
   archiveRestorationRate: number
   heardRanges: TimeRange[]
+  transcriptSpans: TranscriptSpan[]
+  signalConfidence?: number
+  signalDiscoveredAt?: string
   metadataUnlocked: MetadataUnlocked
   latestRunId?: number
 }
@@ -627,6 +742,7 @@ export type MissionRunRow = {
   analysisRate: number
   restorationRate: number
   heardRanges: TimeRange[]
+  transcriptSpans: TranscriptSpan[]
   damageRanges: TimeRange[]
   destroyedAnalysisValue: number
   score: number
@@ -738,6 +854,7 @@ export type MissionResult = {
   analysisRate: number
   restorationRate: number
   heardRanges: TimeRange[]
+  transcriptSpans: TranscriptSpan[]
   damageRanges: TimeRange[]
   destroyedAnalysisValue: number
   score: number

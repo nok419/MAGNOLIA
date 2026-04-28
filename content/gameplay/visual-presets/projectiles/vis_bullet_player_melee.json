@@ -1,0 +1,12 @@
+{
+  "presetId": "vis_bullet_player_melee",
+  "category": "projectile",
+  "rendererKind": "lance",
+  "paletteRole": "playerSignal",
+  "trailKind": "arcSignal",
+  "auraKind": "clear",
+  "radiusScale": 1.4,
+  "glowIntensity": 0.62,
+  "motionSmear": 0.2,
+  "accessibilityVariant": "solidCore"
+}

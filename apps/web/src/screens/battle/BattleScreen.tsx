@@ -1,33 +1,49 @@
 import type { ContentBundle, ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
+import type { ReactNode } from "react"
 import { readEquipmentSlotLabel } from "@/app/display-helpers"
 import type { DisplayOptions } from "@/app/display-options"
+import type {
+  BattlePresentationRequest,
+  TimedPresentationRequest,
+} from "@/app/presentation/presentation-state"
 import { BattleCanvas } from "@/components/BattleCanvas"
 import { ActionButton } from "@/components/ActionButton"
 
 type BattleScreenProps = {
   content: ContentBundle
   renderState: BattleRenderState
+  battleEvents: TimedPresentationRequest<BattlePresentationRequest>[]
   shipVariant: ShipVariant
   displayOptions: DisplayOptions
   onReturnToExplore: () => void
 }
 
-export function BattleScreen({ content, renderState, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
+export function BattleScreen({ content, renderState, battleEvents, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
   const progress = renderState.missionDurationMs > 0
     ? Math.max(0, Math.min(1, renderState.elapsedMs / renderState.missionDurationMs))
     : 0
   const progressPercent = Math.round(progress * 100)
   const remainingSeconds = Math.ceil(Math.max(0, renderState.missionDurationMs - renderState.elapsedMs) / 1000)
+  // 暫定: BattleResultViewModel が reward name / slot label / transcript preview を持つまで、
+  // 報酬表示だけ content を参照します。ViewModel 実装後は BattleScreen から ContentBundle を外します。
   const grantedEquipment = (renderState.pendingResult?.grantedEquipmentIds ?? []).flatMap((equipmentId) => {
     const equipment = content.equipment[equipmentId]
     return equipment ? [equipment] : []
   })
+  const resultTranscriptPreview = selectResultTranscriptPreview(renderState.resultTranscriptPreview)
+  const subtitleEventTone = readSubtitleEventTone(battleEvents, renderState.elapsedMs)
+  const resultRestored = hasActiveBattleEvent(battleEvents, renderState.elapsedMs, "battle.fragment.recovered")
 
   return (
     <main className="battle-screen">
       <div className="battle-screen__playfield">
-        <BattleCanvas renderState={renderState} shipVariant={shipVariant} displayOptions={displayOptions} />
+        <BattleCanvas
+          renderState={renderState}
+          battleEvents={battleEvents}
+          shipVariant={shipVariant}
+          displayOptions={displayOptions}
+        />
       </div>
 
       <div className="battle-screen__sidebar">
@@ -56,7 +72,7 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
         </section>
 
         {renderState.activeSubtitle ? (
-          <div className="battle-subtitle-panel">
+          <div className={`battle-subtitle-panel ${subtitleEventTone ? `battle-subtitle-panel--${subtitleEventTone}` : ""}`}>
             {renderState.activeSubtitle.speakerLabel ? (
               <p className="battle-subtitle-panel__speaker">
                 {renderState.activeSubtitle.speakerLabel}
@@ -66,12 +82,21 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
               className={`battle-subtitle-panel__text ${
                 renderState.activeSubtitle.audible ? "" : "subtitle-muted"
               }`}
+              aria-label={
+                renderState.activeSubtitle.audible
+                  ? renderState.activeSubtitle.text
+                  : "通信ノイズにより字幕が欠損しています。"
+              }
             >
-              {renderState.activeSubtitle.text}
+              {renderSubtitleText({
+                subtitle: renderState.activeSubtitle,
+                elapsedMs: renderState.elapsedMs,
+                reduceFlashing: displayOptions.reduceFlashing,
+              })}
             </p>
           </div>
         ) : (
-          <div className="battle-subtitle-panel">
+          <div className={`battle-subtitle-panel ${subtitleEventTone ? `battle-subtitle-panel--${subtitleEventTone}` : ""}`}>
             <p className="battle-subtitle-panel__speaker">standby</p>
             <p className="battle-subtitle-panel__text muted-text">
               waiting for signal...
@@ -83,7 +108,7 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
           <div className="battle-help-panel">
             <p>move — wasd</p>
             <p>main — left click</p>
-            <p>sub — right click</p>
+            <p>sub — click 2</p>
             <p>focus — shift</p>
             <ActionButton tone="ghost" onClick={onReturnToExplore}>
               return to explore
@@ -97,6 +122,18 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
           <div className="battle-result-overlay__backdrop" />
           <section className="battle-result-overlay__panel">
             <p className="battle-result-overlay__eyebrow">mission complete</p>
+            {resultTranscriptPreview.length > 0 ? (
+              <div
+                className={`battle-result-transcript ${resultRestored ? "battle-result-transcript--restored" : ""}`}
+                aria-label="restored transcript preview"
+              >
+                {resultTranscriptPreview.map((chunk) => (
+                  <p key={chunk.chunkId} className={chunk.audible ? "" : "battle-result-transcript__damaged"}>
+                    {chunk.text}
+                  </p>
+                ))}
+              </div>
+            ) : null}
             <div className="battle-result-overlay__stats">
               <ResultMetric
                 label="解析率"
@@ -148,6 +185,130 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
       ) : null}
     </main>
   )
+}
+
+function readSubtitleEventTone(
+  events: TimedPresentationRequest<BattlePresentationRequest>[],
+  elapsedMs: number,
+): "hit" | "noise" | "clear" | "recovered" | null {
+  const active = events
+    .filter((event) => event.expiresAtMs > elapsedMs)
+    .sort((a, b) => b.startedAtMs - a.startedAtMs)[0]
+  switch (active?.cueId) {
+    case "battle.player.hit":
+      return "hit"
+    case "battle.noise.peak":
+      return "noise"
+    case "battle.noise.clear":
+    case "battle.noiseSource.clear":
+      return "clear"
+    case "battle.fragment.recovered":
+      return "recovered"
+    default:
+      return null
+  }
+}
+
+function hasActiveBattleEvent(
+  events: TimedPresentationRequest<BattlePresentationRequest>[],
+  elapsedMs: number,
+  cueId: BattlePresentationRequest["cueId"],
+): boolean {
+  return events.some((event) => event.cueId === cueId && event.expiresAtMs > elapsedMs)
+}
+
+function selectResultTranscriptPreview(
+  chunks: BattleRenderState["resultTranscriptPreview"],
+) {
+  const restored = (chunks ?? []).filter((chunk) => chunk.restorationRatio > 0)
+  return (restored.length > 0 ? restored : chunks ?? []).slice(0, 4)
+}
+
+function renderSubtitleText(input: {
+  subtitle: BattleRenderState["activeSubtitle"]
+  elapsedMs: number
+  reduceFlashing: boolean
+}): ReactNode {
+  const subtitle = input.subtitle
+  if (!subtitle) {
+    return null
+  }
+  if (subtitle.audible) {
+    return subtitle.text
+  }
+
+  const severity = readSubtitleCorruptionSeverity(subtitle.noiseLevel, subtitle.hearingThreshold)
+  const frame = input.reduceFlashing ? 0 : Math.floor(input.elapsedMs / 140)
+  const glyphs = splitGraphemes(subtitle.text)
+  const seed = `${subtitle.transmissionId}:${subtitle.chunkId}:${frame}`
+
+  return glyphs.map((glyph, index) => {
+    if (/\s/u.test(glyph)) {
+      return glyph
+    }
+    const roll = seededUnit(`${seed}:${index}`)
+    const threshold = 0.12 + severity * 0.74
+    if (roll > threshold) {
+      return glyph
+    }
+
+    const hardMask = input.reduceFlashing || roll < severity * 0.5
+    const replacement = hardMask
+      ? "█"
+      : roll < severity * 0.74
+        ? "░"
+        : GLITCH_GLYPHS[Math.floor(seededUnit(`${seed}:g:${index}`) * GLITCH_GLYPHS.length)] ?? "…"
+
+    return (
+      <span
+        key={`${index}:${glyph}`}
+        className={hardMask ? "subtitle-corrupt subtitle-corrupt--mask" : "subtitle-corrupt"}
+        aria-hidden="true"
+      >
+        {replacement}
+      </span>
+    )
+  })
+}
+
+const GLITCH_GLYPHS = ["…", "▧", "░", "ノ", "ヰ", "�"]
+
+function readSubtitleCorruptionSeverity(noiseLevel: number, hearingThreshold: number): number {
+  const overThreshold = noiseLevel / Math.max(0.01, hearingThreshold) - 1
+  return Math.max(0.32, Math.min(1, 0.36 + overThreshold * 0.72))
+}
+
+function splitGraphemes(text: string): string[] {
+  const segmenter = readIntlSegmenter()
+  if (!segmenter) {
+    return Array.from(text)
+  }
+  return Array.from(segmenter.segment(text), (entry) => entry.segment)
+}
+
+function readIntlSegmenter(): { segment(text: string): Iterable<{ segment: string }> } | null {
+  const maybeIntl = Intl as typeof Intl & {
+    Segmenter?: new (locale: string, options: { granularity: "grapheme" }) => {
+      segment(text: string): Iterable<{ segment: string }>
+    }
+  }
+  return maybeIntl.Segmenter
+    ? new maybeIntl.Segmenter("ja", { granularity: "grapheme" })
+    : null
+}
+
+function seededUnit(seed: string): number {
+  const hash = hashString(seed)
+  return (hash % 10000) / 10000
+}
+
+function hashString(input: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
 }
 
 function formatMissionTime(totalSeconds: number) {

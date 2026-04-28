@@ -1,0 +1,12 @@
+{
+  "presetId": "vis_bullet_enemy_geo",
+  "category": "projectile",
+  "rendererKind": "shard",
+  "paletteRole": "enemyNoise",
+  "trailKind": "brokenSignal",
+  "auraKind": "soft",
+  "radiusScale": 0.95,
+  "glowIntensity": 0.4,
+  "motionSmear": 0.3,
+  "accessibilityVariant": "solidCore"
+}

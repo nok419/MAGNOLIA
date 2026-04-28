@@ -16,6 +16,7 @@
   "waves": [
     {
       "atMs": 2200,
+      "intentTag": "broken-public-broadcast-repeat",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 101 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 102 }
@@ -23,6 +24,7 @@
     },
     {
       "atMs": 3600,
+      "intentTag": "broken-public-broadcast-repeat",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 103 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 104 }
@@ -30,6 +32,7 @@
     },
     {
       "atMs": 8000,
+      "intentTag": "broken-public-broadcast-dropout",
       "entries": [
         {
           "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 110,
@@ -43,12 +46,14 @@
     },
     {
       "atMs": 11000,
+      "intentTag": "broken-public-broadcast-dropout",
       "entries": [
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_center", "seed": 113 }
       ]
     },
     {
       "atMs": 14000,
+      "intentTag": "broken-public-broadcast-repeat",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 120 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 121 },
@@ -57,6 +62,7 @@
     },
     {
       "atMs": 15200,
+      "intentTag": "broken-public-broadcast-repeat",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 123 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 124 }
@@ -64,6 +70,7 @@
     },
     {
       "atMs": 21000,
+      "intentTag": "shelter-route-fragment",
       "entries": [
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_left", "seed": 130 },
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_right", "seed": 131 }
@@ -71,6 +78,7 @@
     },
     {
       "atMs": 24800,
+      "intentTag": "shelter-route-fragment",
       "entries": [
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_left", "seed": 132, "overrides": { "pauseAtY": 70 } },
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_right", "seed": 133, "overrides": { "pauseAtY": 70 } }
@@ -78,18 +86,21 @@
     },
     {
       "atMs": 25000,
+      "intentTag": "shelter-route-fragment",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 140 }
       ]
     },
     {
       "atMs": 26200,
+      "intentTag": "shelter-route-fragment",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 142 }
       ]
     },
     {
       "atMs": 30000,
+      "intentTag": "broadcast-collapse",
       "entries": [
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_left", "seed": 150 },
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 151 },
@@ -98,12 +109,14 @@
     },
     {
       "atMs": 33000,
+      "intentTag": "broadcast-collapse",
       "entries": [
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_center", "seed": 153 }
       ]
     },
     {
       "atMs": 38000,
+      "intentTag": "fragment-recovery-window",
       "entries": [
         {
           "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 160,
@@ -117,6 +130,7 @@
     },
     {
       "atMs": 40000,
+      "intentTag": "fragment-recovery-window",
       "entries": [
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_left", "seed": 162, "overrides": { "pauseAtY": 60 } },
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_right", "seed": 164, "overrides": { "pauseAtY": 60 } }
@@ -124,6 +138,7 @@
     },
     {
       "atMs": 46000,
+      "intentTag": "fragment-recovery-window",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 170 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 171 }
@@ -131,6 +146,7 @@
     },
     {
       "atMs": 50000,
+      "intentTag": "fragment-recovery-window",
       "entries": [
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 180 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 181 },

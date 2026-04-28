@@ -1,0 +1,12 @@
+{
+  "presetId": "vis_bullet_enemy_core",
+  "category": "projectile",
+  "rendererKind": "pulse",
+  "paletteRole": "enemyPrototype",
+  "trailKind": "shortSignal",
+  "auraKind": "dense",
+  "radiusScale": 1.15,
+  "glowIntensity": 0.55,
+  "motionSmear": 0.18,
+  "accessibilityVariant": "solidCore"
+}

@@ -51,3 +51,4 @@ Before opening a PR, check:
 - The implementation is simpler than the alternative designs.
 - Duplicated logic is intentional or extracted for a stable reason.
 - Tests were added or updated when behavior changed.
+- doccument #2 is latest version and accurate.

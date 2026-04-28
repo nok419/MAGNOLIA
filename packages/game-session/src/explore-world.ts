@@ -15,7 +15,7 @@ import type {
   Vector2,
   WorldMapLogic,
 } from "@magnolia/contracts"
-import { isTransmissionIncomplete } from "./progression"
+import { isTransmissionIncomplete, isTransmissionSignalIdentified } from "./progression"
 import type { Rect } from "./runtime-types"
 
 const WORLD_CELL_SIZE = 20
@@ -354,7 +354,7 @@ export function computeNearestTransmissionStrength(input: {
     .filter((node) => input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId))
     // 下段の強度計は「まだ発見していない通信」だけに反応させます。
     // 既に接続履歴がある通信は、未クリアでも波形側だけで距離反応を残します。
-    .filter((node) => !input.transmissionProgress[node.transmissionId])
+    .filter((node) => !isTransmissionSignalIdentified(input.transmissionProgress[node.transmissionId]))
   if (candidates.length === 0) {
     return 0
   }
