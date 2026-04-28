@@ -10,13 +10,13 @@ import type {
 export const REBOOT_SEQUENCE_CUE_ID = "system.reboot.sequence"
 export const REBOOT_SETTLE_CUE_ID = "system.reboot.settle"
 export const RELEASE_SEQUENCE_CUE_ID = "tutorial.restriction.release"
-export const REBOOT_SETTLE_BLACKOUT_RATIO = 0.36
+export const REBOOT_SETTLE_BLACKOUT_RATIO = 0.42
 
 const DEFAULT_OVERLAY_DURATION_MS = 1200
-const DEFAULT_REBOOT_DURATION_MS = 4800
+const DEFAULT_REBOOT_DURATION_MS = 5200
 // reboot 本編終了直後の "一息" 区間。前半は「真っ暗 + 自機のみ」を保ち、
 // 後半で HUD と視界フォグ/円/スキャンを立ち上げる。
-const DEFAULT_REBOOT_SETTLE_DURATION_MS = 1600
+const DEFAULT_REBOOT_SETTLE_DURATION_MS = 2200
 const DEFAULT_RELEASE_DURATION_MS = 1200
 
 export type OverlayPresentationRequest =

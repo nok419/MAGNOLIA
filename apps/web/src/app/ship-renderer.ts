@@ -12,9 +12,8 @@
  *     読み込まれる。マイグレーションは不要。
  *   - バリアントはビジュアル層のみを切り替える。当たり判定・機体サイズ・
  *     角度等のゲーム挙動には一切影響を与えない。
- *   - solid / art は描画上「別機体に見える」ことを意図した構成になっている。
- *     solid は 3 ピース (本体 + 両翼 + コア点)、art は多段花弁翼 + 槍状スパイン
- *     + 尾翼フィンレット + ヘキサグラムコアで構成される。
+ *   - solid / art は見た目の責務を分ける。solid は三角形を基調にした高速機体、
+ *     art は多層の面と内部導線を持つ別設計の機体として描画する。
  *   - 将来バリアントを追加する際は contracts の `ShipVariant` と
  *     本モジュールの `drawShip*` 関数群を同時に拡張すること。
  *     片方のみの追加は既存セーブの描画で未定義挙動を招く。
@@ -96,7 +95,7 @@ export type ShipDrawParams = {
   /**
    * art バリアントの装飾強度 (0..1)。
    * 戦闘時の視認性を優先したい場合に 0.5〜0.7 に絞る運用を想定。
-   * 低い値のとき内側の花弁や細部が省略され、外側シルエットだけが残る。省略時 1。
+   * 低い値のとき内部導線や細部が省略され、外側シルエットだけが残る。省略時 1。
    */
   artDetailStrength?: number
 }
@@ -193,10 +192,10 @@ export function drawShip(ctx: CanvasRenderingContext2D, params: ShipDrawParams):
 
 /* ============================================================
    SOLID VARIANT
-   初期からある 3 ピース機体。視認性を最優先する設計。
+   三角形を基調にした高速機体。小さい表示でも前進方向が読める設計。
    ============================================================ */
 
-/** solid: 両翼 + 本体の 3 ピースシルエット。 */
+/** solid: 主三角、左右デルタ翼、後端フィンで構成したシルエット。 */
 function drawShipSolidHull(
   ctx: CanvasRenderingContext2D,
   m: HullMetrics,
@@ -204,56 +203,100 @@ function drawShipSolidHull(
 ): void {
   const r = opts.reveal
 
-  // ── 左翼 ──
-  ctx.beginPath()
-  ctx.moveTo(-m.bodyW / 2 - m.wingGap, m.baseY)
-  ctx.lineTo((-m.bodyW / 2 - m.wingGap - m.wingW) * r, m.baseY * r)
-  ctx.lineTo((-m.bodyW / 2 - m.wingGap - m.wingW * 0.3) * r, (m.baseY - m.wingH) * r)
-  ctx.closePath()
-  if (opts.fill) {
-    ctx.fillStyle = opts.fill
-    ctx.fill()
-  }
-  ctx.stroke()
-
-  // ── 右翼 ──
-  ctx.beginPath()
-  ctx.moveTo(m.bodyW / 2 + m.wingGap, m.baseY)
-  ctx.lineTo((m.bodyW / 2 + m.wingGap + m.wingW) * r, m.baseY * r)
-  ctx.lineTo((m.bodyW / 2 + m.wingGap + m.wingW * 0.3) * r, (m.baseY - m.wingH) * r)
-  ctx.closePath()
-  if (opts.fill) {
-    ctx.fillStyle = opts.fill
-    ctx.fill()
-  }
-  ctx.stroke()
-
-  // ── 本体 (頂点 + 両底角 + 中央ノッチ) ──
-  // 塗りだけは revealFill を使い、輪郭より少し遅れて埋める演出に対応する。
-  ctx.beginPath()
-  ctx.moveTo(0, m.tipY)
-  ctx.lineTo(-m.bodyW / 2 * r, m.baseY * r)
-  ctx.lineTo(0, m.bodyNotchY * r)
-  ctx.lineTo(m.bodyW / 2 * r, m.baseY * r)
-  ctx.closePath()
+  traceSolidDeltaHull(ctx, m, r)
   ctx.stroke()
 
   if (opts.fill && opts.revealFill > 0.001) {
     const rf = opts.revealFill
     ctx.save()
     ctx.fillStyle = opts.fill
-    ctx.beginPath()
-    ctx.moveTo(0, m.tipY)
-    ctx.lineTo(-m.bodyW / 2 * rf, m.baseY * rf)
-    ctx.lineTo(0, m.bodyNotchY * rf)
-    ctx.lineTo(m.bodyW / 2 * rf, m.baseY * rf)
-    ctx.closePath()
+    traceSolidDeltaHull(ctx, m, rf)
     ctx.fill()
     ctx.restore()
   }
+
+  for (const side of [-1, 1] as const) {
+    traceSolidDeltaWing(ctx, m, side, r)
+    if (opts.fill) {
+      ctx.fillStyle = opts.fill
+      ctx.fill()
+    }
+    ctx.stroke()
+  }
+
+  for (const side of [-1, 1] as const) {
+    traceSolidRearFin(ctx, m, side, r)
+    if (opts.fill) {
+      ctx.fillStyle = opts.fill
+      ctx.fill()
+    }
+    ctx.stroke()
+  }
+
+  // 主三角の稜線と翼の折り目だけを足し、三角形ベースの形状を読みやすくします。
+  ctx.save()
+  ctx.globalAlpha = 0.72 * r
+  ctx.lineWidth = Math.max(0.45, ctx.lineWidth * 0.58)
+  ctx.beginPath()
+  ctx.moveTo(0, m.tipY + m.bodyH * 0.1)
+  ctx.lineTo(0, m.baseY * 0.5 * r)
+  ctx.moveTo(-m.bodyW * 0.18 * r, -m.bodyH * 0.02 * r)
+  ctx.lineTo(-m.bodyW * 0.56 * r, (m.baseY - m.wingH * 0.1) * r)
+  ctx.moveTo(m.bodyW * 0.18 * r, -m.bodyH * 0.02 * r)
+  ctx.lineTo(m.bodyW * 0.56 * r, (m.baseY - m.wingH * 0.1) * r)
+  ctx.stroke()
+  ctx.restore()
 }
 
-/** solid: 中心コアの丸い発光点。 */
+function traceSolidDeltaHull(
+  ctx: CanvasRenderingContext2D,
+  m: HullMetrics,
+  reveal: number,
+): void {
+  ctx.beginPath()
+  ctx.moveTo(0, m.tipY)
+  ctx.lineTo(-m.bodyW * 0.48 * reveal, m.baseY * 0.58 * reveal)
+  ctx.lineTo(-m.bodyW * 0.16 * reveal, m.baseY * reveal)
+  ctx.lineTo(0, m.bodyNotchY * reveal)
+  ctx.lineTo(m.bodyW * 0.16 * reveal, m.baseY * reveal)
+  ctx.lineTo(m.bodyW * 0.48 * reveal, m.baseY * 0.58 * reveal)
+  ctx.closePath()
+}
+
+function traceSolidDeltaWing(
+  ctx: CanvasRenderingContext2D,
+  m: HullMetrics,
+  side: -1 | 1,
+  reveal: number,
+): void {
+  const rootX = side * m.bodyW * 0.22
+  const rootY = m.baseY * 0.42
+  const outerX = side * (m.bodyW * 0.5 + m.wingGap + m.wingW * 1.08)
+  const outerY = m.baseY * 0.46
+  const innerX = side * m.bodyW * 0.36
+  const innerY = -m.bodyH * 0.2
+
+  ctx.beginPath()
+  ctx.moveTo(rootX, rootY)
+  ctx.lineTo(outerX * reveal, outerY * reveal)
+  ctx.lineTo(innerX * reveal, innerY * reveal)
+  ctx.closePath()
+}
+
+function traceSolidRearFin(
+  ctx: CanvasRenderingContext2D,
+  m: HullMetrics,
+  side: -1 | 1,
+  reveal: number,
+): void {
+  ctx.beginPath()
+  ctx.moveTo(side * m.bodyW * 0.1, m.baseY * 0.82)
+  ctx.lineTo(side * m.bodyW * 0.26 * reveal, m.baseY * 1.1 * reveal)
+  ctx.lineTo(side * m.bodyW * 0.02 * reveal, m.baseY * 0.98 * reveal)
+  ctx.closePath()
+}
+
+/** solid: 中心コアの菱形発光点。 */
 function drawShipSolidCore(
   ctx: CanvasRenderingContext2D,
   m: HullMetrics,
@@ -261,6 +304,7 @@ function drawShipSolidCore(
 ): void {
   const pulse = clamp01(core.pulse ?? 1)
   const radius = core.radius ?? 2
+  const coreY = -m.bodyH * 0.12
   ctx.save()
   if (core.glowColor) {
     ctx.shadowColor = core.glowColor
@@ -270,21 +314,41 @@ function drawShipSolidCore(
   }
   ctx.fillStyle = core.color
   ctx.globalAlpha = 0.7 + 0.3 * pulse
+  traceSolidCoreKite(ctx, 0, coreY, radius * 0.86, radius * 1.22)
+  ctx.fill()
+  ctx.globalAlpha = 0.42 + 0.2 * pulse
+  ctx.shadowBlur = 0
+  traceSolidCoreKite(ctx, 0, coreY, radius * 1.58, radius * 2.05)
+  ctx.stroke()
+  ctx.globalAlpha = 0.78 + 0.22 * pulse
   ctx.beginPath()
-  ctx.arc(0, -m.bodyH * 0.1, radius, 0, TAU)
+  ctx.arc(0, coreY, radius * 0.32, 0, TAU)
   ctx.fill()
   ctx.restore()
 }
 
+function traceSolidCoreKite(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  halfWidth: number,
+  halfHeight: number,
+): void {
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - halfHeight)
+  ctx.lineTo(cx + halfWidth, cy)
+  ctx.lineTo(cx, cy + halfHeight)
+  ctx.lineTo(cx - halfWidth, cy)
+  ctx.closePath()
+}
+
 /* ============================================================
-   ART VARIANT — "blooming magnolia frame"
-   solid とは構成が根本から異なる。3 段の花弁状翼 + 槍状スパイン
-   + 尾翼フィンレット + ヘキサグラムコアで構成される。
-   silhouette の外縁 (外花弁の最外頂点) は solid と一致するため、
-   当たり判定ボックスは共有できる。
+   ART VARIANT
+   solid 用のパネル関数を使わず、多層面と内部導線で別設計として描く。
+   当たり判定ボックスは共有できるが、見た目の部品は共有しない。
    ============================================================ */
 
-/** art: 機体本体 (翼 3 段 + スパイン + 尾翼 + アペックスマーカー)。 */
+/** art: 機体本体 (主翼 + 副翼 + スパイン + 内部導線)。 */
 function drawShipArtBody(
   ctx: CanvasRenderingContext2D,
   m: HullMetrics,
@@ -304,87 +368,60 @@ function drawShipArtBody(
   ctx.lineCap = "round"
   ctx.lineJoin = "round"
 
-  // ── 外花弁 (pair) ──
-  //   silhouette の外縁を担う。solid の翼頂点と同じ外側端を持ち、
-  //   根本は本体寄りに配置することで「磁極から展開する花弁」の印象にする。
-  drawArtPetalOuter(ctx, m, opts.fill)
-
-  // ── 中花弁 (pair) ──
-  //   外花弁より一段内側、かつ角度をずらして重ねる。花の二重花弁感を作る。
-  drawArtPetalMiddle(ctx, m, opts.fill, s)
-
-  // ── 内花弁 (pair) ──
-  //   アクセント。strength が低い (戦闘時) ときは省略し、可読性を保つ。
-  if (s > 0.4) {
-    ctx.save()
-    ctx.lineWidth = Math.max(0.6, lw * 0.6)
-    ctx.globalAlpha = 0.75 * s
-    drawArtPetalInner(ctx, m)
-    ctx.restore()
-  }
-
-  // ── 槍状スパイン ──
-  //   solid の本体三角より 1/3 ほど細身のスレンダー菱形。
-  //   通信ユニットらしい「送信針」の印象を狙う。
+  drawArtPrimaryWingPanels(ctx, m, opts.fill)
+  drawArtSecondaryWingPanels(ctx, m, opts.fill, s)
   drawArtSpine(ctx, m, opts.fill)
 
-  // ── スパイン内ジュエル (上部に小菱形) ──
   if (s > 0.3) {
     ctx.save()
     ctx.lineWidth = Math.max(0.5, lw * 0.5)
-    ctx.globalAlpha = 0.65 * s
-    drawArtSpineJewel(ctx, m)
+    ctx.globalAlpha = 0.7 * s
+    drawArtInternalRails(ctx, m, opts.timeMs)
     ctx.restore()
   }
 
-  // ── 尾翼フィンレット (pair, 底部の逆三角) ──
-  //   crown 状に下方に広がる。solid にはない「下方アクセント」で
-  //   重心感を付ける。
   if (s > 0.3) {
     ctx.save()
-    ctx.lineWidth = Math.max(0.6, lw * 0.75)
-    ctx.globalAlpha = 0.8 * s
-    drawArtTailFinlets(ctx, m, opts.fill, s)
+    ctx.lineWidth = Math.max(0.55, lw * 0.66)
+    ctx.globalAlpha = 0.72 * s
+    drawArtTailStabilizers(ctx, m, opts.fill, s)
     ctx.restore()
   }
 
-  // ── アペックスマーカー (頂点の小三角) ──
-  //   頂点を「点」として視覚的に締める。strength が高いときのみ。
   if (s > 0.4) {
     ctx.save()
     ctx.shadowBlur = 0
-    ctx.fillStyle = opts.stroke
-    ctx.globalAlpha = 0.9 * s
-    const aSize = Math.max(1.2, m.bodyW * 0.095)
-    ctx.beginPath()
-    ctx.moveTo(0, m.tipY - aSize * 0.45)
-    ctx.lineTo(-aSize * 0.42, m.tipY + aSize * 0.48)
-    ctx.lineTo(aSize * 0.42, m.tipY + aSize * 0.48)
-    ctx.closePath()
-    ctx.fill()
+    ctx.strokeStyle = opts.stroke
+    ctx.lineWidth = Math.max(0.55, lw * 0.5)
+    ctx.globalAlpha = 0.68 * s
+    drawArtTipAntenna(ctx, m)
     ctx.restore()
   }
 
   ctx.restore()
 }
 
-/** 外花弁ペア: silhouette の外縁を定義する。 */
-function drawArtPetalOuter(
+/** 主翼パネル: art 専用の多角形翼。三角翼とは別の面構成にする。 */
+function drawArtPrimaryWingPanels(
   ctx: CanvasRenderingContext2D,
   m: HullMetrics,
   fill?: string,
 ): void {
   for (const sx of [-1, 1] as const) {
-    const rootX = sx * m.bodyW * 0.18
-    const rootY = m.baseY * 0.78
-    const outerX = sx * (m.bodyW / 2 + m.wingGap + m.wingW)
-    const outerY = m.baseY
-    const upperX = sx * (m.bodyW / 2 + m.wingGap + m.wingW * 0.3)
-    const upperY = m.baseY - m.wingH
+    const rootX = sx * m.bodyW * 0.12
+    const rootY = m.baseY * 0.74
+    const outerX = sx * (m.bodyW * 0.5 + m.wingGap + m.wingW * 0.9)
+    const outerY = m.baseY * 0.72
+    const shoulderX = sx * (m.bodyW * 0.5 + m.wingGap + m.wingW * 0.24)
+    const shoulderY = m.baseY - m.wingH * 0.86
+    const innerX = sx * m.bodyW * 0.2
+    const innerY = -m.bodyH * 0.18
+
     ctx.beginPath()
     ctx.moveTo(rootX, rootY)
     ctx.lineTo(outerX, outerY)
-    ctx.lineTo(upperX, upperY)
+    ctx.lineTo(shoulderX, shoulderY)
+    ctx.lineTo(innerX, innerY)
     ctx.closePath()
     if (fill) {
       ctx.fillStyle = fill
@@ -394,20 +431,20 @@ function drawArtPetalOuter(
   }
 }
 
-/** 中花弁ペア: 外花弁内側、角度をずらして重ねる二重花弁。 */
-function drawArtPetalMiddle(
+/** 副翼パネル: 主翼の内側に置く薄い面。 */
+function drawArtSecondaryWingPanels(
   ctx: CanvasRenderingContext2D,
   m: HullMetrics,
   fill: string | undefined,
   strength: number,
 ): void {
   for (const sx of [-1, 1] as const) {
-    const rootX = sx * m.bodyW * 0.11
-    const rootY = m.baseY * 0.48
-    const outerX = sx * (m.bodyW / 2 + m.wingGap + m.wingW * 0.56)
-    const outerY = m.baseY * 0.2
-    const innerX = sx * m.bodyW * 0.3
-    const innerY = -m.bodyH * 0.16
+    const rootX = sx * m.bodyW * 0.14
+    const rootY = m.baseY * 0.42
+    const outerX = sx * (m.bodyW / 2 + m.wingGap + m.wingW * 0.58)
+    const outerY = m.baseY * 0.12
+    const innerX = sx * m.bodyW * 0.28
+    const innerY = -m.bodyH * 0.22
     ctx.beginPath()
     ctx.moveTo(rootX, rootY)
     ctx.lineTo(outerX, outerY)
@@ -416,7 +453,7 @@ function drawArtPetalMiddle(
     if (fill) {
       ctx.save()
       ctx.fillStyle = fill
-      // 中花弁は薄めに重ねる。strength が低いときはさらに抑える。
+      // 副翼は薄めに重ねる。strength が低いときはさらに抑える。
       ctx.globalAlpha = 0.55 + 0.25 * strength
       ctx.fill()
       ctx.restore()
@@ -427,37 +464,23 @@ function drawArtPetalMiddle(
   }
 }
 
-/** 内花弁ペア: アクセント用の細身三角。outline のみ。 */
-function drawArtPetalInner(ctx: CanvasRenderingContext2D, m: HullMetrics): void {
-  for (const sx of [-1, 1] as const) {
-    const rootX = sx * m.bodyW * 0.06
-    const rootY = m.baseY * 0.22
-    const innerX = sx * m.bodyW * 0.22
-    const innerY = -m.bodyH * 0.3
-    const closeX = sx * m.bodyW * 0.04
-    const closeY = -m.bodyH * 0.05
-    ctx.beginPath()
-    ctx.moveTo(rootX, rootY)
-    ctx.lineTo(innerX, innerY)
-    ctx.lineTo(closeX, closeY)
-    ctx.closePath()
-    ctx.stroke()
-  }
-}
-
-/** 槍状スパイン: tip → 腰 → notch のスレンダー菱形。 */
+/** 中央スパイン: tip から後端まで通る細い菱形。 */
 function drawArtSpine(
   ctx: CanvasRenderingContext2D,
   m: HullMetrics,
   fill?: string,
 ): void {
-  const spineHalf = m.bodyW * 0.17
-  const waistY = m.baseY * 0.35
+  const spineHalf = m.bodyW * 0.2
+  const shoulderHalf = m.bodyW * 0.34
+  const shoulderY = -m.bodyH * 0.06
+  const waistY = m.baseY * 0.5
   ctx.beginPath()
   ctx.moveTo(0, m.tipY)
+  ctx.lineTo(-shoulderHalf, shoulderY)
   ctx.lineTo(-spineHalf, waistY)
   ctx.lineTo(0, m.bodyNotchY)
   ctx.lineTo(spineHalf, waistY)
+  ctx.lineTo(shoulderHalf, shoulderY)
   ctx.closePath()
   if (fill) {
     ctx.fillStyle = fill
@@ -466,33 +489,44 @@ function drawArtSpine(
   ctx.stroke()
 }
 
-/** スパイン上部の小菱形ジュエル。 */
-function drawArtSpineJewel(ctx: CanvasRenderingContext2D, m: HullMetrics): void {
-  const jewelTop = -m.bodyH * 0.42
-  const jewelBot = -m.bodyH * 0.2
-  const jewelMidY = (jewelTop + jewelBot) / 2
-  const jewelHalfW = m.bodyW * 0.09
+/** 内部導線: 副翼とスパインをつなぐ細い線。 */
+function drawArtInternalRails(
+  ctx: CanvasRenderingContext2D,
+  m: HullMetrics,
+  timeMs: number,
+): void {
+  const pulse = 0.72 + Math.sin(timeMs * 0.0032) * 0.18
+  ctx.globalAlpha *= pulse
+
+  traceArtFacetDiamond(ctx, 0, -m.bodyH * 0.32, m.bodyW * 0.09, m.bodyH * 0.105)
+  ctx.stroke()
+
   ctx.beginPath()
-  ctx.moveTo(0, jewelTop)
-  ctx.lineTo(-jewelHalfW, jewelMidY)
-  ctx.lineTo(0, jewelBot)
-  ctx.lineTo(jewelHalfW, jewelMidY)
-  ctx.closePath()
+  ctx.moveTo(0, m.tipY + m.bodyH * 0.16)
+  ctx.lineTo(0, m.bodyNotchY)
+  ctx.moveTo(-m.bodyW * 0.08, -m.bodyH * 0.08)
+  ctx.lineTo(-m.bodyW * 0.28, -m.bodyH * 0.24)
+  ctx.moveTo(m.bodyW * 0.08, -m.bodyH * 0.08)
+  ctx.lineTo(m.bodyW * 0.28, -m.bodyH * 0.24)
+  ctx.moveTo(-m.bodyW * 0.14, m.baseY * 0.38)
+  ctx.lineTo(-m.bodyW * 0.38, m.baseY * 0.1)
+  ctx.moveTo(m.bodyW * 0.14, m.baseY * 0.38)
+  ctx.lineTo(m.bodyW * 0.38, m.baseY * 0.1)
   ctx.stroke()
 }
 
-/** 尾翼フィンレット (pair): 底部の逆三角対。 */
-function drawArtTailFinlets(
+/** 後端スタビライザー: 機体の重心を後方に置く小さな面。 */
+function drawArtTailStabilizers(
   ctx: CanvasRenderingContext2D,
   m: HullMetrics,
   fill: string | undefined,
   strength: number,
 ): void {
   for (const sx of [-1, 1] as const) {
-    const x0 = sx * m.bodyW * 0.13
-    const x1 = sx * m.bodyW * 0.3
-    const tipX = sx * m.bodyW * 0.22
-    const tipY = m.baseY + m.bodyH * 0.14
+    const x0 = sx * m.bodyW * 0.1
+    const x1 = sx * m.bodyW * 0.27
+    const tipX = sx * m.bodyW * 0.2
+    const tipY = m.baseY + m.bodyH * 0.1
     ctx.beginPath()
     ctx.moveTo(x0, m.baseY)
     ctx.lineTo(x1, m.baseY)
@@ -509,10 +543,18 @@ function drawArtTailFinlets(
   }
 }
 
+function drawArtTipAntenna(ctx: CanvasRenderingContext2D, m: HullMetrics): void {
+  ctx.beginPath()
+  ctx.moveTo(0, m.tipY - m.bodyH * 0.06)
+  ctx.lineTo(0, m.tipY + m.bodyH * 0.1)
+  ctx.moveTo(-m.bodyW * 0.09, m.tipY + m.bodyH * 0.02)
+  ctx.lineTo(m.bodyW * 0.09, m.tipY + m.bodyH * 0.02)
+  ctx.stroke()
+}
+
 /**
- * art: ヘキサグラムコア。
- * 2 枚の正三角形 (上向き + 下向き) を重ねた 6 芒星を、ゆっくり回転させる。
- * solid の単純な丸ドットに対し、花の開き / 結晶の成長を想起させる。
+ * art: ファセットコア。
+ * art 専用の菱形面を基準に、薄い外枠と回転する内部線を重ねる。
  */
 function drawShipArtCore(
   ctx: CanvasRenderingContext2D,
@@ -521,10 +563,9 @@ function drawShipArtCore(
   timeMs: number,
 ): void {
   const pulse = clamp01(core.pulse ?? 1)
-  // 結晶っぽさを出すためベースを solid より少し大きめに。
-  const baseR = (core.radius ?? 2) * 1.35
+  const baseR = (core.radius ?? 2) * 1.45
   const cx = 0
-  const cy = -m.bodyH * 0.1
+  const cy = -m.bodyH * 0.12
   const spin = timeMs * 0.00055
 
   ctx.save()
@@ -541,16 +582,20 @@ function drawShipArtCore(
   ctx.fillStyle = core.color
   ctx.globalAlpha = (0.7 + 0.3 * pulse) * 0.95
 
-  // 上向き三角
-  traceEquilateral(ctx, baseR, 0)
+  traceArtFacetDiamond(ctx, 0, 0, baseR * 0.72, baseR * 1.05)
   ctx.fill()
 
-  // 下向き三角 (逆位相)
-  traceEquilateral(ctx, baseR, Math.PI)
-  ctx.fill()
+  ctx.globalAlpha = (0.35 + 0.18 * pulse) * 0.95
+  ctx.shadowBlur = 0
+  traceArtFacetDiamond(ctx, 0, 0, baseR * 1.36, baseR * 1.78)
+  ctx.stroke()
 
-  // 中央の小さな輝点 (コアの奥行き演出)
-  ctx.globalAlpha = (0.9 + 0.1 * pulse) * 0.95
+  ctx.rotate(-spin * 1.8)
+  ctx.globalAlpha = (0.42 + 0.22 * pulse) * 0.95
+  traceArtFacetDiamond(ctx, 0, 0, baseR * 0.42, baseR * 1.52)
+  ctx.stroke()
+
+  ctx.globalAlpha = (0.86 + 0.14 * pulse) * 0.95
   ctx.beginPath()
   ctx.arc(0, 0, baseR * 0.26, 0, TAU)
   ctx.fill()
@@ -558,23 +603,18 @@ function drawShipArtCore(
   ctx.restore()
 }
 
-/**
- * 原点中心の正三角形パスを作成する (ctx.closePath 済み)。
- * rotation=0 で 上頂点が上。
- */
-function traceEquilateral(
+function traceArtFacetDiamond(
   ctx: CanvasRenderingContext2D,
-  radius: number,
-  rotation: number,
+  cx: number,
+  cy: number,
+  halfWidth: number,
+  halfHeight: number,
 ): void {
   ctx.beginPath()
-  for (let i = 0; i < 3; i++) {
-    const angle = rotation + (i / 3) * TAU - Math.PI / 2
-    const x = Math.cos(angle) * radius
-    const y = Math.sin(angle) * radius
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  }
+  ctx.moveTo(cx, cy - halfHeight)
+  ctx.lineTo(cx + halfWidth, cy)
+  ctx.lineTo(cx, cy + halfHeight)
+  ctx.lineTo(cx - halfWidth, cy)
   ctx.closePath()
 }
 

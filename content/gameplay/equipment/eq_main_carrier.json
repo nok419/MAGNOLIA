@@ -3,8 +3,8 @@
   "slot": "main",
   "name": "キャリア",
   "iconId": "icon_eq_main_carrier",
-  "summary": "前方を貫くレーザーと遅延爆発で削る主兵装。",
-  "description": "レーザー。軌跡上に遅延爆発が順番に発生する。近接攻撃は持たない。",
+  "summary": "前方へ走る信号柱と、軌道上の周期爆発で削る主兵装。",
+  "description": "信号柱を一本だけ射出する。弾体は画面上端まで直進し、軌道上に一定間隔で爆発範囲を配置する。近接攻撃は持たない。",
   "flavorText": "",
   "active": {
     "cooldownMs": 300,
@@ -30,25 +30,31 @@
       "effectOverrides": {
         "damage": 15,
         "cadenceMs": 360,
-        "explosionRadius": 30
+        "lifetimeMs": 1800,
+        "explosionRadius": 30,
+        "trailExplosionIntervalMs": 190
       }
     },
     {
       "level": 2,
       "selfRepairPointCost": 120,
       "effectOverrides": {
-        "damage": 20,
+        "damage": 18,
         "cadenceMs": 330,
-        "explosionRadius": 40
+        "lifetimeMs": 1850,
+        "explosionRadius": 40,
+        "trailExplosionIntervalMs": 170
       }
     },
     {
       "level": 3,
       "selfRepairPointCost": 200,
       "effectOverrides": {
-        "damage": 25,
+        "damage": 21,
         "cadenceMs": 300,
-        "explosionRadius": 50
+        "lifetimeMs": 1900,
+        "explosionRadius": 50,
+        "trailExplosionIntervalMs": 150
       }
     }
   ]

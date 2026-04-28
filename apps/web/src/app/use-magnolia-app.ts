@@ -17,6 +17,7 @@ import type {
   SaveSlotId,
   SettingsRow,
   TransmissionId,
+  WorldMapNodeId,
 } from "@magnolia/contracts"
 import {
   MagnoliaGameSession,
@@ -72,6 +73,7 @@ type CommandTarget =
   | "saveCurrentSlot"
 
 const FRAME_INTERVAL_MS = 1000 / 60
+const LOW_FRAME_INTERVAL_MS = 1000 / 30
 const ZERO_VECTOR = { x: 0, y: 0 }
 const OVERLAY_CHANNEL = "overlay"
 const ITEM_POPUP_DURATION_MS = 2200
@@ -262,10 +264,19 @@ export function useMagnoliaApp() {
         return
       }
 
+      const settings = session.getSettings()
+      const targetFrameIntervalMs = settings.lowFrameRateMode
+        ? LOW_FRAME_INTERVAL_MS
+        : FRAME_INTERVAL_MS
+      if (
+        lastFrameAtRef.current !== null &&
+        now - lastFrameAtRef.current < targetFrameIntervalMs
+      ) {
+        return
+      }
       const previousFrameAt = lastFrameAtRef.current ?? now
       lastFrameAtRef.current = now
       const dtMs = Math.max(8, Math.min(34, now - previousFrameAt || FRAME_INTERVAL_MS))
-      const settings = session.getSettings()
       const explorePresentation = readExplorePresentationState(
         appState.activeOverlayPresentation,
         appState.content,
@@ -332,7 +343,7 @@ export function useMagnoliaApp() {
             : input.isDashPressed(settings),
           interactPressed: inputsLocked
             ? false
-            : input.isInteractPressed(settings),
+            : input.isInteractPressed(settings) || input.isPrimaryMouseJustPressed(),
         })
         syncFromSession(session, result.presentationRequests, result.events)
         return
@@ -382,9 +393,12 @@ export function useMagnoliaApp() {
   const seenEquipmentSet = new Set(state.seenEquipmentIds)
   const unseenEquipmentIds = ownedEquipmentIds.filter((id) => !seenEquipmentSet.has(id))
   // mission 01 をクリア済みでまだ未確認装備がある間だけ、探索画面で E キー誘導を出す。
+  // MAGNOLIA OS を装備済みの場合は誘導済みとみなして非表示にする。
+  const hasMagnoliaOs = state.profile?.profile.equipped.os === "eq_os_magnolia"
   const shouldShowEquipmentHint =
     (state.profile?.profile.clearedMissionIds.includes(MISSION_GOOD_MORNING_ID) ?? false) &&
-    unseenEquipmentIds.length > 0
+    unseenEquipmentIds.length > 0 &&
+    !hasMagnoliaOs
 
   return {
     ready: state.ready,
@@ -640,6 +654,13 @@ export function useMagnoliaApp() {
       })
       syncFromSession(session)
     },
+    async interactExploreNode(nodeId: WorldMapNodeId) {
+      const session = sessionRef.current
+      if (!session) return
+      const interactionEvents = buildExploreNodeInteractionEvents(nodeId, stateRef.current)
+      await session.dispatch({ type: "interactExploreNode", nodeId })
+      syncFromSession(session, [], interactionEvents)
+    },
     async setShipVariant(nextValue: SettingsRow["shipVariant"]) {
       const session = sessionRef.current
       if (!session) {
@@ -892,6 +913,31 @@ function buildCollectiblePopups(
   })
 
   return { popups, equipmentModalNodeId }
+}
+
+function buildExploreNodeInteractionEvents(
+  nodeId: WorldMapNodeId,
+  state: MagnoliaAppState,
+): DomainEvent[] {
+  const collectible = state.exploreRenderState?.visibleCollectibles.find(
+    (node) => node.nodeId === nodeId,
+  )
+  if (!collectible || state.profile?.profile.collectedNodeIds.includes(nodeId)) {
+    return []
+  }
+
+  const contentNode = state.content ? findCollectibleNode(state.content, nodeId) : null
+  if (!contentNode) {
+    return []
+  }
+
+  return [
+    {
+      type: "collectibleCollected",
+      nodeId,
+      collectibleKind: contentNode.collectibleKind,
+    },
+  ]
 }
 
 function findCollectibleNode(

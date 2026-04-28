@@ -8,6 +8,7 @@ import {
   REBOOT_SETTLE_BLACKOUT_RATIO,
   type ExplorePresentationState,
 } from "@/app/explore-presentation"
+import type { DisplayOptions } from "@/app/display-options"
 import {
   drawCollectibleMarker,
   drawTransmissionMarker,
@@ -21,23 +22,39 @@ type ExploreCanvasProps = {
   presentation: ExplorePresentationState
   /** 自機見た目バリアント。詳細は `apps/web/src/app/ship-renderer.ts` を参照。 */
   shipVariant: ShipVariant
+  onOverlayFrame?: (frame: ExploreOverlayFrame) => void
+  displayOptions: DisplayOptions
+}
+
+export type ExploreOverlayFrame = {
+  viewport: Rect
+  width: number
+  height: number
+  padding: number
+  playerPoint: { x: number; y: number }
+  visionPx: number
 }
 
 const PHI = 1.618033988749895
 const PHI_INV = 1 / PHI
 const TAU = Math.PI * 2
 const DEFAULT_VIEWPORT_HEIGHT = DEFAULT_EXPLORE_VIEWPORT_HEIGHT
-const REBOOT_GATHER_START = 0.14
+const REBOOT_CORE_START = 0.03
+const REBOOT_GATHER_START = 0.08
 const REBOOT_GATHER_DURATION = 0.28
-const REBOOT_CONSTRUCT_START = 0.24
-const REBOOT_CONSTRUCT_DURATION = 0.54
-const REBOOT_IGNITION_START = 0.84
-const REBOOT_IGNITION_DURATION = 0.06
-const REBOOT_REVEAL_START = 0.94
+const REBOOT_CONSTRUCT_START = 0.18
+const REBOOT_CONSTRUCT_DURATION = 0.58
+const REBOOT_IGNITION_START = 0.76
+const REBOOT_IGNITION_DURATION = 0.1
+const REBOOT_REVEAL_START = 0.88
 
 /* ---- persistent trail state ---- */
 let prevPlayerX = 0
 let prevPlayerY = 0
+let trailInitialized = false
+let smoothTrailX = 0
+let smoothTrailY = 0
+let lastMoteEmissionMs = 0
 
 type CameraState = { x: number; y: number }
 type RebootSequenceState = {
@@ -61,6 +78,8 @@ export function ExploreCanvas({
   renderState,
   presentation,
   shipVariant,
+  onOverlayFrame,
+  displayOptions,
 }: ExploreCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
@@ -106,7 +125,7 @@ export function ExploreCanvas({
 
     const W = sizeRef.current.w || window.innerWidth
     const H = sizeRef.current.h || window.innerHeight
-    const dpr = window.devicePixelRatio || 1
+    const dpr = displayOptions.canvasPixelRatio
     canvas.width = W * dpr
     canvas.height = H * dpr
     canvas.style.width = `${W}px`
@@ -174,6 +193,16 @@ export function ExploreCanvas({
     const visionPx = (renderState.visionRadius / Math.max(1, viewport.width)) * (W - PADDING * 2)
     const angle = Math.atan2(renderState.playerFacing.y, renderState.playerFacing.x) + Math.PI / 2
 
+    // DOM 側の誘導表示は、canvas と同じ座標変換結果を使うことで自機やアイコンへ正確に追従します。
+    onOverlayFrame?.({
+      viewport,
+      width: W,
+      height: H,
+      padding: PADDING,
+      playerPoint: pp,
+      visionPx,
+    })
+
     if (rebootSequence) {
       drawRebootBackdrop(ctx, W, H, now, pp, rebootSequence.progress)
       drawRebootSequence(ctx, {
@@ -188,6 +217,7 @@ export function ExploreCanvas({
       })
     } else if (rebootSettlePhase) {
       drawRebootBlackoutBackdrop(ctx, W, H, now, pp)
+      drawRebootSettleBridge(ctx, pp, now, rebootSettle?.progress ?? 0)
       ctx.save()
       ctx.globalAlpha = rebootSettlePhase.bridgeShipAlpha
       drawExplorePlayer(ctx, pp.x, pp.y, angle, now, shipVariant)
@@ -251,6 +281,8 @@ export function ExploreCanvas({
     snapshot,
     presentation,
     shipVariant,
+    onOverlayFrame,
+    displayOptions,
     animTick,
   ])
 
@@ -444,13 +476,14 @@ function drawVisionFog(
   if (intensity <= 0.001) {
     return
   }
+  const visibleRadius = Math.max(0.5, radius)
   ctx.save()
   // punch out see-through area with compositing
   ctx.fillStyle = `rgba(0, 0, 0, ${(0.42 * intensity).toFixed(3)})`
   ctx.fillRect(0, 0, W, H)
 
   ctx.globalCompositeOperation = "destination-out"
-  const fogGrad = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, radius)
+  const fogGrad = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, visibleRadius)
   fogGrad.addColorStop(0, "rgba(0,0,0,1)")
   fogGrad.addColorStop(0.72, "rgba(0,0,0,0.95)")
   fogGrad.addColorStop(1, "rgba(0,0,0,0)")
@@ -458,19 +491,35 @@ function drawVisionFog(
   ctx.fillRect(0, 0, W, H)
   ctx.globalCompositeOperation = "source-over"
 
-  // 視界円は常時見せ、現在どこまで直接視認できるかを淡く示す。
-  const pulse = 0.2 + 0.1 * Math.sin(now * 0.0018)
-  ctx.strokeStyle = `rgba(93, 164, 209, ${(pulse * intensity).toFixed(3)})`
-  ctx.lineWidth = 1.5
+  // 視界円は強い輪郭ではなく、センサーの薄い波として見せる。
+  const pulse = 0.18 + 0.08 * Math.sin(now * 0.0018)
+  ctx.strokeStyle = `rgba(150, 220, 255, ${(pulse * intensity).toFixed(3)})`
+  ctx.lineWidth = 1.25
   ctx.beginPath()
-  ctx.arc(center.x, center.y, radius, 0, TAU)
+  ctx.arc(center.x, center.y, visibleRadius, 0, TAU)
   ctx.stroke()
 
-  // secondary faint ring
-  ctx.strokeStyle = `rgba(93, 164, 209, ${(pulse * 0.3 * intensity).toFixed(3)})`
-  ctx.lineWidth = 1
+  const halo = ctx.createRadialGradient(
+    center.x,
+    center.y,
+    visibleRadius * 0.86,
+    center.x,
+    center.y,
+    visibleRadius * 1.18,
+  )
+  halo.addColorStop(0, "rgba(93, 164, 209, 0)")
+  halo.addColorStop(0.5, `rgba(150, 220, 255, ${(0.035 * intensity).toFixed(3)})`)
+  halo.addColorStop(1, "rgba(93, 164, 209, 0)")
+  ctx.fillStyle = halo
   ctx.beginPath()
-  ctx.arc(center.x, center.y, radius * 1.05, 0, TAU)
+  ctx.arc(center.x, center.y, visibleRadius * 1.18, 0, TAU)
+  ctx.fill()
+
+  // secondary faint ring
+  ctx.strokeStyle = `rgba(93, 164, 209, ${(pulse * 0.22 * intensity).toFixed(3)})`
+  ctx.lineWidth = 0.8
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, visibleRadius * 1.05, 0, TAU)
   ctx.stroke()
 
   ctx.restore()
@@ -487,15 +536,16 @@ function drawVisionScannerOverlay(
   if (intensity <= 0.001) {
     return
   }
+  const visibleRadius = Math.max(0.5, radius)
   ctx.save()
   ctx.globalAlpha = intensity
   ctx.beginPath()
-  ctx.arc(center.x, center.y, radius * 0.98, 0, TAU)
+  ctx.arc(center.x, center.y, visibleRadius * 0.98, 0, TAU)
   ctx.clip()
 
   // 走査演出は HUD の上塗りとして最後に描き、背景やオブジェクトに埋もれないようにします。
-  drawVisionSweep(ctx, center, radius, now, restricted)
-  drawVisionRipples(ctx, center, radius, now, restricted)
+  drawVisionSweep(ctx, center, visibleRadius, now, restricted)
+  drawVisionRipples(ctx, center, visibleRadius, now, restricted)
   ctx.restore()
 }
 
@@ -758,8 +808,8 @@ function readRebootViewportHeight(baseViewportHeight: number, progress: number):
   //   見せるため 96 (約 3.3x 相対ズーム) に変更している。
   const ZOOM_IN_HEIGHT = 96
   const zoomInStart = REBOOT_GATHER_START
-  const zoomInEnd = 0.36
-  const zoomOutStart = 0.95
+  const zoomInEnd = 0.34
+  const zoomOutStart = REBOOT_REVEAL_START
 
   if (progress < zoomInStart) {
     return baseViewportHeight
@@ -792,7 +842,7 @@ function readRebootSettlePhase(progress: number) {
     }
   }
 
-  const revealProgress = easeOutCubic(
+  const revealProgress = easeInOutSine(
     (progress - REBOOT_SETTLE_BLACKOUT_RATIO) /
       Math.max(0.001, 1 - REBOOT_SETTLE_BLACKOUT_RATIO),
   )
@@ -982,12 +1032,13 @@ function drawExploreScene(
 
 /**
  * リブート演出のタイムライン:
- *   0.00 - 0.14  silent prep        (何も描画しない、暗転のみ)
- *   0.14 - 0.42  gather phase       drawRebootField   (空間から素材が集まる)
- *   0.24 - 0.84  construct phase    drawRebootConstruction (機体が組み上がる)
- *   0.84 - 0.90  ignition pulse     online shockwave
- *   0.90 - 0.94  final hold         完成した機体を暗い画面内で見せる
- *   0.94 - 1.00  reveal phase       通常探索への受け渡し直前にだけ視界を開く
+ *   0.00 - 0.03  silent prep        (何もなかった空間)
+ *   0.03 - 0.16  core seed          中央に起動核だけが発生する
+ *   0.08 - 0.36  gather phase       周辺から粒子とリングが収束する
+ *   0.18 - 0.76  construct phase    機体の線、面、コアが段階的に復元される
+ *   0.76 - 0.86  ignition pulse     機体が点火して安定化する
+ *   0.86 - 0.88  final hold         完成した機体を暗い画面内で見せる
+ *   0.88 - 1.00  reveal phase       通常探索への受け渡し直前に視界を開く
  *
  * フェーズ境界で短い "phase transition pulse" を挿入することで、
  * 「システムが段階的に立ち上がる」テンポを明示する。
@@ -1025,23 +1076,28 @@ function drawRebootSequence(
     0,
     1,
   )
+  const coreProgress = clampScalar((input.progress - REBOOT_CORE_START) / 0.13, 0, 1)
 
   // 背景のアンビエント深化: reboot 中は画面全体にごく淡い青のラジアルグロー
   drawRebootAmbient(ctx, input.width, input.height, input.playerPoint, input.progress)
+  drawRebootCoreSeed(ctx, input.playerPoint, input.timeMs, coreProgress)
 
-  // フェーズ境界のパルス (14% / 24%)
-  drawRebootPhasePulse(ctx, input.playerPoint, input.progress, 0.14, 0.06, 38, 0.5)
-  drawRebootPhasePulse(ctx, input.playerPoint, input.progress, 0.24, 0.07, 62, 0.7)
+  // フェーズ境界のパルス。開始、構築、点火、探索受け渡しの節目を短く光らせます。
+  drawRebootPhasePulse(ctx, input.playerPoint, input.progress, REBOOT_GATHER_START, 0.06, 34, 0.46)
+  drawRebootPhasePulse(ctx, input.playerPoint, input.progress, REBOOT_CONSTRUCT_START, 0.07, 66, 0.68)
+  drawRebootPhasePulse(ctx, input.playerPoint, input.progress, REBOOT_IGNITION_START, 0.08, 120, 0.74)
+  drawRebootPhasePulse(ctx, input.playerPoint, input.progress, REBOOT_REVEAL_START, 0.08, 180, 0.46)
 
   if (gatherProgress > 0.001) {
+    drawRebootAssemblyAperture(ctx, input.playerPoint, input.timeMs, gatherProgress, constructProgress)
     drawRebootField(ctx, input.playerPoint, input.timeMs, gatherProgress)
   }
 
   if (constructProgress > 0.001) {
-    // サイズの「settle (着地)」: cinematic な K=2.6 から探索時の K=1.0 まで
+    // サイズの「settle (着地)」: 演出用の K=2.6 から探索時の K=1.0 まで
     // ignition 開始 (0.84) → reveal 開始 (0.94) の 10% 窓で滑らかに縮めます。
     // reveal に入る瞬間には構築 wireframe が drawExplorePlayer (scale=0.7) と
-    // 同サイズで重なっているため、その後の crossfade が「サイズ段差なし」で繋がります。
+    // 同サイズで重なっているため、その後の重ね合わせでサイズ段差なしに繋がります。
     const settleProgress = clampScalar(
       (input.progress - REBOOT_IGNITION_START) /
         Math.max(0.001, REBOOT_REVEAL_START - REBOOT_IGNITION_START),
@@ -1065,6 +1121,7 @@ function drawRebootSequence(
         timeMs: input.timeMs,
         progress: constructProgress,
         scale: constructScale,
+        shipVariant: input.shipVariant,
       })
       ctx.restore()
     }
@@ -1087,7 +1144,7 @@ function drawRebootSequence(
 
   if (revealProgress > 0.001) {
     // 構築 wireframe は reveal 開始時点で既に K=1.0 (探索と同サイズ) に settle 済み。
-    // ここから素直に crossfade in するだけで「機体がそのままの形で安定する」印象になります。
+    // ここから探索用の機体を重ねるだけで「機体がそのままの形で安定する」印象になります。
     ctx.save()
     ctx.globalAlpha = easeOutCubic(revealProgress)
     drawExplorePlayer(
@@ -1139,6 +1196,88 @@ function drawRebootBlackoutBackdrop(
   ctx.restore()
 }
 
+function drawRebootSettleBridge(
+  ctx: CanvasRenderingContext2D,
+  center: { x: number; y: number },
+  timeMs: number,
+  progress: number,
+) {
+  const early = 1 - easeOutCubic(clampScalar(progress / REBOOT_SETTLE_BLACKOUT_RATIO, 0, 1))
+  const reveal = easeOutCubic(
+    clampScalar(
+      (progress - REBOOT_SETTLE_BLACKOUT_RATIO) /
+        Math.max(0.001, 1 - REBOOT_SETTLE_BLACKOUT_RATIO),
+      0,
+      1,
+    ),
+  )
+  const bridgeAlpha = clampScalar(early * 0.8 + (1 - reveal) * 0.22, 0, 1)
+  if (bridgeAlpha <= 0.01) {
+    return
+  }
+
+  ctx.save()
+  ctx.globalAlpha = bridgeAlpha
+  ctx.strokeStyle = "rgba(150, 220, 255, 0.38)"
+  ctx.lineWidth = 1.1
+  ctx.shadowColor = "rgba(93, 164, 209, 0.42)"
+  ctx.shadowBlur = 16
+  const baseRadius = 22 + Math.sin(timeMs * 0.002) * 1.4
+  for (let ringIndex = 0; ringIndex < 3; ringIndex += 1) {
+    const radius = baseRadius + ringIndex * 16 + reveal * 52
+    const start = timeMs * 0.0007 * (ringIndex % 2 === 0 ? 1 : -1) + ringIndex * 0.7
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, radius, start, start + TAU * (0.34 + ringIndex * 0.08))
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, radius, start + Math.PI, start + Math.PI + TAU * 0.18)
+    ctx.stroke()
+  }
+
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = `rgba(214, 236, 255, ${(0.22 * bridgeAlpha).toFixed(3)})`
+  ctx.lineWidth = 0.8
+  ctx.beginPath()
+  ctx.moveTo(center.x - 44, center.y)
+  ctx.lineTo(center.x - 18, center.y)
+  ctx.moveTo(center.x + 18, center.y)
+  ctx.lineTo(center.x + 44, center.y)
+  ctx.moveTo(center.x, center.y - 44)
+  ctx.lineTo(center.x, center.y - 18)
+  ctx.moveTo(center.x, center.y + 18)
+  ctx.lineTo(center.x, center.y + 44)
+  ctx.stroke()
+
+  const activationProgress = clampScalar((progress - 0.78) / 0.18, 0, 1)
+  if (activationProgress > 0.001) {
+    const wave = easeOutCubic(activationProgress)
+    ctx.save()
+    ctx.globalAlpha = (1 - wave) * 0.62
+    ctx.strokeStyle = "rgba(190, 238, 255, 0.58)"
+    ctx.lineWidth = 1.4
+    ctx.shadowColor = "rgba(120, 210, 255, 0.62)"
+    ctx.shadowBlur = 20
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, 28 + wave * 260, 0, TAU)
+    ctx.stroke()
+    ctx.restore()
+
+    ctx.save()
+    ctx.globalAlpha = Math.sin(Math.PI * activationProgress) * 0.45
+    const shipGlow = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, 92)
+    shipGlow.addColorStop(0, "rgba(220, 248, 255, 0.32)")
+    shipGlow.addColorStop(0.35, "rgba(93, 164, 209, 0.12)")
+    shipGlow.addColorStop(1, "rgba(93, 164, 209, 0)")
+    ctx.fillStyle = shipGlow
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, 92, 0, TAU)
+    ctx.fill()
+    ctx.restore()
+  }
+
+  ctx.restore()
+}
+
 function drawRebootBackdrop(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1149,7 +1288,8 @@ function drawRebootBackdrop(
   opacity: number = 1,
 ) {
   const breathe = 0.5 + 0.5 * Math.sin(timeMs * 0.00024)
-  const radialAlpha = 0.12 + progress * 0.06 + breathe * 0.02
+  const awake = easeOutCubic(clampScalar((progress - REBOOT_CORE_START) / 0.18, 0, 1))
+  const radialAlpha = (0.1 + progress * 0.07 + breathe * 0.02) * awake
   if (opacity <= 0.001) {
     return
   }
@@ -1177,7 +1317,7 @@ function drawRebootBackdrop(
   ctx.fillRect(0, 0, width, height)
 
   ctx.save()
-  ctx.strokeStyle = `rgba(93, 164, 209, ${(0.03 + progress * 0.015).toFixed(3)})`
+  ctx.strokeStyle = `rgba(93, 164, 209, ${((0.024 + progress * 0.018) * awake).toFixed(3)})`
   ctx.lineWidth = 1
   const ringCount = 4
   for (let index = 0; index < ringCount; index += 1) {
@@ -1214,6 +1354,101 @@ function drawRebootAmbient(
   grad.addColorStop(1, "rgba(4, 10, 22, 0)")
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, width, height)
+  ctx.restore()
+}
+
+function drawRebootCoreSeed(
+  ctx: CanvasRenderingContext2D,
+  center: { x: number; y: number },
+  timeMs: number,
+  progress: number,
+) {
+  if (progress <= 0.001) {
+    return
+  }
+
+  const eased = easeOutCubic(progress)
+  const breath = 0.72 + Math.sin(timeMs * 0.006) * 0.18
+  const coreRadius = lerpScalar(1.8, 8.5, eased)
+
+  ctx.save()
+  ctx.globalCompositeOperation = "lighter"
+  const halo = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, 96)
+  halo.addColorStop(0, `rgba(232, 247, 255, ${(0.28 * eased * breath).toFixed(3)})`)
+  halo.addColorStop(0.34, `rgba(93, 164, 209, ${(0.18 * eased).toFixed(3)})`)
+  halo.addColorStop(1, "rgba(1, 2, 4, 0)")
+  ctx.fillStyle = halo
+  ctx.fillRect(center.x - 100, center.y - 100, 200, 200)
+
+  ctx.fillStyle = `rgba(238, 249, 255, ${(0.72 * eased).toFixed(3)})`
+  ctx.shadowColor = "rgba(150, 220, 255, 0.9)"
+  ctx.shadowBlur = 18
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, coreRadius, 0, TAU)
+  ctx.fill()
+
+  ctx.shadowBlur = 12
+  ctx.strokeStyle = `rgba(150, 220, 255, ${(0.36 * eased).toFixed(3)})`
+  ctx.lineWidth = 1
+  for (let ringIndex = 0; ringIndex < 2; ringIndex += 1) {
+    const radius = coreRadius + 14 + ringIndex * 13 + Math.sin(timeMs * 0.002 + ringIndex) * 1.2
+    const start = timeMs * 0.0011 * (ringIndex % 2 === 0 ? 1 : -1)
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, radius, start, start + TAU * (0.24 + ringIndex * 0.12))
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, radius, start + Math.PI, start + Math.PI + TAU * 0.16)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawRebootAssemblyAperture(
+  ctx: CanvasRenderingContext2D,
+  center: { x: number; y: number },
+  timeMs: number,
+  gatherProgress: number,
+  constructProgress: number,
+) {
+  const gather = easeOutCubic(gatherProgress)
+  const construct = easeOutCubic(constructProgress)
+  const alpha = clampScalar(gather * (1 - construct * 0.38), 0, 1)
+  if (alpha <= 0.01) {
+    return
+  }
+
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.globalCompositeOperation = "lighter"
+  ctx.strokeStyle = "rgba(120, 200, 255, 0.36)"
+  ctx.lineWidth = 1
+  ctx.shadowColor = "rgba(93, 164, 209, 0.42)"
+  ctx.shadowBlur = 12
+
+  for (let ringIndex = 0; ringIndex < 5; ringIndex += 1) {
+    const radius = lerpScalar(172 - ringIndex * 12, 42 + ringIndex * 8, gather)
+    const spin = timeMs * (0.00036 + ringIndex * 0.00008) * (ringIndex % 2 === 0 ? 1 : -1)
+    const arcLength = TAU * (0.12 + ringIndex * 0.025)
+    for (let segment = 0; segment < 3; segment += 1) {
+      const start = spin + segment * (TAU / 3) + ringIndex * 0.28
+      ctx.beginPath()
+      ctx.arc(center.x, center.y, radius, start, start + arcLength)
+      ctx.stroke()
+    }
+  }
+
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = `rgba(214, 236, 255, ${(0.18 * alpha).toFixed(3)})`
+  ctx.lineWidth = 0.8
+  for (let axis = 0; axis < 4; axis += 1) {
+    const angle = axis * (Math.PI / 2) + timeMs * 0.00018
+    const inner = lerpScalar(86, 22, gather)
+    const outer = lerpScalar(210, 56, gather)
+    ctx.beginPath()
+    ctx.moveTo(center.x + Math.cos(angle) * inner, center.y + Math.sin(angle) * inner)
+    ctx.lineTo(center.x + Math.cos(angle) * outer, center.y + Math.sin(angle) * outer)
+    ctx.stroke()
+  }
   ctx.restore()
 }
 
@@ -1488,33 +1723,65 @@ function drawRebootConstruction(
     timeMs: number
     progress: number
     scale: number
+    shipVariant: ShipVariant
   },
 ) {
   const shellAlpha = 0.2 + input.progress * 0.5
   const ringRadius = lerpScalar(42, 16, easeOutCubic(input.progress))
-  // 構築フェーズ全体の描画スケール。cinematic で見せる間は caller から K=2.6 が
+  // 構築フェーズ全体の描画スケール。演出で見せる間は caller から K=2.6 が
   // 渡され、ignition → reveal の settle 窓で K=1.0 (= drawExplorePlayer のサイズ) まで
   // 縮小されます。これにより reveal 時点で wireframe と本体 ship がぴったり重なり、
-  // crossfade に段差が出ない仕組みです。
+  // 重ね合わせに段差が出ない仕組みです。
   const K = input.scale
 
   // まず座標系を機体中心へ移し、全体を K 倍に拡大。以降の描画は中心相対 (0, 0) 基準。
   ctx.save()
   ctx.translate(input.center.x, input.center.y)
   ctx.scale(K, K)
+  drawRebootConstructionRings(ctx, input.timeMs, input.progress, K)
 
   // ── 1. wireframe + fill (回転は機体角度に沿わせる) ──
   ctx.save()
   ctx.rotate(input.angle)
+  drawRebootHullFragments(ctx, computeHullMetrics(0.72), input.timeMs, input.progress, K)
+
   ctx.strokeStyle = `rgba(214, 236, 255, ${shellAlpha.toFixed(3)})`
   ctx.lineWidth = 1.2 / K // ctx.scale で太線にならないよう逆補正
   ctx.shadowColor = "rgba(140, 210, 255, 0.85)"
   ctx.shadowBlur = 22 / K
   drawPlayerWireframe(ctx, input.progress)
+  drawRebootInternalCircuit(ctx, computeHullMetrics(0.72), input.progress, K)
 
   ctx.globalAlpha = 0.24 + input.progress * 0.24
   ctx.fillStyle = "rgba(180, 228, 255, 1)"
   drawPlayerHullFill(ctx, input.progress)
+
+  const resolvedProgress = clampScalar((input.progress - 0.58) / 0.42, 0, 1)
+  if (resolvedProgress > 0.001) {
+    ctx.save()
+    ctx.globalAlpha = 0.14 + resolvedProgress * 0.2
+    drawShip(ctx, {
+      variant: input.shipVariant,
+      center: { x: 0, y: 0 },
+      scale: 0.72,
+      stroke: "rgba(238, 249, 255, 0.9)",
+      fill: "rgba(190, 228, 255, 0.08)",
+      lineWidth: 0.9 / K,
+      glow: { color: "rgba(140, 210, 255, 0.8)", blur: 10 / K },
+      core: {
+        color: "rgba(226, 248, 255, 0.9)",
+        glowColor: "rgba(120, 210, 255, 0.95)",
+        glowBlur: 8 / K,
+        radius: 1.8 / K,
+        pulse: resolvedProgress,
+      },
+      reveal: resolvedProgress,
+      revealFill: clampScalar((resolvedProgress - 0.16) / 0.84, 0, 1),
+      timeMs: input.timeMs,
+      artDetailStrength: 0.85,
+    })
+    ctx.restore()
+  }
 
   // ── 2. 縦方向スキャンバー ──
   //   機体を「下→上」に走査する白い帯。進捗と sin 変動で周期的に位置が揺れる。
@@ -1575,44 +1842,226 @@ function drawRebootConstruction(
   ctx.restore()
 }
 
+function drawRebootConstructionRings(
+  ctx: CanvasRenderingContext2D,
+  timeMs: number,
+  progress: number,
+  scale: number,
+) {
+  const resolved = easeOutCubic(progress)
+  ctx.save()
+  ctx.globalCompositeOperation = "lighter"
+  ctx.lineCap = "round"
+  for (let ringIndex = 0; ringIndex < 4; ringIndex += 1) {
+    const radius = lerpScalar(58 - ringIndex * 5, 24 + ringIndex * 5, resolved)
+    const alpha = (0.22 - ringIndex * 0.035) * (0.5 + resolved * 0.5)
+    const spin = timeMs * (0.0009 + ringIndex * 0.00018) * (ringIndex % 2 === 0 ? 1 : -1)
+    ctx.strokeStyle = `rgba(140, 210, 255, ${alpha.toFixed(3)})`
+    ctx.lineWidth = (1.2 - ringIndex * 0.12) / scale
+    ctx.shadowColor = "rgba(93, 164, 209, 0.55)"
+    ctx.shadowBlur = 10 / scale
+    for (let segment = 0; segment < 2; segment += 1) {
+      const start = spin + segment * Math.PI + ringIndex * 0.36
+      ctx.beginPath()
+      ctx.arc(0, 0, radius, start, start + TAU * (0.22 + ringIndex * 0.035))
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
+}
+
+function drawRebootHullFragments(
+  ctx: CanvasRenderingContext2D,
+  hull: ReturnType<typeof computeHullMetrics>,
+  timeMs: number,
+  progress: number,
+  scale: number,
+) {
+  const targets = [
+    { x: 0, y: hull.tipY },
+    { x: -hull.bodyW * 0.5, y: hull.baseY },
+    { x: hull.bodyW * 0.5, y: hull.baseY },
+    { x: 0, y: hull.bodyNotchY },
+    { x: -hull.bodyW * 0.95, y: hull.baseY - hull.wingH * 0.45 },
+    { x: hull.bodyW * 0.95, y: hull.baseY - hull.wingH * 0.45 },
+  ]
+
+  ctx.save()
+  ctx.globalCompositeOperation = "lighter"
+  ctx.lineCap = "round"
+  for (let index = 0; index < 34; index += 1) {
+    const target = targets[index % targets.length]
+    const delay = (index % 9) * 0.035
+    const local = clampScalar((progress - delay) / 0.46, 0, 1)
+    if (local <= 0.001) {
+      continue
+    }
+    const eased = easeOutCubic(local)
+    const angle = seededUnit(index * 11 + 3) * TAU + timeMs * 0.00022
+    const distance = lerpScalar(62 + seededUnit(index * 17) * 42, 0, eased)
+    const jitterX = (seededUnit(index * 23) - 0.5) * hull.bodyW * 0.28
+    const jitterY = (seededUnit(index * 29) - 0.5) * hull.bodyH * 0.22
+    const x = target.x + jitterX * (1 - eased) + Math.cos(angle) * distance
+    const y = target.y + jitterY * (1 - eased) + Math.sin(angle) * distance
+    const alpha = Math.sin(local * Math.PI) * (0.18 + progress * 0.42)
+    if (alpha <= 0.01) {
+      continue
+    }
+
+    ctx.strokeStyle = `rgba(218, 242, 255, ${alpha.toFixed(3)})`
+    ctx.lineWidth = (0.7 + seededUnit(index * 31) * 0.7) / scale
+    ctx.shadowColor = "rgba(140, 210, 255, 0.75)"
+    ctx.shadowBlur = 7 / scale
+    const len = 2.4 + seededUnit(index * 37) * 4.8
+    ctx.beginPath()
+    ctx.moveTo(x - Math.cos(angle) * len, y - Math.sin(angle) * len)
+    ctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawRebootInternalCircuit(
+  ctx: CanvasRenderingContext2D,
+  hull: ReturnType<typeof computeHullMetrics>,
+  progress: number,
+  scale: number,
+) {
+  const circuitProgress = clampScalar((progress - 0.22) / 0.58, 0, 1)
+  if (circuitProgress <= 0.001) {
+    return
+  }
+
+  ctx.save()
+  ctx.globalAlpha = 0.22 + circuitProgress * 0.34
+  ctx.strokeStyle = "rgba(180, 230, 255, 0.72)"
+  ctx.lineWidth = 0.55 / scale
+  ctx.shadowColor = "rgba(93, 164, 209, 0.5)"
+  ctx.shadowBlur = 5 / scale
+  const revealY = lerpScalar(hull.baseY + 4, hull.tipY - 4, easeOutCubic(circuitProgress))
+
+  const paths = [
+    [
+      { x: 0, y: hull.baseY },
+      { x: 0, y: hull.bodyNotchY },
+      { x: 0, y: hull.tipY * 0.72 },
+    ],
+    [
+      { x: -hull.bodyW * 0.24, y: hull.baseY * 0.54 },
+      { x: -hull.bodyW * 0.1, y: hull.bodyNotchY },
+      { x: -hull.bodyW * 0.18, y: hull.tipY * 0.32 },
+    ],
+    [
+      { x: hull.bodyW * 0.24, y: hull.baseY * 0.54 },
+      { x: hull.bodyW * 0.1, y: hull.bodyNotchY },
+      { x: hull.bodyW * 0.18, y: hull.tipY * 0.32 },
+    ],
+  ]
+
+  for (const path of paths) {
+    ctx.beginPath()
+    let started = false
+    for (const point of path) {
+      if (point.y < revealY) {
+        continue
+      }
+      if (!started) {
+        ctx.moveTo(point.x, point.y)
+        started = true
+      } else {
+        ctx.lineTo(point.x, point.y)
+      }
+    }
+    if (started) {
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
+}
+
 function drawPlayerWireframe(ctx: CanvasRenderingContext2D, progress: number) {
   const m = computeHullMetrics(0.72)
   const reveal = easeOutCubic(progress)
 
-  ctx.beginPath()
-  ctx.moveTo(0, m.tipY)
-  ctx.lineTo(-m.bodyW / 2 * reveal, m.baseY * reveal)
-  ctx.lineTo(0, m.bodyNotchY * reveal)
-  ctx.lineTo(m.bodyW / 2 * reveal, m.baseY * reveal)
-  ctx.closePath()
+  traceRebootSolidBody(ctx, m, reveal)
   ctx.stroke()
 
-  ctx.beginPath()
-  ctx.moveTo(-m.bodyW / 2 - m.wingGap, m.baseY * reveal)
-  ctx.lineTo((-m.bodyW / 2 - m.wingGap - m.wingW) * reveal, m.baseY * reveal)
-  ctx.lineTo((-m.bodyW / 2 - m.wingGap - m.wingW * 0.3) * reveal, (m.baseY - m.wingH) * reveal)
-  ctx.closePath()
-  ctx.stroke()
+  for (const side of [-1, 1] as const) {
+    traceRebootSolidWing(ctx, m, side, reveal)
+    ctx.stroke()
+    traceRebootSolidRearFin(ctx, m, side, reveal)
+    ctx.stroke()
+  }
 
+  // 起動演出では、三角形ベースの完成形に近い稜線を先に見せます。
+  ctx.save()
+  ctx.globalAlpha *= 0.72 * reveal
+  ctx.lineWidth = Math.max(0.45, ctx.lineWidth * 0.58)
   ctx.beginPath()
-  ctx.moveTo(m.bodyW / 2 + m.wingGap, m.baseY * reveal)
-  ctx.lineTo((m.bodyW / 2 + m.wingGap + m.wingW) * reveal, m.baseY * reveal)
-  ctx.lineTo((m.bodyW / 2 + m.wingGap + m.wingW * 0.3) * reveal, (m.baseY - m.wingH) * reveal)
-  ctx.closePath()
+  ctx.moveTo(0, m.tipY + m.bodyH * 0.1)
+  ctx.lineTo(0, m.baseY * 0.5 * reveal)
+  ctx.moveTo(-m.bodyW * 0.18 * reveal, -m.bodyH * 0.02 * reveal)
+  ctx.lineTo(-m.bodyW * 0.56 * reveal, (m.baseY - m.wingH * 0.1) * reveal)
+  ctx.moveTo(m.bodyW * 0.18 * reveal, -m.bodyH * 0.02 * reveal)
+  ctx.lineTo(m.bodyW * 0.56 * reveal, (m.baseY - m.wingH * 0.1) * reveal)
   ctx.stroke()
+  ctx.restore()
 }
 
 function drawPlayerHullFill(ctx: CanvasRenderingContext2D, progress: number) {
   const m = computeHullMetrics(0.72)
   const reveal = easeOutCubic(Math.max(0, (progress - 0.16) / 0.84))
 
+  traceRebootSolidBody(ctx, m, reveal)
+  ctx.fill()
+}
+
+function traceRebootSolidWing(
+  ctx: CanvasRenderingContext2D,
+  m: ReturnType<typeof computeHullMetrics>,
+  side: -1 | 1,
+  reveal: number,
+) {
+  const rootX = side * m.bodyW * 0.22
+  const rootY = m.baseY * 0.42
+  const outerX = side * (m.bodyW * 0.5 + m.wingGap + m.wingW * 1.08)
+  const outerY = m.baseY * 0.46
+  const innerX = side * m.bodyW * 0.36
+  const innerY = -m.bodyH * 0.2
+
+  ctx.beginPath()
+  ctx.moveTo(rootX, rootY)
+  ctx.lineTo(outerX * reveal, outerY * reveal)
+  ctx.lineTo(innerX * reveal, innerY * reveal)
+  ctx.closePath()
+}
+
+function traceRebootSolidRearFin(
+  ctx: CanvasRenderingContext2D,
+  m: ReturnType<typeof computeHullMetrics>,
+  side: -1 | 1,
+  reveal: number,
+) {
+  ctx.beginPath()
+  ctx.moveTo(side * m.bodyW * 0.1, m.baseY * 0.82)
+  ctx.lineTo(side * m.bodyW * 0.26 * reveal, m.baseY * 1.1 * reveal)
+  ctx.lineTo(side * m.bodyW * 0.02 * reveal, m.baseY * 0.98 * reveal)
+  ctx.closePath()
+}
+
+function traceRebootSolidBody(
+  ctx: CanvasRenderingContext2D,
+  m: ReturnType<typeof computeHullMetrics>,
+  reveal: number,
+) {
   ctx.beginPath()
   ctx.moveTo(0, m.tipY)
-  ctx.lineTo(-m.bodyW / 2 * reveal, m.baseY * reveal)
+  ctx.lineTo(-m.bodyW * 0.48 * reveal, m.baseY * 0.58 * reveal)
+  ctx.lineTo(-m.bodyW * 0.16 * reveal, m.baseY * reveal)
   ctx.lineTo(0, m.bodyNotchY * reveal)
-  ctx.lineTo(m.bodyW / 2 * reveal, m.baseY * reveal)
+  ctx.lineTo(m.bodyW * 0.16 * reveal, m.baseY * reveal)
+  ctx.lineTo(m.bodyW * 0.48 * reveal, m.baseY * 0.58 * reveal)
   ctx.closePath()
-  ctx.fill()
 }
 
 function interpolateReleaseCameraTarget(
@@ -1732,6 +2181,11 @@ function clampScalar(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value))
 }
 
+function seededUnit(seed: number): number {
+  const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453
+  return value - Math.floor(value)
+}
+
 function easeInOutSine(value: number): number {
   const clamped = Math.max(0, Math.min(1, value))
   return -(Math.cos(Math.PI * clamped) - 1) / 2
@@ -1787,6 +2241,13 @@ const trailNodes: TrailNode[] = []
 // 伸びやかさ優先で最大寿命を延長。停止時の消散も長めにとって「儚く消える」印象に。
 const TRAIL_MAX_MS = 4200
 const TRAIL_DISSOLVE_MS = 800
+const TRAIL_SAMPLE_WORLD_STEP = 1.6
+const TRAIL_MAX_SAMPLES_PER_FRAME = 4
+const TRAIL_MAX_NODE_COUNT = 420
+const TRAIL_RESET_DISTANCE = 48
+const TRAIL_SMOOTHING = 0.42
+const TRAIL_ROUNDING_RATIO = 0.32
+const TRAIL_ROUNDING_PASSES = 2
 let trailStoppedAt = 0
 
 // 霧散パーティクル — 帯から接線垂直方向にドリフトする微光
@@ -1800,53 +2261,43 @@ const lightMotes: LightMote[] = []
 const MAX_MOTES = 28
 
 function updateTrail(wx: number, wy: number, now: number) {
+  if (!trailInitialized) {
+    // 初回描画では前フレームとの差分が存在しないため、過去の原点から線を引かない。
+    resetTrailState(wx, wy)
+    return
+  }
+
   const dx = wx - prevPlayerX
   const dy = wy - prevPlayerY
   const speed = Math.hypot(dx, dy)
   const isMoving = speed > 0.01
 
+  if (speed > TRAIL_RESET_DISTANCE) {
+    // ワープやタブ復帰直後の大きな座標差では、遠距離を結ぶ長い軌跡を作らない。
+    resetTrailState(wx, wy)
+    return
+  }
+
   if (isMoving) {
     trailStoppedAt = 0
 
-    // ── trail node 記録 (ワールド座標で最低 0.2 unit 間隔 → 滑らかな帯) ──
-    const lastNode = trailNodes[trailNodes.length - 1]
-    if (!lastNode || Math.hypot(wx - lastNode.wx, wy - lastNode.wy) > 0.2) {
-      trailNodes.push({ wx, wy, time: now })
+    // フレーム間の移動量が大きいと点列が折れるため、区間上を一定間隔で補間して記録する。
+    // ただし描画は node 数に比例して重くなるため、補間数は上限を持たせる。
+    const sampleCount = Math.min(
+      TRAIL_MAX_SAMPLES_PER_FRAME,
+      Math.max(1, Math.ceil(speed / TRAIL_SAMPLE_WORLD_STEP)),
+    )
+    for (let step = 1; step <= sampleCount; step += 1) {
+      const amount = step / sampleCount
+      const targetX = lerpScalar(prevPlayerX, wx, amount)
+      const targetY = lerpScalar(prevPlayerY, wy, amount)
+      smoothTrailX = lerpScalar(smoothTrailX, targetX, TRAIL_SMOOTHING)
+      smoothTrailY = lerpScalar(smoothTrailY, targetY, TRAIL_SMOOTHING)
+      const sampleTime = now - (sampleCount - step) * 16
+      pushTrailNode(smoothTrailX, smoothTrailY, sampleTime)
     }
 
-    // ── 霧散パーティクル: 帯の中腹〜末端から接線垂直方向に流れ出る ──
-    //    ランダム放射ではなく「帯からこぼれ落ちるブレス」感を狙う。
-    //    後方にも僅かにバイアスを与え、動く帯から置き去られる空気感を出す。
-    if (lightMotes.length < MAX_MOTES && trailNodes.length > 8 && Math.random() < 0.22) {
-      const pickRatio = 0.15 + Math.random() * 0.45
-      const rawIdx = Math.floor(trailNodes.length * pickRatio)
-      const pickIdx = Math.max(1, Math.min(trailNodes.length - 2, rawIdx))
-      const curNode = trailNodes[pickIdx]
-      const prev = trailNodes[pickIdx - 1]
-      const next = trailNodes[pickIdx + 1]
-      const tx = next.wx - prev.wx
-      const ty = next.wy - prev.wy
-      const tlen = Math.hypot(tx, ty) || 1
-      const ntx = tx / tlen
-      const nty = ty / tlen
-      // 接線に直交する単位ベクトル (90° 回転)
-      const perpX = -nty
-      const perpY = ntx
-      const side = Math.random() < 0.5 ? -1 : 1
-      const driftSpeed = 0.005 + Math.random() * 0.006
-      // 接線に対し後方 (-) 方向へ僅かにバイアス
-      const backBias = -0.3
-      lightMotes.push({
-        wx: curNode.wx + perpX * side * 0.15,
-        wy: curNode.wy + perpY * side * 0.15,
-        vx: perpX * side * driftSpeed + ntx * driftSpeed * backBias,
-        vy: perpY * side * driftSpeed + nty * driftSpeed * backBias,
-        born: now,
-        life: 380 + Math.random() * 340,
-        r: 0.35 + Math.random() * 0.5,
-        phase: Math.random() * TAU,
-      })
-    }
+    emitTrailMote(now)
   } else if (trailStoppedAt === 0 && trailNodes.length > 0) {
     trailStoppedAt = now
   }
@@ -1863,6 +2314,73 @@ function updateTrail(wx: number, wy: number, now: number) {
   if (trailStoppedAt > 0 && now - trailStoppedAt > TRAIL_DISSOLVE_MS) {
     trailNodes.length = 0
   }
+  trimTrailNodeBudget()
+}
+
+function pushTrailNode(wx: number, wy: number, time: number) {
+  const lastNode = trailNodes[trailNodes.length - 1]
+  if (!lastNode || Math.hypot(wx - lastNode.wx, wy - lastNode.wy) > 0.18) {
+    trailNodes.push({ wx, wy, time })
+  }
+}
+
+function resetTrailState(wx: number, wy: number) {
+  trailInitialized = true
+  prevPlayerX = wx
+  prevPlayerY = wy
+  smoothTrailX = wx
+  smoothTrailY = wy
+  trailStoppedAt = 0
+  trailNodes.length = 0
+  lightMotes.length = 0
+}
+
+function trimTrailNodeBudget() {
+  if (trailNodes.length <= TRAIL_MAX_NODE_COUNT) {
+    return
+  }
+
+  // 継続移動時の描画上限を固定し、古い尾だけを落として先端側の滑らかさを残す。
+  trailNodes.splice(0, trailNodes.length - TRAIL_MAX_NODE_COUNT)
+}
+
+function emitTrailMote(now: number) {
+  if (
+    lightMotes.length >= MAX_MOTES ||
+    trailNodes.length <= 8 ||
+    now - lastMoteEmissionMs < 54
+  ) {
+    return
+  }
+
+  lastMoteEmissionMs = now
+  const seed = Math.floor(now * 0.024) + trailNodes.length * 17
+  const pickRatio = 0.18 + seededUnit(seed + 11) * 0.46
+  const pickIdx = Math.max(1, Math.min(trailNodes.length - 2, Math.floor(trailNodes.length * pickRatio)))
+  const curNode = trailNodes[pickIdx]
+  const prev = trailNodes[pickIdx - 1]
+  const next = trailNodes[pickIdx + 1]
+  const tx = next.wx - prev.wx
+  const ty = next.wy - prev.wy
+  const tlen = Math.hypot(tx, ty) || 1
+  const ntx = tx / tlen
+  const nty = ty / tlen
+  // 接線から横へこぼれる粒だけを出し、進行方向と無関係な放射を避ける。
+  const perpX = -nty
+  const perpY = ntx
+  const side = seededUnit(seed + 23) < 0.5 ? -1 : 1
+  const driftSpeed = 0.004 + seededUnit(seed + 31) * 0.006
+  const backBias = -0.24 - seededUnit(seed + 41) * 0.18
+  lightMotes.push({
+    wx: curNode.wx + perpX * side * (0.08 + seededUnit(seed + 53) * 0.18),
+    wy: curNode.wy + perpY * side * (0.08 + seededUnit(seed + 61) * 0.18),
+    vx: perpX * side * driftSpeed + ntx * driftSpeed * backBias,
+    vy: perpY * side * driftSpeed + nty * driftSpeed * backBias,
+    born: now,
+    life: 420 + seededUnit(seed + 71) * 360,
+    r: 0.34 + seededUnit(seed + 83) * 0.54,
+    phase: seededUnit(seed + 97) * TAU,
+  })
 }
 
 function trailOpacity(nodeIndex: number, nodeCount: number, now: number): number {
@@ -1885,6 +2403,42 @@ function catmullRomCP(
     cp1y: p1y + (p2y - p0y) / 6,
     cp2x: p2x - (p3x - p1x) / 6,
     cp2y: p2y - (p3y - p1y) / 6,
+  }
+}
+
+type RoundedTrailPoint = { x: number; y: number; nodeIndex: number }
+
+function buildRoundedTrailPath(cx: number[], cy: number[]): RoundedTrailPoint[] {
+  let points = cx.map((x, index) => ({ x, y: cy[index], nodeIndex: index }))
+  if (points.length < 3) {
+    return points
+  }
+
+  const passCount = points.length > 220 ? 1 : TRAIL_ROUNDING_PASSES
+  for (let pass = 0; pass < passCount; pass += 1) {
+    const nextPoints: RoundedTrailPoint[] = [points[0]]
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const current = points[index]
+      const next = points[index + 1]
+      nextPoints.push(interpolateTrailPoint(current, next, TRAIL_ROUNDING_RATIO))
+      nextPoints.push(interpolateTrailPoint(current, next, 1 - TRAIL_ROUNDING_RATIO))
+    }
+    nextPoints.push(points[points.length - 1])
+    points = nextPoints
+  }
+
+  return points
+}
+
+function interpolateTrailPoint(
+  from: RoundedTrailPoint,
+  to: RoundedTrailPoint,
+  amount: number,
+): RoundedTrailPoint {
+  return {
+    x: lerpScalar(from.x, to.x, amount),
+    y: lerpScalar(from.y, to.y, amount),
+    nodeIndex: lerpScalar(from.nodeIndex, to.nodeIndex, amount),
   }
 }
 
@@ -1945,22 +2499,33 @@ function drawTrail(
     }
   }
 
+  const pathPoints = buildRoundedTrailPath(cx, cy)
+  const pathPointCount = pathPoints.length
+  if (pathPointCount < 2) {
+    drawLightMotes(ctx, now, viewport, W, H, pad)
+    return
+  }
+
   // 制御点 / fade / ratio / 色 を事前計算 (4 パスで使い回す)
   const segCP: Array<{ cp1x: number; cp1y: number; cp2x: number; cp2y: number }> =
-    new Array(N - 1)
-  const segFade = new Float64Array(N - 1)
-  const segRatio = new Float64Array(N - 1)
-  const segColors: Array<{ outer: string; mid: string; spine: string }> = new Array(N - 1)
-  for (let i = 0; i < N - 1; i++) {
-    segFade[i] = trailOpacity(i, N, now)
-    const ratio = N > 1 ? i / (N - 1) : 1
+    new Array(pathPointCount - 1)
+  const segFade = new Float64Array(pathPointCount - 1)
+  const segRatio = new Float64Array(pathPointCount - 1)
+  const segColors: Array<{ outer: string; mid: string; spine: string }> = new Array(pathPointCount - 1)
+  for (let i = 0; i < pathPointCount - 1; i++) {
+    const point = pathPoints[i]
+    const nextPoint = pathPoints[i + 1]
+    segFade[i] = trailOpacity(point.nodeIndex, N, now)
+    const ratio = N > 1 ? point.nodeIndex / (N - 1) : 1
     segRatio[i] = ratio
     segColors[i] = trailColorAt(ratio)
     const i0 = Math.max(0, i - 1)
-    const i3 = Math.min(N - 1, i + 2)
+    const i3 = Math.min(pathPointCount - 1, i + 2)
+    const prev = pathPoints[i0]
+    const afterNext = pathPoints[i3]
     segCP[i] = catmullRomCP(
-      cx[i0], cy[i0], cx[i], cy[i],
-      cx[i + 1], cy[i + 1], cx[i3], cy[i3],
+      prev.x, prev.y, point.x, point.y,
+      nextPoint.x, nextPoint.y, afterNext.x, afterNext.y,
     )
   }
 
@@ -1981,25 +2546,27 @@ function drawTrail(
   //   2: 中心芯線   (細幅・高不透明・白)     → 明瞭な芯
   //   3: ハートビート (狭帯域に強い明滅)     → 伝播する鼓動
   for (let pass = 0; pass < 4; pass++) {
-    for (let i = 0; i < N - 1; i++) {
+    for (let i = 0; i < pathPointCount - 1; i++) {
       const fade = segFade[i]
       if (fade < 0.005) continue
       const cp = segCP[i]
       const color = segColors[i]
+      const point = pathPoints[i]
+      const nextPoint = pathPoints[i + 1]
 
       ctx.beginPath()
-      ctx.moveTo(cx[i], cy[i])
-      ctx.bezierCurveTo(cp.cp1x, cp.cp1y, cp.cp2x, cp.cp2y, cx[i + 1], cy[i + 1])
+      ctx.moveTo(point.x, point.y)
+      ctx.bezierCurveTo(cp.cp1x, cp.cp1y, cp.cp2x, cp.cp2y, nextPoint.x, nextPoint.y)
 
       if (pass === 0) {
-        ctx.strokeStyle = `rgba(${color.outer}, ${(0.038 * fade).toFixed(3)})`
-        ctx.lineWidth = 3 + 16 * fade
+        ctx.strokeStyle = `rgba(${color.outer}, ${(0.026 * fade).toFixed(3)})`
+        ctx.lineWidth = 1.35 + 5.6 * fade
       } else if (pass === 1) {
-        ctx.strokeStyle = `rgba(${color.mid}, ${(0.17 * fade).toFixed(3)})`
-        ctx.lineWidth = 1 + 6.2 * fade
+        ctx.strokeStyle = `rgba(${color.mid}, ${(0.14 * fade).toFixed(3)})`
+        ctx.lineWidth = 0.55 + 2.2 * fade
       } else if (pass === 2) {
-        ctx.strokeStyle = `rgba(${color.spine}, ${(0.48 * fade).toFixed(3)})`
-        ctx.lineWidth = 0.3 + 1.25 * fade
+        ctx.strokeStyle = `rgba(${color.spine}, ${(0.55 * fade).toFixed(3)})`
+        ctx.lineWidth = 0.18 + 0.62 * fade
       } else {
         // pass 3: ハートビート — segment 中心の ratio が pulsePos に近いほど強く、
         // 2 乗で falloff させて狭く鋭いピークを作る。
@@ -2010,14 +2577,104 @@ function drawTrail(
         const intensity = rel * rel
         if (intensity < 0.02) continue
         ctx.strokeStyle = `rgba(255, 253, 246, ${(0.62 * fade * intensity).toFixed(3)})`
-        ctx.lineWidth = 0.5 + 2.2 * fade * intensity
+        ctx.lineWidth = 0.28 + 0.95 * fade * intensity
       }
       ctx.stroke()
     }
   }
 
+  drawTrailOrnaments(ctx, pathPoints, segFade, now)
+
   ctx.restore()
   drawLightMotes(ctx, now, viewport, W, H, pad)
+}
+
+function drawTrailOrnaments(
+  ctx: CanvasRenderingContext2D,
+  points: RoundedTrailPoint[],
+  fadeBySegment: Float64Array,
+  now: number,
+) {
+  if (points.length < 8) {
+    return
+  }
+
+  ctx.save()
+  ctx.globalCompositeOperation = "lighter"
+  ctx.lineCap = "round"
+  ctx.lineJoin = "round"
+  ctx.shadowColor = "rgba(140, 210, 255, 0.46)"
+  ctx.shadowBlur = 7
+
+  for (let i = 3; i < points.length - 4; i += 6) {
+    const fade = fadeBySegment[i] ?? 0
+    if (fade < 0.032) {
+      continue
+    }
+
+    const prev = points[i - 2]
+    const current = points[i]
+    const next = points[i + 2]
+    const tx = next.x - prev.x
+    const ty = next.y - prev.y
+    const len = Math.hypot(tx, ty) || 1
+    const tangentX = tx / len
+    const tangentY = ty / len
+    const perpX = -tangentY
+    const perpY = tangentX
+    const cadence = Math.floor(i / 6)
+    const side = cadence % 2 === 0 ? -1 : 1
+    const pulse = 0.58 + 0.42 * Math.sin(now * 0.004 + i * 0.37)
+    const alpha = 0.16 * fade * pulse
+    const offset = 2.2 + 1.8 * fade
+    const filamentLength = 6.2 + 6.8 * fade
+
+    // 曲線の接線に沿って細い側枝を置き、太い帯に戻さず通信記録のような装飾を足します。
+    ctx.strokeStyle = `rgba(214, 244, 255, ${alpha.toFixed(3)})`
+    ctx.lineWidth = 0.28 + 0.18 * fade
+    ctx.beginPath()
+    ctx.moveTo(
+      current.x + perpX * side * offset - tangentX * filamentLength * 0.35,
+      current.y + perpY * side * offset - tangentY * filamentLength * 0.35,
+    )
+    ctx.quadraticCurveTo(
+      current.x + perpX * side * (offset + 1.8),
+      current.y + perpY * side * (offset + 1.8),
+      current.x + perpX * side * (offset + 4.2) + tangentX * filamentLength * 0.65,
+      current.y + perpY * side * (offset + 4.2) + tangentY * filamentLength * 0.65,
+    )
+    ctx.stroke()
+
+    if (cadence % 3 === 0) {
+      ctx.strokeStyle = `rgba(244, 252, 255, ${(0.2 * fade * pulse).toFixed(3)})`
+      ctx.lineWidth = 0.3 + 0.14 * fade
+      ctx.beginPath()
+      ctx.moveTo(
+        current.x - tangentX * 2.6,
+        current.y - tangentY * 2.6,
+      )
+      ctx.lineTo(
+        current.x + tangentX * 3.4,
+        current.y + tangentY * 3.4,
+      )
+      ctx.stroke()
+    }
+
+    if (cadence % 4 === 1) {
+      ctx.fillStyle = `rgba(235, 250, 255, ${(0.24 * fade).toFixed(3)})`
+      ctx.beginPath()
+      ctx.arc(
+        current.x + perpX * side * (offset + 4.7),
+        current.y + perpY * side * (offset + 4.7),
+        0.55 + fade * 0.44,
+        0,
+        TAU,
+      )
+      ctx.fill()
+    }
+  }
+
+  ctx.restore()
 }
 
 function drawLightMotes(

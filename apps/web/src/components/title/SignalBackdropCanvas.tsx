@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react"
+import type { DisplayOptions } from "@/app/display-options"
 
 type SignalBackdropCanvasProps = {
   className?: string
+  displayOptions?: DisplayOptions
 }
 
 type Particle = {
@@ -20,7 +22,7 @@ function randomEdgePos(): number {
     : 0.95 + Math.random() * 0.2
 }
 
-export function SignalBackdropCanvas({ className }: SignalBackdropCanvasProps) {
+export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdropCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -33,12 +35,13 @@ export function SignalBackdropCanvas({ className }: SignalBackdropCanvasProps) {
     const context: CanvasRenderingContext2D = contextCandidate
 
     let animationFrameId = 0
-    let dpr = window.devicePixelRatio || 1
+    let dpr = displayOptions?.canvasPixelRatio ?? Math.min(window.devicePixelRatio || 1, 2)
+    let lastDrawAt = 0
     const size = { width: 1, height: 1 }
     const layoutTarget = canvasElement.parentElement ?? canvasElement
 
     function resize() {
-      dpr = window.devicePixelRatio || 1
+      dpr = displayOptions?.canvasPixelRatio ?? Math.min(window.devicePixelRatio || 1, 2)
       // title 全画面と modal 内の両方で使うため、viewport 固定ではなく
       // 親の実寸から canvas 解像度を決めます。
       // 自分自身の style.width / height を測ると、前回値で固定されて右端が追従しなくなります。
@@ -127,9 +130,22 @@ export function SignalBackdropCanvas({ className }: SignalBackdropCanvasProps) {
       { intervalMs: 13200, phaseOffsetMs: 0, xRatio: 0.5, yRatio: 0.46, maxRadiusRatio: 0.2, tint: "170, 220, 245" },
       { intervalMs: 17800, phaseOffsetMs: 4200, xRatio: 0.54, yRatio: 0.43, maxRadiusRatio: 0.16, tint: "93, 164, 209" },
     ] as const
+    const relayNodes = [
+      { xRatio: 0.18, yRatio: 0.64, intervalMs: 21000, phaseOffsetMs: 0, reachRatio: 0.24 },
+      { xRatio: 0.82, yRatio: 0.58, intervalMs: 25500, phaseOffsetMs: 7200, reachRatio: 0.2 },
+      { xRatio: 0.5, yRatio: 0.72, intervalMs: 31000, phaseOffsetMs: 13800, reachRatio: 0.18 },
+    ] as const
     const scanCycleMap = new Map<number, number>()
 
     function step(t: number) {
+      if (
+        displayOptions?.lowFrameRateMode &&
+        t - lastDrawAt < displayOptions.targetFrameIntervalMs
+      ) {
+        animationFrameId = window.requestAnimationFrame(step)
+        return
+      }
+      lastDrawAt = t
       const w = size.width
       const h = size.height
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -313,45 +329,45 @@ export function SignalBackdropCanvas({ className }: SignalBackdropCanvasProps) {
         context.fillRect(centerX - radius * 1.25, centerY - radius * 1.25, radius * 2.5, radius * 2.5)
       }
 
-      const interferenceBands = [
-        { intervalMs: 18000, phaseOffsetMs: 0, centerYRatio: 0.24, tilt: -0.16, thickness: 68 },
-        { intervalMs: 22000, phaseOffsetMs: 4800, centerYRatio: 0.6, tilt: 0.12, thickness: 82 },
-        { intervalMs: 16000, phaseOffsetMs: 9200, centerYRatio: 0.42, tilt: -0.05, thickness: 54 },
-        { intervalMs: 26000, phaseOffsetMs: 12800, centerYRatio: 0.78, tilt: 0.04, thickness: 112 },
+      // 旧来の矩形+ストロークによる干渉帯は境界が読みやすく人工的に見えたため、
+      // 大きな放射グラデーションのプラズマ雲だけで気配を残す形に置き換える。
+      // 各雲は画面外から画面外へ斜めに流れ、両端で alpha 0 に溶けて境界を持たない。
+      const interferenceClouds = [
+        { intervalMs: 32000, phaseOffsetMs: 0,     centerYRatio: 0.26, slope: -0.18, sizeRatio: 0.46, hue: 208, peakAlpha: 0.05 },
+        { intervalMs: 38000, phaseOffsetMs: 9400,  centerYRatio: 0.58, slope:  0.13, sizeRatio: 0.54, hue: 200, peakAlpha: 0.045 },
+        { intervalMs: 27000, phaseOffsetMs: 16800, centerYRatio: 0.42, slope: -0.06, sizeRatio: 0.38, hue: 215, peakAlpha: 0.04 },
+        { intervalMs: 44000, phaseOffsetMs: 22600, centerYRatio: 0.76, slope:  0.05, sizeRatio: 0.62, hue: 196, peakAlpha: 0.055 },
       ] as const
 
-      for (const band of interferenceBands) {
-        const progress = ((t + band.phaseOffsetMs) % band.intervalMs) / band.intervalMs
-        const centerX = (-0.42 + progress * 1.84) * w
-        const centerY =
-          h * band.centerYRatio +
-          Math.sin((t + band.phaseOffsetMs) * 0.00022) * h * 0.05
-        const bandWidth = w * 0.72
+      for (const cloud of interferenceClouds) {
+        const progress = ((t + cloud.phaseOffsetMs) % cloud.intervalMs) / cloud.intervalMs
+        // 画面外で生まれて画面外へ抜ける軌跡。両端は完全に透明にして登場/退場を曖昧にする。
+        const centerX = (-0.3 + progress * 1.6) * w
+        const baseY =
+          h * cloud.centerYRatio +
+          Math.sin((t + cloud.phaseOffsetMs) * 0.00018) * h * 0.04
+        // slope は「水平からの傾き」を表す。回転ではなく y のオフセットとして加え、
+        // 矩形ではなく放射グラデーションの中心を斜めに動かすことで、形を持たない流れにする。
+        const centerY = baseY + cloud.slope * (centerX - w * 0.5) * 0.6
+        // 端での fade-in / fade-out。sin² で滑らかに立ち上げる。
+        const edge = Math.sin(progress * Math.PI)
+        const fade = edge * edge
+        const radius = w * cloud.sizeRatio
 
-        context.save()
-        context.translate(centerX, centerY)
-        context.rotate(band.tilt)
-
-        const bandGradient = context.createLinearGradient(-bandWidth / 2, 0, bandWidth / 2, 0)
-        bandGradient.addColorStop(0, "rgba(93, 164, 209, 0)")
-        bandGradient.addColorStop(0.18, "rgba(93, 164, 209, 0.015)")
-        bandGradient.addColorStop(0.5, "rgba(164, 216, 244, 0.05)")
-        bandGradient.addColorStop(0.82, "rgba(93, 164, 209, 0.015)")
-        bandGradient.addColorStop(1, "rgba(93, 164, 209, 0)")
-        context.fillStyle = bandGradient
-        context.fillRect(-bandWidth / 2, -band.thickness / 2, bandWidth, band.thickness)
-
-        for (let lineIndex = 0; lineIndex < 5; lineIndex += 1) {
-          const y = -band.thickness / 2 + (band.thickness / 5) * lineIndex + Math.sin(t * 0.0018 + lineIndex) * 2
-          context.strokeStyle = `rgba(188, 228, 250, ${0.016 + ((lineIndex + 1) % 2) * 0.012})`
-          context.lineWidth = 1
-          context.beginPath()
-          context.moveTo(-bandWidth * 0.45, y)
-          context.lineTo(bandWidth * 0.45, y - 3)
-          context.stroke()
-        }
-
-        context.restore()
+        const cloudGradient = context.createRadialGradient(
+          centerX,
+          centerY,
+          0,
+          centerX,
+          centerY,
+          radius,
+        )
+        cloudGradient.addColorStop(0, `hsla(${cloud.hue}, 55%, 70%, ${(cloud.peakAlpha * fade).toFixed(3)})`)
+        cloudGradient.addColorStop(0.35, `hsla(${cloud.hue}, 50%, 60%, ${(cloud.peakAlpha * 0.45 * fade).toFixed(3)})`)
+        cloudGradient.addColorStop(0.7, `hsla(${cloud.hue}, 45%, 50%, ${(cloud.peakAlpha * 0.12 * fade).toFixed(3)})`)
+        cloudGradient.addColorStop(1, "hsla(210, 40%, 50%, 0)")
+        context.fillStyle = cloudGradient
+        context.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2)
       }
 
       const panelBands = [
@@ -394,6 +410,52 @@ export function SignalBackdropCanvas({ className }: SignalBackdropCanvasProps) {
         }
 
         context.restore()
+      }
+
+      // 低い地平線に残った通信設備の反応を描く。
+      // 背景専用の装飾なので、明滅は長周期にして操作対象の UI より目立たせない。
+      const horizonY = h * 0.72 + Math.sin(t * 0.00018) * h * 0.012
+      const horizonLine = context.createLinearGradient(0, horizonY, w, horizonY)
+      horizonLine.addColorStop(0, "rgba(93, 164, 209, 0)")
+      horizonLine.addColorStop(0.24, "rgba(93, 164, 209, 0.035)")
+      horizonLine.addColorStop(0.5, "rgba(210, 240, 255, 0.07)")
+      horizonLine.addColorStop(0.76, "rgba(93, 164, 209, 0.035)")
+      horizonLine.addColorStop(1, "rgba(93, 164, 209, 0)")
+      context.strokeStyle = horizonLine
+      context.lineWidth = 1
+      context.beginPath()
+      context.moveTo(0, horizonY)
+      context.lineTo(w, horizonY + Math.sin(t * 0.00012) * 8)
+      context.stroke()
+
+      for (const relay of relayNodes) {
+        const progress = ((t + relay.phaseOffsetMs) % relay.intervalMs) / relay.intervalMs
+        const pulse = 0.5 + 0.5 * Math.sin((t + relay.phaseOffsetMs) * 0.0005)
+        const x = relay.xRatio * w
+        const y = relay.yRatio * h
+        const mastHeight = h * (0.035 + relay.reachRatio * 0.08)
+
+        context.strokeStyle = `rgba(164, 216, 244, ${(0.045 + pulse * 0.025).toFixed(3)})`
+        context.lineWidth = 1
+        context.beginPath()
+        context.moveTo(x, y)
+        context.lineTo(x, y - mastHeight)
+        context.stroke()
+
+        context.fillStyle = `rgba(210, 240, 255, ${(0.08 + pulse * 0.05).toFixed(3)})`
+        context.fillRect(x - 1, y - mastHeight - 1, 2, 2)
+
+        for (let ringIndex = 0; ringIndex < 2; ringIndex += 1) {
+          const ringProgress = (progress + ringIndex * 0.5) % 1
+          const radius = 18 + ringProgress * w * relay.reachRatio
+          const alpha = (1 - ringProgress) * (0.055 + pulse * 0.025)
+
+          context.beginPath()
+          context.arc(x, y - mastHeight, radius, Math.PI * 1.05, Math.PI * 1.95)
+          context.strokeStyle = `rgba(170, 220, 245, ${alpha.toFixed(3)})`
+          context.lineWidth = 1
+          context.stroke()
+        }
       }
 
       const rollingBands = [
@@ -453,7 +515,7 @@ export function SignalBackdropCanvas({ className }: SignalBackdropCanvasProps) {
       resizeObserver.disconnect()
       window.removeEventListener("resize", resize)
     }
-  }, [])
+  }, [displayOptions])
 
   return (
     <canvas

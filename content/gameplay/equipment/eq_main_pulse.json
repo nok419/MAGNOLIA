@@ -3,8 +3,8 @@
   "slot": "main",
   "name": "パルス",
   "iconId": "icon_eq_main_pulse",
-  "summary": "近距離迎撃を自動で併用する標準ショット。",
-  "description": "通常のショット。近距離のノイズ源には円弧状の近接攻撃を自動で併用する。",
+  "summary": "三方向の折れ曲がる信号弾と、低頻度で重く薙ぎ払う近接光剣を併用する標準兵装。",
+  "description": "前方三方向へ信号弾を放つ。左右の弾は途中で中央線へ折れ、弾道全体で菱形を描く。近距離のノイズ源には、発生頻度を抑えた太い光剣で左から右へ薙ぎ払う近接攻撃を自動で併用する。",
   "flavorText": "",
   "active": {
     "cooldownMs": 100,
@@ -29,28 +29,46 @@
       "effectOverrides": {
         "damage": 10,
         "cadenceMs": 120,
-        "shotCount": 1,
-        "meleeRange": 80
+        "shotCount": 3,
+        "spreadDeg": 28,
+        "foldBendAfterMs": 130,
+        "meleeRange": 92,
+        "meleeDamage": 22,
+        "meleeSpreadDeg": 132,
+        "meleeSweepDurationMs": 660,
+        "meleeCooldownMs": 920
       }
     },
     {
       "level": 2,
       "selfRepairPointCost": 100,
       "effectOverrides": {
-        "damage": 12,
+        "damage": 11,
         "cadenceMs": 110,
-        "shotCount": 2,
-        "meleeRange": 100
+        "shotCount": 3,
+        "spreadDeg": 30,
+        "foldBendAfterMs": 125,
+        "meleeRange": 108,
+        "meleeDamage": 28,
+        "meleeSpreadDeg": 136,
+        "meleeSweepDurationMs": 640,
+        "meleeCooldownMs": 840
       }
     },
     {
       "level": 3,
       "selfRepairPointCost": 180,
       "effectOverrides": {
-        "damage": 14,
+        "damage": 12,
         "cadenceMs": 100,
         "shotCount": 3,
-        "meleeRange": 120
+        "spreadDeg": 32,
+        "foldBendAfterMs": 120,
+        "meleeRange": 124,
+        "meleeDamage": 34,
+        "meleeSpreadDeg": 140,
+        "meleeSweepDurationMs": 620,
+        "meleeCooldownMs": 760
       }
     }
   ]

@@ -54,7 +54,8 @@ export function createDefaultDifficultyModifiers(): Record<
     calm: {
       difficulty: "calm",
       enemyHpMultiplier: 1,
-      enemyNoiseDamageMultiplier: 1,
+      enemyNoiseDamageMultiplier: 0.92,
+      enemyCadenceMultiplier: 1.08,
       noiseDecayRateMultiplier: 1.15,
       hearingThresholdOffset: 0.08,
       selfRepairPointMultiplier: 1,
@@ -64,6 +65,7 @@ export function createDefaultDifficultyModifiers(): Record<
       difficulty: "terminal",
       enemyHpMultiplier: 1.15,
       enemyNoiseDamageMultiplier: 1.15,
+      enemyCadenceMultiplier: 0.88,
       noiseDecayRateMultiplier: 0.9,
       hearingThresholdOffset: -0.08,
       selfRepairPointMultiplier: 1.25,
@@ -143,8 +145,8 @@ export function createDefaultPresentationCues(): Record<string, PresentationCueS
       channel: "overlay",
       renderer: "react",
       blocking: true,
-      skippable: true,
-      defaultDurationMs: 4200,
+      skippable: false,
+      defaultDurationMs: 1800,
     },
     {
       id: "system.reboot.sequence",
@@ -152,8 +154,17 @@ export function createDefaultPresentationCues(): Record<string, PresentationCueS
       renderer: "shared",
       blocking: true,
       skippable: false,
-      // 機体の登場と視界展開をゆっくり見せるため、導入の持続時間を長めに取ります。
-      defaultDurationMs: 7200,
+      // ブートログ短縮後の本編として、再構築の各段階が読める長さを確保します。
+      defaultDurationMs: 5200,
+    },
+    {
+      id: "system.reboot.settle",
+      channel: "overlay",
+      renderer: "shared",
+      blocking: true,
+      skippable: false,
+      // 完成した自機を残し、探索 HUD と視界を短く立ち上げる受け渡し区間です。
+      defaultDurationMs: 2200,
     },
     {
       id: "tutorial.restriction.enter",

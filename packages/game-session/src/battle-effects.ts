@@ -11,6 +11,7 @@ import type {
 import {
   BATTLE_HEIGHT,
   BATTLE_WIDTH,
+  clamp01,
   findNearestEnemyInRange,
   hasEnemyWithinRange,
   resolveHitRadius,
@@ -42,6 +43,7 @@ export function applyBattleEffectRequests(input: {
           modifierPatch: input.modifierPatch ?? {},
           projectiles: input.projectiles,
           nextInstanceId: input.nextInstanceId,
+          mainCadenceMultiplier: input.mainCadenceMultiplier,
         })
         break
       case "spawnBarrier":
@@ -118,6 +120,12 @@ export function updateBattleProjectiles(input: {
       continue
     }
 
+    projectile.ageMs = (projectile.ageMs ?? 0) + input.dtMs
+    applyBendTrajectory(projectile)
+    if (projectile.anchorToPlayer) {
+      projectile.position = { ...input.battle.playerPosition }
+    }
+
     if (
       projectile.side === "player" &&
       input.statModifiers?.homingStrength &&
@@ -134,7 +142,10 @@ export function updateBattleProjectiles(input: {
           y: nearestEnemy.position.y - projectile.position.y,
         })
         const currentDirection = normalizeVector(projectile.velocity)
-        const homingStrength = Math.min(1, input.statModifiers.homingStrength * dtSeconds)
+        const homingStrength = Math.min(
+          1,
+          (1 - Math.exp(-input.statModifiers.homingStrength * dtSeconds)) * 2.2,
+        )
         const mixedDirection = normalizeVector({
           x: currentDirection.x * (1 - homingStrength) + targetDirection.x * homingStrength,
           y: currentDirection.y * (1 - homingStrength) + targetDirection.y * homingStrength,
@@ -147,9 +158,20 @@ export function updateBattleProjectiles(input: {
       }
     }
 
-    projectile.position.x += projectile.velocity.x * dtSeconds
-    projectile.position.y += projectile.velocity.y * dtSeconds
+    if (!projectile.anchorToPlayer) {
+      projectile.position.x += projectile.velocity.x * dtSeconds
+      projectile.position.y += projectile.velocity.y * dtSeconds
+    }
     projectile.remainingMs -= input.dtMs
+    spawnedVisualProjectiles.push(
+      ...spawnTrailExplosions({
+        battle: input.battle,
+        projectile,
+        dtMs: input.dtMs,
+        projectiles: input.projectiles,
+        nextInstanceId: input.nextInstanceId,
+      }),
+    )
     if (typeof projectile.detonationDelayMs === "number") {
       projectile.detonationDelayMs -= input.dtMs
       if (projectile.detonationDelayMs <= 0) {
@@ -238,12 +260,135 @@ export function detonatePlayerProjectile(input: {
   }
 }
 
+function applyBendTrajectory(projectile: InternalProjectileState): void {
+  if (
+    !projectile.preBendVelocity ||
+    !projectile.postBendVelocity ||
+    typeof projectile.bendAfterMs !== "number"
+  ) {
+    return
+  }
+
+  const bendDurationMs = Math.max(1, projectile.bendDurationMs ?? 80)
+  const progress = clamp01(((projectile.ageMs ?? 0) - projectile.bendAfterMs) / bendDurationMs)
+  if (progress <= 0) {
+    projectile.velocity = { ...projectile.preBendVelocity }
+    return
+  }
+
+  // 折れ曲がりを短い補間にして、菱形の角は見せつつ弾速の急変だけを抑えます。
+  const eased = progress * progress * (3 - 2 * progress)
+  const mixed = normalizeVector({
+    x: projectile.preBendVelocity.x * (1 - eased) + projectile.postBendVelocity.x * eased,
+    y: projectile.preBendVelocity.y * (1 - eased) + projectile.postBendVelocity.y * eased,
+  })
+  const speed = Math.hypot(projectile.preBendVelocity.x, projectile.preBendVelocity.y)
+  projectile.velocity = {
+    x: mixed.x * speed,
+    y: mixed.y * speed,
+  }
+}
+
+function spawnTrailExplosions(input: {
+  battle: InternalBattleState
+  projectile: InternalProjectileState
+  dtMs: number
+  projectiles: ContentBundle["projectiles"]
+  nextInstanceId: (prefix: string) => string
+}): InternalProjectileState[] {
+  if (
+    input.projectile.side !== "player" ||
+    !input.projectile.trailExplosionIntervalMs ||
+    !input.projectile.trailExplosionRadius ||
+    !input.projectile.trailExplosionVisualProjectileId
+  ) {
+    return []
+  }
+
+  const visuals: InternalProjectileState[] = []
+  input.projectile.trailExplosionTimerMs =
+    (input.projectile.trailExplosionTimerMs ?? input.projectile.trailExplosionIntervalMs) -
+    input.dtMs
+
+  // dt が大きいフレームでも爆発の個数を保つため、蓄積タイマーで処理します。
+  while (input.projectile.trailExplosionTimerMs <= 0) {
+    const explosionVisual = detonatePlayerProjectile({
+      battle: input.battle,
+      projectile: {
+        ...input.projectile,
+        explosiveRadius: input.projectile.trailExplosionRadius,
+        explosionDamageMultiplier: input.projectile.trailExplosionDamageMultiplier,
+        explosionVisualProjectileId: input.projectile.trailExplosionVisualProjectileId,
+      },
+      projectiles: input.projectiles,
+      nextInstanceId: input.nextInstanceId,
+    })
+    if (explosionVisual) {
+      visuals.push(explosionVisual)
+    }
+    input.projectile.trailExplosionTimerMs += input.projectile.trailExplosionIntervalMs
+  }
+
+  return visuals
+}
+
+function applyMeleeSweepDamage(input: {
+  battle: InternalBattleState
+  origin: { x: number; y: number }
+  direction: { x: number; y: number }
+  range: number
+  arcDeg: number
+  damage: number
+  burnDamagePerSec?: number
+  burnDurationMs?: number
+}): void {
+  const forward = normalizeVector(input.direction)
+  const halfArcRadians = (Math.max(1, input.arcDeg) * Math.PI) / 360
+
+  for (const enemy of input.battle.enemies) {
+    const toEnemy = {
+      x: enemy.position.x - input.origin.x,
+      y: enemy.position.y - input.origin.y,
+    }
+    const distance = Math.hypot(toEnemy.x, toEnemy.y)
+    if (distance > input.range + enemy.radius) {
+      continue
+    }
+
+    const targetDirection = normalizeVector(toEnemy)
+    const dot = Math.max(
+      -1,
+      Math.min(1, forward.x * targetDirection.x + forward.y * targetDirection.y),
+    )
+    const angle = Math.acos(dot)
+    if (angle > halfArcRadians) {
+      continue
+    }
+
+    enemy.hp -= input.damage
+    if (input.burnDamagePerSec && input.burnDurationMs) {
+      enemy.burnDamagePerSec = input.burnDamagePerSec
+      enemy.burnUntilMs = input.battle.elapsedMs + input.burnDurationMs
+    }
+  }
+}
+
+function readRequestNumericParam(
+  params: Record<string, number | string | boolean> | undefined,
+  key: string,
+  fallback: number,
+): number {
+  const value = params?.[key]
+  return typeof value === "number" ? value : fallback
+}
+
 function spawnProjectilesFromRequest(input: {
   battle: InternalBattleState
   request: Extract<RuntimeEffectRequest, { kind: "spawnProjectile" }>
   modifierPatch: RuntimeModifierPatch
   projectiles: ContentBundle["projectiles"]
   nextInstanceId: (prefix: string) => string
+  mainCadenceMultiplier: number
 }): void {
   const projectileSpec = input.projectiles[input.request.projectileId]
   const burnEnabled = Boolean(input.modifierPatch.visibilityModifiers?.burnEnabled)
@@ -258,7 +403,23 @@ function spawnProjectilesFromRequest(input: {
   for (let index = 0; index < count; index += 1) {
     const spreadOffset =
       count === 1 ? 0 : ((index / (count - 1)) * spreadDeg - spreadDeg / 2) * (Math.PI / 180)
-    const direction = rotateVector(normalizeVector(input.request.direction), spreadOffset)
+    const baseDirection = normalizeVector(input.request.direction)
+    const direction = rotateVector(baseDirection, spreadOffset)
+    const lifetimeMs = input.request.lifetimeMs ?? projectileSpec?.lifetimeMs ?? 2000
+    const trailExplosionEnabled = Boolean(input.request.params?.trailExplosion)
+    const trailExplosionIntervalMs = readRequestNumericParam(
+      input.request.params,
+      "trailExplosionIntervalMs",
+      0,
+    )
+    const foldSideProjectiles =
+      Boolean(input.request.params?.foldSideProjectiles) &&
+      count > 1 &&
+      Math.abs(spreadOffset) > 0.001
+    // 菱形弾道は左右弾だけに曲げ先を持たせ、中央弾は基準線として直進させます。
+    const postBendDirection = foldSideProjectiles
+      ? rotateVector(baseDirection, -spreadOffset)
+      : undefined
     input.battle.projectiles.push({
       projectileInstanceId: input.nextInstanceId(input.request.projectileId),
       projectileId: input.request.projectileId,
@@ -269,18 +430,60 @@ function spawnProjectilesFromRequest(input: {
         y: direction.y * input.request.speed,
       },
       radius: resolveHitRadius(projectileSpec?.hitboxPresetId),
-      remainingMs: input.request.lifetimeMs ?? projectileSpec?.lifetimeMs ?? 2000,
+      remainingMs: lifetimeMs,
+      initialLifetimeMs: lifetimeMs,
+      ageMs: 0,
       damage: input.request.damage ?? projectileSpec?.damage ?? 0,
       noiseDamage: input.request.noiseDamage ?? projectileSpec?.noiseDamage ?? 0,
+      preBendVelocity: foldSideProjectiles
+        ? {
+            x: direction.x * input.request.speed,
+            y: direction.y * input.request.speed,
+          }
+        : undefined,
+      postBendVelocity: postBendDirection
+        ? {
+            x: postBendDirection.x * input.request.speed,
+            y: postBendDirection.y * input.request.speed,
+          }
+        : undefined,
+      bendAfterMs: foldSideProjectiles
+        ? readRequestNumericParam(input.request.params, "foldBendAfterMs", 140)
+        : undefined,
+      bendDurationMs: foldSideProjectiles
+        ? readRequestNumericParam(input.request.params, "foldBendDurationMs", 70)
+        : undefined,
+      trailExplosionIntervalMs:
+        trailExplosionEnabled && trailExplosionIntervalMs > 0 ? trailExplosionIntervalMs : undefined,
+      trailExplosionTimerMs:
+        trailExplosionEnabled && trailExplosionIntervalMs > 0 ? trailExplosionIntervalMs : undefined,
+      trailExplosionRadius:
+        trailExplosionEnabled
+          ? readRequestNumericParam(input.request.params, "explosionRadius", 30)
+          : undefined,
+      trailExplosionDamageMultiplier:
+        trailExplosionEnabled
+          ? readRequestNumericParam(input.request.params, "explosionDamageMultiplier", 0.75)
+          : undefined,
+      trailExplosionVisualProjectileId:
+        trailExplosionEnabled &&
+        typeof input.request.params?.explosionVisualProjectileId === "string"
+          ? input.request.params.explosionVisualProjectileId
+          : undefined,
       explosiveRadius:
-        input.request.params && typeof input.request.params.explosionRadius === "number"
+        !trailExplosionEnabled &&
+        input.request.params &&
+        typeof input.request.params.explosionRadius === "number"
           ? input.request.params.explosionRadius
           : undefined,
       burnDamagePerSec,
       burnDurationMs,
+      inversePhaseVisual: Boolean(input.modifierPatch.visibilityModifiers?.inversePhaseVisual),
       spawnDelayMs: input.request.delayMs ?? 0,
       detonationDelayMs:
-        input.request.params && typeof input.request.params.explosionDelayMs === "number"
+        !trailExplosionEnabled &&
+        input.request.params &&
+        typeof input.request.params.explosionDelayMs === "number"
           ? input.request.params.explosionDelayMs
           : undefined,
       explosionDamageMultiplier:
@@ -292,15 +495,14 @@ function spawnProjectilesFromRequest(input: {
           ? input.request.params.explosionVisualProjectileId
           : undefined,
       nonColliding:
-        input.request.params && typeof input.request.params.visualOnly === "boolean"
-          ? input.request.params.visualOnly
-          : false,
+        Boolean(input.request.params?.visualOnly) || Boolean(input.request.params?.piercing),
     })
   }
 
   if (
     input.request.params?.meleeEnabled &&
     typeof input.request.params.meleeProjectileId === "string" &&
+    (input.battle.mainMeleeCooldownMs ?? 0) <= 0 &&
     hasEnemyWithinRange(
       input.battle.enemies,
       input.request.position,
@@ -309,10 +511,56 @@ function spawnProjectilesFromRequest(input: {
   ) {
     const meleeProjectileId = input.request.params.meleeProjectileId
     const meleeProjectileSpec = input.projectiles[meleeProjectileId]
+    const meleeStyle =
+      typeof input.request.params.meleeStyle === "string" ? input.request.params.meleeStyle : "burst"
+    const meleeRange = readRequestNumericParam(input.request.params, "meleeRange", 80)
+    const meleeDamage = readRequestNumericParam(input.request.params, "meleeDamage", 8)
+    const meleeSpreadDeg = readRequestNumericParam(input.request.params, "meleeSpreadDeg", 120)
+
+    if (meleeStyle === "swordSweep") {
+      // 近接は円弧状の弾をばら撒かず、前方扇形の判定と一つの表示用スイープに分けます。
+      applyMeleeSweepDamage({
+        battle: input.battle,
+        origin: input.request.position,
+        direction: input.request.direction,
+        range: meleeRange,
+        arcDeg: meleeSpreadDeg,
+        damage: meleeDamage,
+        burnDamagePerSec,
+        burnDurationMs,
+      })
+
+      const sweepDurationMs = readRequestNumericParam(
+        input.request.params,
+        "meleeSweepDurationMs",
+        380,
+      )
+      input.battle.projectiles.push({
+        projectileInstanceId: input.nextInstanceId(meleeProjectileId),
+        projectileId: meleeProjectileId,
+        side: meleeProjectileSpec?.side ?? "player",
+        position: { ...input.request.position },
+        velocity: normalizeVector(input.request.direction),
+        radius: meleeRange,
+        remainingMs: sweepDurationMs,
+        initialLifetimeMs: sweepDurationMs,
+        ageMs: 0,
+        spawnDelayMs: input.request.delayMs ?? 0,
+        damage: 0,
+        noiseDamage: 0,
+        nonColliding: true,
+        anchorToPlayer: true,
+        inversePhaseVisual: Boolean(input.modifierPatch.visibilityModifiers?.inversePhaseVisual),
+      })
+      // main 弾の連射とは別に、近接の一振りだけを重く遅くします。
+      input.battle.mainMeleeCooldownMs =
+        readRequestNumericParam(input.request.params, "meleeCooldownMs", 760) *
+        input.mainCadenceMultiplier
+      return
+    }
+
     const meleeCount =
       typeof input.request.params.meleeShotCount === "number" ? input.request.params.meleeShotCount : 3
-    const meleeSpreadDeg =
-      typeof input.request.params.meleeSpreadDeg === "number" ? input.request.params.meleeSpreadDeg : 120
 
     for (let index = 0; index < meleeCount; index += 1) {
       const spreadOffset =
@@ -339,9 +587,7 @@ function spawnProjectilesFromRequest(input: {
               ? input.request.params.meleeSequentialDelayMs
               : 0),
         damage:
-          typeof input.request.params.meleeDamage === "number"
-            ? input.request.params.meleeDamage
-            : 8,
+          meleeDamage,
         noiseDamage: meleeProjectileSpec?.noiseDamage ?? 0,
         burnDamagePerSec,
         burnDurationMs,

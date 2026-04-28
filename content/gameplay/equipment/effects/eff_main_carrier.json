@@ -6,12 +6,13 @@
     "projectileId": "proj_player_carrier",
     "damage": 15,
     "cadenceMs": 360,
+    "lifetimeMs": 1800,
     "shotCount": 1,
     "spreadDeg": 0,
     "meleeEnabled": false,
     "trailExplosion": true,
     "explosionRadius": 30,
-    "explosionDelayMs": 220,
+    "trailExplosionIntervalMs": 180,
     "explosionDamageMultiplier": 0.75,
     "explosionVisualProjectileId": "proj_player_carrier_blast"
   }

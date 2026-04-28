@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react"
 import type { ReactNode } from "react"
 import { createEmptyFeatureAccessState } from "@magnolia/contracts"
 import { TitleScreen } from "@/screens/title/TitleScreen"
@@ -8,12 +9,28 @@ import { MenuScreen } from "@/screens/menu/MenuScreen"
 import { MagnoliaLogo } from "@/components/title/MagnoliaLogo"
 import { PresentationOverlay } from "@/components/PresentationOverlay"
 import { EquipmentModal } from "@/components/EquipmentModal"
+import { applyAudioSettings } from "@/app/audio-controller"
+import { resolveDisplayOptions } from "@/app/display-options"
 import { useMagnoliaApp } from "@/app/use-magnolia-app"
 
 export function App() {
   const app = useMagnoliaApp()
+  const displayOptions = useMemo(
+    () => (app.settings ? resolveDisplayOptions(app.settings) : null),
+    [
+      app.settings?.lowFrameRateMode,
+      app.settings?.reduceFlashing,
+    ],
+  )
 
-  if (!app.ready || !app.snapshot || !app.content || !app.settings) {
+  useEffect(() => {
+    if (!app.settings) {
+      return
+    }
+    applyAudioSettings(app.settings)
+  }, [app.settings])
+
+  if (!app.ready || !app.snapshot || !app.content || !app.settings || !displayOptions) {
     return (
       <main className="title-screen">
         <div className="title-screen__backdrop" />
@@ -35,6 +52,7 @@ export function App() {
         <TitleScreen
           slots={app.saveSlots}
           slotSelectMode={app.slotSelectMode}
+          displayOptions={displayOptions}
           onOpenSlotSelect={app.openSlotSelect}
           onCloseSlotSelect={app.closeSlotSelect}
           onConfirmSlot={(slotId) => void app.confirmSlot(slotId)}
@@ -55,6 +73,8 @@ export function App() {
           itemPopups={app.itemPopups}
           shipVariant={app.settings.shipVariant}
           showEquipmentHint={app.shouldShowEquipmentHint}
+          onInteractNode={(nodeId) => void app.interactExploreNode(nodeId)}
+          displayOptions={displayOptions}
         />
       )
       break
@@ -69,6 +89,7 @@ export function App() {
           profile={app.profile}
           snapshot={app.exploreSnapshot}
           renderState={app.exploreRenderState}
+          displayOptions={displayOptions}
           onBack={() => void app.runCommand("closePanel")}
           onWarpToArea={(areaId) => void app.warpToArea(areaId)}
           onOpenArchive={(areaId, transmissionId) => void app.openArchiveAt(areaId, transmissionId)}
@@ -85,6 +106,7 @@ export function App() {
           content={app.content}
           renderState={app.battleRenderState}
           shipVariant={app.settings.shipVariant}
+          displayOptions={displayOptions}
           onReturnToExplore={() => void app.returnToExplore()}
         />
       )
@@ -129,19 +151,29 @@ export function App() {
           onSaveToSlot={(slotId) => void app.saveToSlot(slotId)}
           onReturnToTitle={() => void app.runCommand("returnToTitle")}
           onBack={() => void app.runCommand("closePanel")}
+          displayOptions={displayOptions}
         />
       )
       break
   }
 
+  const appClassName = [
+    "magnolia-app",
+    displayOptions.reduceFlashing ? "magnolia-app--reduce-flashing" : "",
+    displayOptions.lowFrameRateMode ? "magnolia-app--low-frame-rate" : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+
   return (
-    <>
+    <div className={appClassName}>
       {screen}
       {app.activeOverlayPresentation ? (
         <PresentationOverlay
           presentation={app.activeOverlayPresentation}
           cueSpec={app.content.presentationCues[app.activeOverlayPresentation.cueId]}
           onDismiss={app.dismissActiveOverlayPresentation}
+          displayOptions={displayOptions}
         />
       ) : null}
       {app.equipmentModalNodeId && app.content && (
@@ -151,6 +183,6 @@ export function App() {
           onDismiss={app.dismissEquipmentModal}
         />
       )}
-    </>
+    </div>
   )
 }

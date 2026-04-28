@@ -1,0 +1,243 @@
+/* =========================================================
+   INTERACTION PROMPT
+   自機、マップ上のアイコン、通常のメニュー要素に同じ誘導を付ける。
+   ========================================================= */
+@keyframes mg-interaction-prompt-draw {
+  from { stroke-dashoffset: 220; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes mg-interaction-prompt-fade-in {
+  from { opacity: 0; transform: var(--interaction-prompt-transform) translateY(4px); }
+  to   { opacity: 1; transform: var(--interaction-prompt-transform); }
+}
+
+@keyframes mg-interaction-prompt-anchor-pulse {
+  0%, 100% { opacity: 0.82; }
+  50%      { opacity: 1; }
+}
+
+@keyframes mg-interaction-prompt-ring-pulse {
+  0% {
+    opacity: 0.52;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+@keyframes mg-interaction-prompt-key-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 1px rgba(var(--interaction-prompt-rgb), 0.7),
+      0 0 10px rgba(var(--interaction-prompt-rgb), 0.4);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow:
+      0 0 0 1px rgba(var(--interaction-prompt-rgb), 0.95),
+      0 0 22px rgba(var(--interaction-prompt-rgb), 0.7);
+  }
+}
+
+@keyframes mg-interaction-prompt-label-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.interaction-prompt,
+.interaction-prompt-anchor {
+  --interaction-prompt-accent: var(--mg-warm);
+  --interaction-prompt-rgb: 240, 198, 116;
+  --interaction-prompt-key-text: #0b1424;
+}
+
+.interaction-prompt--cyan {
+  --interaction-prompt-accent: #9ed4ff;
+  --interaction-prompt-rgb: 158, 212, 255;
+  --interaction-prompt-key-text: #06111f;
+}
+
+.interaction-prompt--green {
+  --interaction-prompt-accent: var(--mg-green);
+  --interaction-prompt-rgb: 132, 240, 163;
+  --interaction-prompt-key-text: #06160d;
+}
+
+.interaction-prompt--red {
+  --interaction-prompt-accent: var(--mg-red);
+  --interaction-prompt-rgb: 255, 90, 110;
+  --interaction-prompt-key-text: #1b070a;
+}
+
+.interaction-prompt--callout {
+  position: absolute;
+  width: 220px;
+  height: 120px;
+  z-index: 16;
+  pointer-events: none;
+  opacity: 0;
+  --interaction-prompt-transform: translate(-24px, -96px);
+  animation: mg-interaction-prompt-fade-in 600ms var(--ease-out-expo) 120ms forwards;
+}
+
+.interaction-prompt__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.interaction-prompt__line {
+  stroke: var(--interaction-prompt-accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  opacity: 0.9;
+  animation: mg-interaction-prompt-draw 900ms var(--ease-out-quart) 200ms forwards;
+}
+
+.interaction-prompt__anchor-dot {
+  fill: var(--interaction-prompt-accent);
+  animation: mg-interaction-prompt-anchor-pulse 1.6s ease-in-out infinite;
+}
+
+.interaction-prompt__anchor-ring {
+  fill: none;
+  stroke: var(--interaction-prompt-accent);
+  stroke-width: 0.8;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mg-interaction-prompt-ring-pulse 2.2s ease-out infinite;
+}
+
+.interaction-prompt__node {
+  fill: var(--interaction-prompt-accent);
+  opacity: 0.8;
+}
+
+.interaction-prompt__terminator {
+  fill: rgba(var(--interaction-prompt-rgb), 0.15);
+  stroke: var(--interaction-prompt-accent);
+  stroke-width: 1;
+}
+
+.interaction-prompt__label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--interaction-prompt-accent);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(var(--interaction-prompt-rgb), 0.42);
+  opacity: 0;
+  animation: mg-interaction-prompt-label-in 340ms var(--ease-out-expo) 960ms forwards;
+}
+
+.interaction-prompt__label--above {
+  transform: translate(-50%, calc(-100% - 8px));
+}
+
+.interaction-prompt__label--below {
+  transform: translate(-50%, 8px);
+}
+
+.interaction-prompt__key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--interaction-prompt-key-text);
+  background: var(--interaction-prompt-accent);
+  border: 1px solid rgba(var(--interaction-prompt-rgb), 0.95);
+  border-radius: 3px;
+  animation: mg-interaction-prompt-key-pulse 1.8s ease-in-out infinite 1200ms;
+}
+
+.interaction-prompt__text {
+  opacity: 0.86;
+}
+
+.interaction-prompt-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.interaction-prompt-anchor--block {
+  display: block;
+  width: 100%;
+}
+
+.interaction-prompt-anchor__badge {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid rgba(var(--interaction-prompt-rgb), 0.32);
+  background: rgba(4, 10, 20, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(4, 10, 20, 0.88),
+    0 0 18px rgba(var(--interaction-prompt-rgb), 0.18);
+  color: var(--interaction-prompt-accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.interaction-prompt-anchor__badge .interaction-prompt__key {
+  min-width: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+
+.interaction-prompt-anchor--top-right .interaction-prompt-anchor__badge {
+  top: 0;
+  right: 0;
+  transform: translate(34%, -62%);
+}
+
+.interaction-prompt-anchor--top-left .interaction-prompt-anchor__badge {
+  top: 0;
+  left: 0;
+  transform: translate(-34%, -62%);
+}
+
+.interaction-prompt-anchor--bottom-right .interaction-prompt-anchor__badge {
+  right: 0;
+  bottom: 0;
+  transform: translate(34%, 62%);
+}
+
+.interaction-prompt-anchor--bottom-left .interaction-prompt-anchor__badge {
+  left: 0;
+  bottom: 0;
+  transform: translate(-34%, 62%);
+}
+
+.interaction-prompt-anchor--inline-end .interaction-prompt-anchor__badge {
+  position: static;
+  margin-left: 8px;
+  transform: none;
+}

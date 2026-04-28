@@ -78,6 +78,29 @@
     transform: none;
   }
   .ehud--help {
-    bottom: 72px;
+    bottom: 186px;
+  }
+}
+
+@media (max-width: 620px) {
+  .ehud--status {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-width: none;
+  }
+
+  .ehud--radar {
+    top: 268px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    display: grid;
+    justify-items: center;
+  }
+
+  .ehud--help {
+    bottom: 200px;
   }
 }

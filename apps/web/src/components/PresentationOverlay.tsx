@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { CSSProperties } from "react"
 import type {
   PresentationCueSpec,
   RebootSequencePresentationRequest,
@@ -7,6 +8,7 @@ import type {
   RestrictionPresentationRequest,
   SystemMessagePresentationRequest,
 } from "@magnolia/contracts"
+import type { DisplayOptions } from "@/app/display-options"
 
 type OverlayPresentation =
   | SystemMessagePresentationRequest
@@ -19,13 +21,17 @@ type PresentationOverlayProps = {
   presentation: OverlayPresentation
   cueSpec?: PresentationCueSpec
   onDismiss: () => void
+  displayOptions: DisplayOptions
 }
 
 /** boot console の各行のステータス表示 */
 type BootLineStatus = "pending" | "active" | "done"
 
+const BOOT_SCOPE_BAR_COUNT = 56
+
 export function PresentationOverlay(props: PresentationOverlayProps) {
   const { presentation, cueSpec, onDismiss } = props
+  const onDismissRef = useRef(onDismiss)
   // activeIndex: 今タイプ中の行 (-1 = まだ開始前)
   // completedCount: タイプ完了 + dwell 完了した行数 (この数だけ "done" 扱いになる)
   const [activeIndex, setActiveIndex] = useState(
@@ -34,7 +40,6 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
   const [completedCount, setCompletedCount] = useState(
     presentation.cueId === "system.boot.message" ? 0 : 999,
   )
-  const [canSkip, setCanSkip] = useState(!presentation.blocking)
   const [canDismiss, setCanDismiss] = useState(!presentation.blocking)
 
   // 各行の timing を事前計算。
@@ -44,19 +49,16 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
     if (presentation.cueId !== "system.boot.message") {
       return {
         entries: [] as Array<{ typeStartMs: number; typeDurMs: number; cleanEndMs: number }>,
-        skipReadyMs: 0,
         readyMs: 0,
       }
     }
-    // boot console は雰囲気を残しつつ、入力待ちで引き延ばし過ぎない速度にします。
-    // 自動完了は短めにし、さらに少し早い時点で skip を許可して先へ進めるようにします。
-    const CHAR_MS = 8
-    const MIN_LINE_MS = 130
-    const DWELL_MS = 70
-    const INITIAL_PAUSE = 100
-    const FINAL_PAUSE = 160
-    const EMPTY_LINE_MS = 100
-    const SKIP_READY_MS = 900
+    // boot console は短い起動確認として扱い、途中開始の待ち状態を作らず最後まで走らせます。
+    const CHAR_MS = 5
+    const MIN_LINE_MS = 90
+    const DWELL_MS = 34
+    const INITIAL_PAUSE = 60
+    const FINAL_PAUSE = 110
+    const EMPTY_LINE_MS = 42
 
     const entries: Array<{ typeStartMs: number; typeDurMs: number; cleanEndMs: number }> = []
     let cursor = INITIAL_PAUSE
@@ -73,7 +75,6 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
     }
     return {
       entries,
-      skipReadyMs: Math.min(cursor + FINAL_PAUSE, SKIP_READY_MS),
       readyMs: cursor + FINAL_PAUSE,
     }
   }, [
@@ -84,14 +85,17 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
       : "",
   ])
 
-  // 連続的に増加する elapsedMs — progress bar はここから計算してシームレスに動かす。
+  // 連続的に増加する elapsedMs — progress bar はここから計算して途切れずに動かす。
   const [elapsedMs, setElapsedMs] = useState(0)
+
+  useEffect(() => {
+    onDismissRef.current = onDismiss
+  }, [onDismiss])
 
   useEffect(() => {
     if (presentation.cueId !== "system.boot.message") {
       setActiveIndex(999)
       setCompletedCount(999)
-      setCanSkip(!presentation.blocking)
       setCanDismiss(!presentation.blocking)
       setElapsedMs(0)
       return
@@ -99,7 +103,6 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
 
     setActiveIndex(-1)
     setCompletedCount(0)
-    setCanSkip(false)
     setCanDismiss(false)
     setElapsedMs(0)
 
@@ -115,18 +118,23 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
     })
 
     timeoutIds.push(
-      window.setTimeout(() => setCanSkip(true), bootSchedule.skipReadyMs),
-    )
-
-    timeoutIds.push(
       window.setTimeout(() => setCanDismiss(true), bootSchedule.readyMs),
     )
 
     // rAF ループで elapsedMs を更新 — progress bar / % 表示を毎フレーム滑らかに。
     // bootSchedule.readyMs を超えた時点でループ停止 (無駄な re-render を避ける)。
     const startAt = performance.now()
+    let lastDrawAt = 0
     let rafId = 0
     const tick = (now: number) => {
+      if (
+        props.displayOptions.lowFrameRateMode &&
+        now - lastDrawAt < props.displayOptions.targetFrameIntervalMs
+      ) {
+        rafId = requestAnimationFrame(tick)
+        return
+      }
+      lastDrawAt = now
       const elapsed = now - startAt
       setElapsedMs(elapsed)
       if (elapsed < bootSchedule.readyMs + 120) {
@@ -146,12 +154,13 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
     presentation.blocking,
     presentation.cueId,
     presentation.requestId,
+    props.displayOptions,
   ])
 
   useEffect(() => {
     const overlayReady =
       presentation.cueId === "system.boot.message"
-        ? canSkip
+        ? canDismiss
         : canDismiss
 
     if (!presentation.blocking || !overlayReady) {
@@ -163,25 +172,37 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
         return
       }
       event.preventDefault()
-      onDismiss()
+      onDismissRef.current()
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
     }
-  }, [canDismiss, canSkip, onDismiss, presentation.blocking, presentation.cueId])
+  }, [canDismiss, presentation.blocking, presentation.cueId])
+
+  useEffect(() => {
+    if (
+      presentation.cueId !== "system.boot.message" ||
+      !presentation.blocking ||
+      !canDismiss
+    ) {
+      return
+    }
+    const timeoutId = window.setTimeout(() => onDismissRef.current(), 320)
+    return () => window.clearTimeout(timeoutId)
+  }, [canDismiss, presentation.blocking, presentation.cueId])
 
   switch (presentation.cueId) {
     case "system.boot.message": {
-      // シームレスな進捗: rAF で増える elapsedMs / readyMs を直接比率化。
+      // 連続的な進捗: rAF で増える elapsedMs / readyMs を直接比率化。
       // canDismiss 後は 100% で固定。アニメーションは CSS transition を使わず
       // 毎フレーム width を上書きすることで、行完了の段差なく連続的に流れる。
       const progressRatio = canDismiss
         ? 1
         : Math.min(1, elapsedMs / Math.max(1, bootSchedule.readyMs))
       const progressPct = Math.round(progressRatio * 100)
-      const overlayReady = canSkip
+      const overlayReady = canDismiss
 
       return (
         <div className="boot-console" role="dialog" aria-label="system reboot">
@@ -212,6 +233,52 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
             <div className="boot-console__corner boot-console__corner--bl" />
             <div className="boot-console__corner boot-console__corner--br" />
 
+            <div className="boot-console__instrument-panel" aria-hidden="true">
+              <div className="boot-console__status-bank">
+                {["core", "mem", "bus", "rf"].map((label, index) => (
+                  <span
+                    key={label}
+                    className={`boot-console__lamp ${
+                      progressRatio > (index + 1) * 0.18 ? "boot-console__lamp--on" : ""
+                    }`}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <div className="boot-console__readout-grid">
+                <span>prog</span><strong>37</strong>
+                <span>verb</span><strong>06</strong>
+                <span>noun</span><strong>41</strong>
+              </div>
+              <div className="boot-console__scope">
+                <span className="boot-console__scope-label">carrier</span>
+                <span className="boot-console__scope-baseline" />
+                <span
+                  className="boot-console__scope-cursor"
+                  style={{
+                    ["--scope-cursor-left" as keyof CSSProperties]:
+                      `calc(9px + ${(progressRatio * 100).toFixed(3)}% - ${(progressRatio * 18).toFixed(3)}px)`,
+                  }}
+                />
+                <div className="boot-console__scope-bars">
+                  {Array.from({ length: BOOT_SCOPE_BAR_COUNT }, (_, index) => (
+                    <span
+                      key={index}
+                      className="boot-console__scope-bar"
+                      style={{
+                        ["--scope-amp" as keyof CSSProperties]: buildBootScopeAmplitude({
+                          index,
+                          progressRatio,
+                          elapsedMs,
+                        }),
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* ターミナル本体 */}
             <ul className="boot-console__log" role="log" aria-live="polite">
               {presentation.lines.map((line, index) => {
@@ -236,10 +303,10 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
                     }`}
                     style={{
                       // 行ごとに typing 時間を CSS 変数で注入。短い行は速く、長い行は
-                      // ゆっくり — 一文字 24ms のペースで視線がついていける速度。
-                      ["--boot-type-ms" as keyof React.CSSProperties]:
+                      // 少し長く残すことで、高速でも処理の段階が読めるようにします。
+                      ["--boot-type-ms" as keyof CSSProperties]:
                         `${entry?.typeDurMs ?? 600}ms`,
-                    } as React.CSSProperties}
+                    } as CSSProperties}
                   >
                     {!isEmpty ? (
                       <>
@@ -295,10 +362,8 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
                 </span>
                 <span>
                   {canDismiss
-                    ? "press ENTER to synchronize"
-                    : overlayReady
-                      ? "press ENTER to skip boot"
-                      : "processing..."}
+                    ? "launch MAGNOLIA"
+                    : "synchronizing..."}
                 </span>
               </button>
             </footer>
@@ -325,4 +390,21 @@ function sessionHex(requestId: string): string {
     hash = ((hash << 5) - hash + requestId.charCodeAt(i)) | 0
   }
   return (hash >>> 0).toString(16).toUpperCase().slice(-6).padStart(6, "0")
+}
+
+function buildBootScopeAmplitude(input: {
+  index: number
+  progressRatio: number
+  elapsedMs: number
+}): string {
+  const normalizedIndex = input.index / Math.max(1, BOOT_SCOPE_BAR_COUNT - 1)
+  const carrier = 0.58 + 0.36 * Math.sin(normalizedIndex * Math.PI * 5.2 + input.elapsedMs * 0.006)
+  const phrase =
+    0.42 + 0.36 * Math.sin(normalizedIndex * Math.PI * 2.8 - input.progressRatio * Math.PI * 1.6)
+  const transient =
+    0.18 * Math.pow(Math.max(0, Math.sin(input.elapsedMs * 0.013 + input.index * 0.91)), 8)
+  const taper = 0.7 + 0.3 * Math.sin(Math.PI * normalizedIndex)
+  const bootGain = 0.56 + input.progressRatio * 0.44
+  const amplitude = Math.min(1, Math.max(0.18, (carrier * 0.58 + phrase * 0.42 + transient) * taper * bootGain))
+  return amplitude.toFixed(3)
 }
