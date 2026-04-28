@@ -1,0 +1,12 @@
+{
+  "presetId": "vis_bullet_player_pulse",
+  "category": "projectile",
+  "rendererKind": "pulse",
+  "paletteRole": "playerSignal",
+  "trailKind": "shortSignal",
+  "auraKind": "clear",
+  "radiusScale": 1,
+  "glowIntensity": 0.46,
+  "motionSmear": 0.18,
+  "accessibilityVariant": "solidCore"
+}

@@ -2,30 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import type { MutableRefObject } from "react"
 import type {
   AreaId,
-  ContentBundle,
-  ExploreSnapshot,
-  ProfileAggregate,
   TransmissionId,
-  TransmissionProgressRow,
-  WorldMapLogic,
 } from "@magnolia/contracts"
-import {
-  computeAreaCompletionRate,
-  readTransmissionCompletionState,
-  type ExploreRenderState,
-} from "@magnolia/game-session"
 import {
   drawCollectibleMarker,
   drawTransmissionMarker,
 } from "@/app/canvas-markers"
 import type { DisplayOptions } from "@/app/display-options"
 import { ActionButton } from "@/components/ActionButton"
+import { expandRect, worldToCanvasPoint } from "@/render/shared/coordinates"
+import type { WorldMapViewModel } from "@/view-models/map-view-model"
 
 type MapScreenProps = {
-  content: ContentBundle
-  profile: ProfileAggregate
-  snapshot: ExploreSnapshot
-  renderState: ExploreRenderState
+  viewModel: WorldMapViewModel
   displayOptions: DisplayOptions
   onBack: () => void
   onWarpToArea: (areaId: AreaId) => void
@@ -36,18 +25,8 @@ type HitTarget =
   | { type: "area"; areaId: AreaId; x: number; y: number; radius: number }
   | { type: "transmission"; areaId: AreaId; transmissionId: TransmissionId; x: number; y: number; radius: number }
 
-type Rect = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
 export function MapScreen({
-  content,
-  profile,
-  snapshot,
-  renderState,
+  viewModel,
   displayOptions,
   onBack,
   onWarpToArea,
@@ -57,33 +36,18 @@ export function MapScreen({
   const sizeRef = useRef({ width: 0, height: 0 })
   const hitTargetsRef = useRef<HitTarget[]>([])
 
-  const mapLogic = useMemo(() => resolveWorldMapLogic(content), [content])
-  const transmissionProgressById = useMemo(
-    () => toProgressRecord(profile.transmissionProgress),
-    [profile.transmissionProgress],
-  )
-
-  const visibleAreas = useMemo(
-    () =>
-      snapshot.featureAccess.visibleAreaIds
-        .map((areaId) => content.areas[areaId])
-        .filter(Boolean)
-        .sort((left, right) => left.name.localeCompare(right.name, "ja")),
-    [content.areas, snapshot.featureAccess.visibleAreaIds],
-  )
-
   const [selectedAreaId, setSelectedAreaId] = useState<AreaId | undefined>(
-    snapshot.hud.currentAreaId,
+    viewModel.selectedAreaId,
   )
   const [selectedTransmissionId, setSelectedTransmissionId] = useState<TransmissionId | undefined>(
-    undefined,
+    viewModel.selectedTransmissionId,
   )
 
   useEffect(() => {
-    if (!selectedAreaId || !visibleAreas.some((area) => area.areaId === selectedAreaId)) {
-      setSelectedAreaId(snapshot.hud.currentAreaId)
+    if (!selectedAreaId || !viewModel.areas.some((area) => area.areaId === selectedAreaId)) {
+      setSelectedAreaId(viewModel.selectedAreaId)
     }
-  }, [selectedAreaId, snapshot.hud.currentAreaId, visibleAreas])
+  }, [selectedAreaId, viewModel.areas, viewModel.selectedAreaId])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -105,17 +69,20 @@ export function MapScreen({
   }, [])
 
   const selectedTransmission = selectedTransmissionId
-    ? content.transmissions[selectedTransmissionId]
+    ? viewModel.transmissions.find((item) => item.transmissionId === selectedTransmissionId)
     : undefined
-  const selectedTransmissionProgress = selectedTransmissionId
-    ? transmissionProgressById[selectedTransmissionId]
+  const selectedArea = selectedAreaId
+    ? viewModel.areas.find((item) => item.areaId === selectedAreaId)
     : undefined
   const focusBounds = useMemo(
     () =>
       selectedAreaId
-        ? expandRect(computeAreaBounds(mapLogic, content, selectedAreaId), 120)
-        : expandRect(renderState.worldBounds, 60),
-    [content, mapLogic, renderState.worldBounds, selectedAreaId],
+        ? expandRect(
+            viewModel.areas.find((area) => area.areaId === selectedAreaId)?.bounds ?? viewModel.focusBounds,
+            120,
+          )
+        : viewModel.focusBounds,
+    [selectedAreaId, viewModel.areas, viewModel.focusBounds],
   )
 
   useEffect(() => {
@@ -152,14 +119,10 @@ export function MapScreen({
         height,
         timeMs,
         focusBounds,
-        snapshot,
-        renderState,
-        content,
-        mapLogic,
+        viewModel,
         selectedAreaId,
         selectedTransmissionId,
         hitTargetsRef,
-        transmissionProgressById,
       })
 
       frameId = window.requestAnimationFrame(drawFrame)
@@ -171,15 +134,11 @@ export function MapScreen({
       window.cancelAnimationFrame(frameId)
     }
   }, [
-    content,
     displayOptions,
     focusBounds,
-    mapLogic,
-    renderState,
     selectedAreaId,
     selectedTransmissionId,
-    snapshot,
-    transmissionProgressById,
+    viewModel,
   ])
 
   function handleCanvasClick(event: React.MouseEvent<HTMLCanvasElement>) {
@@ -225,13 +184,8 @@ export function MapScreen({
         </div>
 
         <div className="map-screen__area-list">
-          {visibleAreas.map((area) => {
-            const completion = Math.round(
-              computeAreaCompletionRate({
-                area,
-                transmissionProgress: transmissionProgressById,
-              }) * 100,
-            )
+          {viewModel.areas.map((area) => {
+            const completion = Math.round(area.completionRate * 100)
             const isSelected = area.areaId === selectedAreaId
             return (
               <button
@@ -269,22 +223,22 @@ export function MapScreen({
             <>
               <p className="map-screen__info-eyebrow">transmission</p>
               <h2 className="map-screen__info-title">
-                {selectedTransmissionProgress?.metadataUnlocked.title ? selectedTransmission.title : "???"}
+                {selectedTransmission.title}
               </h2>
               <p className="map-screen__info-text">
                 発信者:
                 {" "}
-                {selectedTransmissionProgress?.metadataUnlocked.sender ? selectedTransmission.sender : "???"}
+                {selectedTransmission.sender}
               </p>
               <p className="map-screen__info-text">
                 宛先:
                 {" "}
-                {selectedTransmissionProgress?.metadataUnlocked.recipient ? selectedTransmission.recipient : "???"}
+                {selectedTransmission.recipient}
               </p>
               <p className="map-screen__info-text">
                 復元率:
                 {" "}
-                {Math.round((selectedTransmissionProgress?.archiveRestorationRate ?? 0) * 100)}%
+                {Math.round(selectedTransmission.restorationRate * 100)}%
               </p>
               <div className="button-row">
                 <ActionButton
@@ -300,22 +254,17 @@ export function MapScreen({
                 </ActionButton>
               </div>
             </>
-          ) : selectedAreaId ? (
+          ) : selectedArea ? (
             <>
               <p className="map-screen__info-eyebrow">area</p>
-              <h2 className="map-screen__info-title">{content.areas[selectedAreaId]?.name ?? "unknown area"}</h2>
+              <h2 className="map-screen__info-title">{selectedArea.name}</h2>
               <p className="map-screen__info-text">
                 解放率:
                 {" "}
-                {Math.round(
-                  computeAreaCompletionRate({
-                    area: content.areas[selectedAreaId],
-                    transmissionProgress: transmissionProgressById,
-                  }) * 100,
-                )}%
+                {Math.round(selectedArea.completionRate * 100)}%
               </p>
               <div className="button-row">
-                <ActionButton tone="ghost" onClick={() => onWarpToArea(selectedAreaId)}>
+                <ActionButton tone="ghost" onClick={() => onWarpToArea(selectedArea.areaId)}>
                   移動
                 </ActionButton>
               </div>
@@ -340,15 +289,11 @@ function drawMapCanvas(input: {
   width: number
   height: number
   timeMs: number
-  focusBounds: Rect
-  snapshot: ExploreSnapshot
-  renderState: ExploreRenderState
-  content: ContentBundle
-  mapLogic: WorldMapLogic
+  focusBounds: WorldMapViewModel["focusBounds"]
+  viewModel: WorldMapViewModel
   selectedAreaId?: AreaId
   selectedTransmissionId?: TransmissionId
   hitTargetsRef: MutableRefObject<HitTarget[]>
-  transmissionProgressById: Record<TransmissionId, TransmissionProgressRow>
 }) {
   const { ctx, width, height } = input
   const padding = 18
@@ -361,56 +306,42 @@ function drawMapCanvas(input: {
   ctx.fillRect(0, 0, width, height)
   drawMapAmbientNoise(ctx, width, height, input.timeMs)
 
-  drawMapFog(ctx, input.snapshot.map.fogBitmap, input.renderState.worldBounds, input.focusBounds, width, height, padding)
+  drawMapFog(ctx, input.viewModel.fogBitmap, input.viewModel.worldBounds, input.focusBounds, width, height, padding)
   drawMapGrid(ctx, input.focusBounds, width, height, padding)
 
-  for (const areaNode of input.mapLogic.areaNodes) {
-    if (!input.snapshot.featureAccess.visibleAreaIds.includes(areaNode.areaId)) {
-      continue
-    }
-    const point = worldToCanvas(input.focusBounds, width, height, padding, areaNode.x, areaNode.y)
-    const isSelected = areaNode.areaId === input.selectedAreaId
+  for (const area of input.viewModel.areas) {
+    const point = worldToCanvas(input.focusBounds, width, height, padding, area.position.x, area.position.y)
+    const isSelected = area.areaId === input.selectedAreaId
     drawAreaPoint(ctx, point.x, point.y, isSelected)
     hitTargets.push({
       type: "area",
-      areaId: areaNode.areaId,
+      areaId: area.areaId,
       x: point.x,
       y: point.y,
       radius: 16,
     })
   }
 
-  for (const node of input.mapLogic.collectibleNodes) {
-    if (!input.snapshot.map.visibleCollectibleNodeIds.includes(node.nodeId)) {
-      continue
-    }
-    const point = worldToCanvas(input.focusBounds, width, height, padding, node.x, node.y)
+  for (const node of input.viewModel.collectibles) {
+    const point = worldToCanvas(input.focusBounds, width, height, padding, node.position.x, node.position.y)
     drawCollectibleMarker(ctx, {
       x: point.x,
       y: point.y,
-      size: node.collectibleKind === "hiddenEquipment" ? 12 : 10,
-      kind: node.collectibleKind,
+      size: node.markerKind === "equipment" ? 12 : 10,
+      kind: node.markerKind,
       timeMs: input.timeMs,
       variant: "map",
     })
   }
 
-  for (const node of input.mapLogic.transmissionNodes) {
-    // 未識別通信は正確な座標を map に出さず、session selector 済みの node だけを描画します。
-    // 一度 signal confidence が確定した通信は snapshot 側に残るため、再探索は不要です。
-    if (!input.snapshot.map.visibleTransmissionNodeIds.includes(node.nodeId)) {
-      continue
-    }
-    const point = worldToCanvas(input.focusBounds, width, height, padding, node.x, node.y)
-    const state = readTransmissionCompletionState(
-      input.transmissionProgressById[node.transmissionId],
-    )
+  for (const node of input.viewModel.transmissions) {
+    const point = worldToCanvas(input.focusBounds, width, height, padding, node.position.x, node.position.y)
     const isSelected = node.transmissionId === input.selectedTransmissionId
     drawTransmissionMarker(ctx, {
       x: point.x,
       y: point.y,
       size: isSelected ? 12 : 10,
-      state,
+      state: node.state,
       timeMs: input.timeMs,
       variant: "map",
       selected: isSelected,
@@ -430,13 +361,13 @@ function drawMapCanvas(input: {
     width,
     height,
     padding,
-    input.snapshot.playerPosition.x,
-    input.snapshot.playerPosition.y,
+    input.viewModel.player.position.x,
+    input.viewModel.player.position.y,
   )
   const playerAngle =
-    Math.atan2(input.renderState.playerFacing.y, input.renderState.playerFacing.x) + Math.PI / 2
+    Math.atan2(input.viewModel.player.facing.y, input.viewModel.player.facing.x) + Math.PI / 2
   const visionRadiusPx =
-    (input.renderState.visionRadius / Math.max(1, input.focusBounds.width)) * (width - padding * 2)
+    (input.viewModel.player.visionRadius / Math.max(1, input.focusBounds.width)) * (width - padding * 2)
   drawMapVisionWave(ctx, playerPoint.x, playerPoint.y, visionRadiusPx, input.timeMs)
   drawPlayerPoint(ctx, playerPoint.x, playerPoint.y, playerAngle, input.timeMs)
 
@@ -497,8 +428,8 @@ function drawMapVisionWave(
 function drawMapFog(
   ctx: CanvasRenderingContext2D,
   fogBitmap: string,
-  worldBounds: Rect,
-  focusBounds: Rect,
+  worldBounds: WorldMapViewModel["worldBounds"],
+  focusBounds: WorldMapViewModel["focusBounds"],
   width: number,
   height: number,
   padding: number,
@@ -544,7 +475,7 @@ function drawMapFog(
 
 function drawMapGrid(
   ctx: CanvasRenderingContext2D,
-  focusBounds: Rect,
+  focusBounds: WorldMapViewModel["focusBounds"],
   width: number,
   height: number,
   padding: number,
@@ -626,54 +557,20 @@ function drawPlayerPoint(
   ctx.restore()
 }
 
-function resolveWorldMapLogic(content: ContentBundle): WorldMapLogic {
-  const firstMapId = Object.keys(content.mapLogic)[0]
-  return content.mapLogic[firstMapId]
-}
-
-function computeAreaBounds(content: WorldMapLogic, bundle: ContentBundle, areaId: AreaId): Rect {
-  const worldPosition = bundle.areas[areaId]?.worldPosition ?? { x: 0, y: 0 }
-  const points = [
-    worldPosition,
-    ...content.areaNodes.filter((node) => node.areaId === areaId),
-    ...content.transmissionNodes.filter((node) => node.areaId === areaId),
-    ...content.collectibleNodes.filter((node) => node.areaId === areaId),
-    ...content.warpNodes.filter((node) => node.areaId === areaId),
-  ]
-  const xs = points.map((point) => point.x)
-  const ys = points.map((point) => point.y)
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-  return {
-    x: minX - 40,
-    y: minY - 40,
-    width: Math.max(160, maxX - minX + 80),
-    height: Math.max(160, maxY - minY + 80),
-  }
-}
-
-function expandRect(rect: Rect, amount: number): Rect {
-  return {
-    x: rect.x - amount,
-    y: rect.y - amount,
-    width: rect.width + amount * 2,
-    height: rect.height + amount * 2,
-  }
-}
-
-function worldToCanvas(bounds: Rect, width: number, height: number, padding: number, wx: number, wy: number) {
-  const rx = (wx - bounds.x) / Math.max(1, bounds.width)
-  const ry = (wy - bounds.y) / Math.max(1, bounds.height)
-  return {
-    x: padding + rx * (width - padding * 2),
-    y: padding + ry * (height - padding * 2),
-  }
-}
-
-function toProgressRecord(progressRows: ProfileAggregate["transmissionProgress"]) {
-  return Object.fromEntries(progressRows.map((row) => [row.transmissionId, row]))
+function worldToCanvas(
+  bounds: WorldMapViewModel["focusBounds"],
+  width: number,
+  height: number,
+  padding: number,
+  wx: number,
+  wy: number,
+) {
+  return worldToCanvasPoint({
+    bounds,
+    size: { width, height },
+    padding,
+    worldPosition: { x: wx, y: wy },
+  })
 }
 
 function seededUnit(seed: number): number {

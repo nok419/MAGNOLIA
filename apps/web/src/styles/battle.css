@@ -143,6 +143,24 @@
   gap: 8px;
   align-content: start;
   overflow: auto;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+.battle-subtitle-panel--hit {
+  transform: translateX(1px);
+  background: linear-gradient(90deg, rgba(255, 178, 116, 0.08), transparent 58%);
+}
+.battle-subtitle-panel--noise {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 126, 144, 0.08),
+    rgba(255, 126, 144, 0.08) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+}
+.battle-subtitle-panel--clear,
+.battle-subtitle-panel--recovered {
+  background: linear-gradient(90deg, rgba(174, 236, 255, 0.08), transparent 62%);
 }
 .battle-subtitle-panel__speaker {
   font-family: var(--font-mono);
@@ -233,6 +251,11 @@
   padding: 12px 14px;
   border: 1px solid rgba(216, 231, 246, 0.16);
   background: rgba(4, 10, 20, 0.72);
+}
+
+.battle-result-transcript--restored {
+  border-color: rgba(255, 236, 190, 0.34);
+  box-shadow: inset 0 0 22px rgba(255, 236, 190, 0.08);
 }
 
 .battle-result-transcript p {

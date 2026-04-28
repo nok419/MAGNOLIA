@@ -1,0 +1,12 @@
+{
+  "presetId": "vis_bullet_enemy_basic",
+  "category": "projectile",
+  "rendererKind": "orb",
+  "paletteRole": "enemyNoise",
+  "trailKind": "shortSignal",
+  "auraKind": "soft",
+  "radiusScale": 1,
+  "glowIntensity": 0.45,
+  "motionSmear": 0.2,
+  "accessibilityVariant": "solidCore"
+}

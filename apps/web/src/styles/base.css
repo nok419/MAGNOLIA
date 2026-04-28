@@ -3,7 +3,9 @@
    終末通信システムの静かな電子空間を表現するUI基盤
    ========================================================= */
 
-/* --- Design Tokens --- */
+/* --- Compatibility Tokens ---
+   Semantic tokens are defined in tokens.css. These aliases keep older screens stable
+   while renderer and UI code move to the shared names. */
 :root {
   /* palette */
   --mg-void:        #040810;

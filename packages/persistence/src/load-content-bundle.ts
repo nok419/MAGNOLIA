@@ -1,9 +1,13 @@
 import type {
   AreaMaster,
+  BackgroundPreset,
   BulletPattern,
   ConditionId,
   ConditionSpec,
   ContentBundle,
+  ContentHitboxPreset,
+  ContentLifecycle,
+  ContentVisualPreset,
   EffectSpec,
   EffectId,
   EnemyArchetype,
@@ -16,6 +20,7 @@ import type {
   MissionMaster,
   ProjectileId,
   ProjectileSpec,
+  PresentationCueSpec,
   TranscriptChunk,
   TranscriptChunkId,
   TransmissionId,
@@ -23,9 +28,10 @@ import type {
   VisualPresetId,
   WorldMapLogic,
 } from "@magnolia/contracts"
-import { type PresentationCueId } from "@magnolia/contracts"
 import areaBroadcastFacilityJson from "../../../content/gameplay/areas/area_broadcast_facility.json"
 import areaCentralTowerJson from "../../../content/gameplay/areas/area_central_tower.json"
+import bgBroadcastFacilityJson from "../../../content/gameplay/background-presets/bg_broadcast_facility.json"
+import bgCentralTowerJson from "../../../content/gameplay/background-presets/bg_central_tower.json"
 import bpA2LanceSpreadJson from "../../../content/gameplay/bullet-patterns/bp_a2_lance_spread.json"
 import bpB1CoreBurstJson from "../../../content/gameplay/bullet-patterns/bp_b1_core_burst.json"
 import bpB1LanceStreamJson from "../../../content/gameplay/bullet-patterns/bp_b1_lance_stream.json"
@@ -42,6 +48,7 @@ import enemyC1Json from "../../../content/gameplay/enemies/c1.json"
 import enemyHeavyJson from "../../../content/gameplay/enemies/enemy_heavy.json"
 import enemyScoutJson from "../../../content/gameplay/enemies/enemy_scout.json"
 import enemyStandardJson from "../../../content/gameplay/enemies/enemy_standard.json"
+import contentClassificationJson from "../../../content/gameplay/content-classification.json"
 import effMainCarrierJson from "../../../content/gameplay/equipment/effects/eff_main_carrier.json"
 import effMainPulseJson from "../../../content/gameplay/equipment/effects/eff_main_pulse.json"
 import effOsMagnoliaJson from "../../../content/gameplay/equipment/effects/eff_os_magnolia.json"
@@ -69,6 +76,14 @@ import missionWhereAreYouJson from "../../../content/gameplay/missions/mission_w
 import missionEvacuationJson from "../../../content/gameplay/missions/mission_evacuation.json"
 import condAlwaysJson from "../../../content/gameplay/progression/conditions/cond_always.json"
 import condMissionGoodMorningClearedJson from "../../../content/gameplay/progression/conditions/cond_mission_good_morning_cleared.json"
+import hitboxEnemyLargeJson from "../../../content/gameplay/hitbox-presets/enemies/hitbox_enemy_large.json"
+import hitboxEnemyMediumJson from "../../../content/gameplay/hitbox-presets/enemies/hitbox_enemy_medium.json"
+import hitboxEnemySmallJson from "../../../content/gameplay/hitbox-presets/enemies/hitbox_enemy_small.json"
+import hitboxPlayerCoreJson from "../../../content/gameplay/hitbox-presets/player/hitbox_player_core.json"
+import hitboxBulletMediumJson from "../../../content/gameplay/hitbox-presets/projectiles/hitbox_bullet_medium.json"
+import hitboxBulletSmallJson from "../../../content/gameplay/hitbox-presets/projectiles/hitbox_bullet_small.json"
+import hitboxBulletThinJson from "../../../content/gameplay/hitbox-presets/projectiles/hitbox_bullet_thin.json"
+import presentationCuesJson from "../../../content/gameplay/presentation-cues.json"
 import projEnemyBasicJson from "../../../content/gameplay/projectiles/proj_enemy_basic.json"
 import projEnemyCoreJson from "../../../content/gameplay/projectiles/proj_enemy_core.json"
 import projEnemyGeoJson from "../../../content/gameplay/projectiles/proj_enemy_geo.json"
@@ -84,11 +99,28 @@ import txWhereAreYouChunksJson from "../../../content/gameplay/transmissions/tx_
 import txWhereAreYouJson from "../../../content/gameplay/transmissions/tx_where_are_you.json"
 import txEvacuationChunksJson from "../../../content/gameplay/transmissions/tx_evacuation.chunks.json"
 import txEvacuationJson from "../../../content/gameplay/transmissions/tx_evacuation.json"
+import hazardMagneticDisasterGentleJson from "../../../content/gameplay/visual-presets/hazards/hazard_magnetic_disaster_gentle.json"
+import hazardMagneticDisasterStandardJson from "../../../content/gameplay/visual-presets/hazards/hazard_magnetic_disaster_standard.json"
+import visEnemyA1Json from "../../../content/gameplay/visual-presets/enemies/vis_enemy_a1.json"
+import visEnemyA2Json from "../../../content/gameplay/visual-presets/enemies/vis_enemy_a2.json"
+import visEnemyB1Json from "../../../content/gameplay/visual-presets/enemies/vis_enemy_b1.json"
+import visEnemyC1Json from "../../../content/gameplay/visual-presets/enemies/vis_enemy_c1.json"
+import visEnemyHeavyJson from "../../../content/gameplay/visual-presets/enemies/vis_enemy_heavy.json"
+import visEnemyScoutJson from "../../../content/gameplay/visual-presets/enemies/vis_enemy_scout.json"
+import visEnemyStandardJson from "../../../content/gameplay/visual-presets/enemies/vis_enemy_standard.json"
+import visBulletEnemyBasicJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_basic.json"
+import visBulletEnemyCoreJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_core.json"
+import visBulletEnemyGeoJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_geo.json"
+import visBulletEnemyLanceJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_lance.json"
+import visBulletEnemyPetalJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_petal.json"
+import visBulletPlayerCarrierJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_player_carrier.json"
+import visBulletPlayerCarrierBlastJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_player_carrier_blast.json"
+import visBulletPlayerMeleeJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_player_melee.json"
+import visBulletPlayerPulseJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_player_pulse.json"
 import {
   createDefaultDifficultyModifiers,
   createDefaultHitboxes,
   createDefaultPlayerShipSpec,
-  createDefaultPresentationCues,
   createDefaultThemes,
   createDefaultVisuals,
 } from "./defaults"
@@ -183,6 +215,40 @@ export function loadContentBundle(): ContentBundle {
     condAlwaysJson,
     condMissionGoodMorningClearedJson,
   ] as ConditionSpec[]
+  const contentVisualPresets = [
+    visEnemyA1Json,
+    visEnemyA2Json,
+    visEnemyB1Json,
+    visEnemyC1Json,
+    visEnemyHeavyJson,
+    visEnemyScoutJson,
+    visEnemyStandardJson,
+    hazardMagneticDisasterGentleJson,
+    hazardMagneticDisasterStandardJson,
+    visBulletEnemyBasicJson,
+    visBulletEnemyCoreJson,
+    visBulletEnemyGeoJson,
+    visBulletEnemyLanceJson,
+    visBulletEnemyPetalJson,
+    visBulletPlayerCarrierJson,
+    visBulletPlayerCarrierBlastJson,
+    visBulletPlayerMeleeJson,
+    visBulletPlayerPulseJson,
+  ] as ContentVisualPreset[]
+  const contentHitboxPresets = [
+    hitboxEnemyLargeJson,
+    hitboxEnemyMediumJson,
+    hitboxEnemySmallJson,
+    hitboxPlayerCoreJson,
+    hitboxBulletMediumJson,
+    hitboxBulletSmallJson,
+    hitboxBulletThinJson,
+  ] as ContentHitboxPreset[]
+  const backgroundPresets = [
+    bgBroadcastFacilityJson,
+    bgCentralTowerJson,
+  ] as BackgroundPreset[]
+  const presentationCues = presentationCuesJson as PresentationCueSpec[]
 
   const bundle: ContentBundle = {
     playerShipSpec: createDefaultPlayerShipSpec(),
@@ -199,21 +265,12 @@ export function loadContentBundle(): ContentBundle {
     conditions: indexBy("conditionId", conditions),
     visuals: createDefaultVisuals(collectVisualPresetIds(missions, enemies, projectiles)),
     hitboxes: filterHitboxes(collectHitboxPresetIds(enemies, projectiles)),
+    contentVisualPresets: indexBy("presetId", contentVisualPresets),
+    contentHitboxPresets: indexBy("presetId", contentHitboxPresets),
+    backgroundPresets: indexBy("presetId", backgroundPresets),
+    contentLifecycle: contentClassificationJson as Partial<Record<ContentLifecycle, Record<string, string[]>>>,
     themes: createDefaultThemes(areas.map((area) => area.themeId)),
-    presentationCues: filterPresentationCues([
-      "system.boot.message",
-      "system.reboot.sequence",
-      "system.reboot.settle",
-      "tutorial.restriction.enter",
-      "tutorial.restriction.release",
-      "explore.player.trail",
-      "transmission.connect.sequence",
-      "warp.transition.sequence",
-      "battle.player.hit",
-      "battle.noise.peak",
-      "battle.noise.clear",
-      "battle.invincible.start",
-    ]),
+    presentationCues: indexBy("id", presentationCues),
     difficultyModifiers: createDefaultDifficultyModifiers(),
   }
 
@@ -278,17 +335,6 @@ function filterHitboxes(ids: HitboxPresetId[]) {
   return filtered
 }
 
-function filterPresentationCues(ids: PresentationCueId[]) {
-  const cues = createDefaultPresentationCues()
-  const filtered: Record<string, (typeof cues)[string]> = {}
-
-  for (const id of ids) {
-    filtered[id] = cues[id]
-  }
-
-  return filtered
-}
-
 function validateBundle(bundle: ContentBundle): void {
   const validSpawnPointIds = new Set([
     "spawn_player_center",
@@ -302,6 +348,8 @@ function validateBundle(bundle: ContentBundle): void {
   ])
   const validNodeIds = new Set<string>()
   const areaMapIds = new Set<string>()
+
+  validatePresetCoverage(bundle)
 
   for (const mapLogic of Object.values(bundle.mapLogic)) {
     for (const node of [
@@ -612,6 +660,47 @@ function validateBundle(bundle: ContentBundle): void {
           )
         }
         break
+    }
+  }
+}
+
+function validatePresetCoverage(bundle: ContentBundle): void {
+  if (!bundle.contentVisualPresets || !bundle.contentHitboxPresets || !bundle.backgroundPresets) {
+    throw new Error("Content preset tables must be loaded from content/gameplay preset JSON.")
+  }
+
+  for (const mission of Object.values(bundle.missions)) {
+    if (!bundle.backgroundPresets[mission.backgroundPresetId]) {
+      throw new Error(`Missing background preset ${mission.backgroundPresetId} for mission ${mission.missionId}.`)
+    }
+    for (const hazard of mission.hazards) {
+      if (!bundle.contentVisualPresets[hazard.visualPresetId]) {
+        throw new Error(`Missing hazard visual preset ${hazard.visualPresetId} for hazard ${hazard.hazardId}.`)
+      }
+    }
+  }
+
+  for (const enemy of Object.values(bundle.enemies)) {
+    if (!bundle.contentVisualPresets[enemy.visualPresetId]) {
+      throw new Error(`Missing enemy visual preset ${enemy.visualPresetId} for enemy ${enemy.enemyId}.`)
+    }
+    if (!bundle.contentHitboxPresets[enemy.hitboxPresetId]) {
+      throw new Error(`Missing enemy hitbox preset ${enemy.hitboxPresetId} for enemy ${enemy.enemyId}.`)
+    }
+  }
+
+  for (const projectile of Object.values(bundle.projectiles)) {
+    if (!bundle.contentVisualPresets[projectile.visualPresetId]) {
+      throw new Error(`Missing projectile visual preset ${projectile.visualPresetId} for projectile ${projectile.projectileId}.`)
+    }
+    if (!bundle.contentHitboxPresets[projectile.hitboxPresetId]) {
+      throw new Error(`Missing projectile hitbox preset ${projectile.hitboxPresetId} for projectile ${projectile.projectileId}.`)
+    }
+  }
+
+  for (const cue of Object.values(bundle.presentationCues)) {
+    if (!cue.reduceFlashingVariant) {
+      throw new Error(`Presentation cue ${cue.id} must define reduceFlashingVariant.`)
     }
   }
 }

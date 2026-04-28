@@ -1,0 +1,12 @@
+{
+  "presetId": "vis_bullet_enemy_lance",
+  "category": "projectile",
+  "rendererKind": "lance",
+  "paletteRole": "enemyPrototype",
+  "trailKind": "longSignal",
+  "auraKind": "thin",
+  "radiusScale": 0.9,
+  "glowIntensity": 0.5,
+  "motionSmear": 0.42,
+  "accessibilityVariant": "solidCore"
+}

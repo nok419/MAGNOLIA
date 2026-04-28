@@ -5,6 +5,8 @@
 対象範囲: `apps/web`, `content/gameplay`, `docs`
 判定: 小修正ではなく、段階的な大規模リファクタが必要
 
+注記: この文書は作成時点のレビュー記録です。ファイル名や行番号はコードマップとして意図的に残しています。現在の正本は `02_開発体制とディレクトリ構成`、データ契約は `05_データ構造`、表示境界は `08_表示と機能の境界` を参照してください。
+
 ## 1. 結論
 
 現在のプロジェクトは、ドキュメント上では「gameplay は `packages/game-session`、save/settings は `packages/persistence`、表示は `apps/web`、描画入力は renderState」という境界を明確に定めています。しかし、今回渡されたアーカイブ実体には `packages/contracts`、`packages/game-session`、`packages/persistence`、`tsconfig.base.json` が含まれていません。`apps/web/package.json` と `apps/web/tsconfig.json` はこれらの package を前提にしているため、アーカイブ単体では型検査およびビルドが成立しません。

@@ -1,0 +1,6 @@
+{
+  "presetId": "hitbox_bullet_small",
+  "category": "projectile",
+  "shape": "circle",
+  "radius": 5
+}

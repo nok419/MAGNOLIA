@@ -1,0 +1,9 @@
+{
+  "presetId": "bg_broadcast_facility",
+  "theme": "broadcastFacility",
+  "residualWarmth": 0.22,
+  "structureDensity": 0.7,
+  "dustDensity": 0.42,
+  "scanlineIntensity": 0.34,
+  "vignetteStrength": 0.54
+}

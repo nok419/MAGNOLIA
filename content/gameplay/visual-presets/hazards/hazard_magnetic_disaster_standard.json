@@ -1,0 +1,9 @@
+{
+  "presetId": "hazard_magnetic_disaster_standard",
+  "category": "hazard",
+  "rendererKind": "magneticDisaster",
+  "paletteRole": "threatNoise",
+  "glowIntensity": 0.5,
+  "motionProfile": "warningSweep",
+  "accessibilityVariant": "noFlash"
+}

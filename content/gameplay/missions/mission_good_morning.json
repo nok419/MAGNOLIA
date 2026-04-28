@@ -16,42 +16,47 @@
   "repeatDecayRate": 0.3,
   "waves": [
     {
-      "atMs": 3000,
+      "atMs": 8000,
+      "intentTag": "main-confirmation-clear-forward-noise",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 1 }
       ]
     },
     {
-      "atMs": 9000,
+      "atMs": 12000,
+      "intentTag": "main-confirmation-soft-noise",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 2 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 3 }
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 2, "overrides": { "speed": 24 } },
+        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 3, "overrides": { "speed": 24 } }
       ]
     },
     {
       "atMs": 17000,
+      "intentTag": "melee-confirmation",
       "entries": [
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 4 }
+        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 4, "overrides": { "speed": 18 } }
       ]
     },
     {
-      "atMs": 25000,
+      "atMs": 30500,
+      "intentTag": "hit-noise-confirmation-safe",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 5 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 6 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 7 }
       ]
     },
     {
       "atMs": 34000,
+      "intentTag": "hit-noise-confirmation-safe",
       "entries": [
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 8 },
+        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 8, "overrides": { "speed": 20 } },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 9 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 10 }
       ]
     },
     {
       "atMs": 43000,
+      "intentTag": "return-to-explore-preparation",
       "entries": [
         {
           "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 11,
@@ -65,6 +70,7 @@
     },
     {
       "atMs": 51000,
+      "intentTag": "return-to-explore-preparation",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 13 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 14 }

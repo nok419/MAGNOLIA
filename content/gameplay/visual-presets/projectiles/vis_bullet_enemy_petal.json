@@ -1,0 +1,13 @@
+{
+  "presetId": "vis_bullet_enemy_petal",
+  "category": "projectile",
+  "rendererKind": "shard",
+  "paletteRole": "enemyNoise",
+  "trailKind": "shortSignal",
+  "auraKind": "soft",
+  "radiusScale": 0.9,
+  "glowIntensity": 0.42,
+  "motionSmear": 0.24,
+  "accessibilityVariant": "solidCore",
+  "description": "ID は petal だが、現行描画では小型ノイズ片として扱う。互換性のため ID は維持する。"
+}

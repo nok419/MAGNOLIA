@@ -185,6 +185,166 @@
 
 .panel-card p { margin: 4px 0; }
 
+.common-panel {
+  position: relative;
+  border: var(--surface-border-width) solid var(--color-line-subtle);
+  background: var(--color-void-panel);
+  border-radius: var(--surface-panel-radius);
+  padding: 16px;
+  backdrop-filter: blur(var(--surface-panel-blur));
+}
+.common-panel::before {
+  content: "";
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: 0;
+  inline-size: 2px;
+  background: var(--color-signal-primary);
+  opacity: 0.42;
+}
+.common-panel--warm::before { background: var(--color-residual-warmth); }
+.common-panel--danger::before { background: var(--color-threat-noise); }
+.common-panel__title {
+  margin: 0 0 12px;
+  color: var(--color-signal-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.common-panel__body {
+  color: var(--color-signal-readable);
+}
+
+.common-meter {
+  display: grid;
+  gap: 6px;
+}
+.common-meter__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-signal-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.common-meter__track {
+  block-size: 6px;
+  border: 1px solid var(--color-line-subtle);
+  background: rgba(4, 8, 16, 0.72);
+  overflow: hidden;
+}
+.common-meter__fill {
+  block-size: 100%;
+  background: var(--color-signal-primary);
+  transition: inline-size var(--motion-cue-save-ms) var(--motion-ease-standard);
+}
+.common-meter--warm .common-meter__fill { background: var(--color-residual-warmth); }
+.common-meter--danger .common-meter__fill { background: var(--color-threat-noise); }
+
+.common-signal-badge,
+.common-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 22px;
+  border: 1px solid var(--color-line-subtle);
+  color: var(--color-signal-readable);
+  background: rgba(93, 164, 209, 0.06);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+.common-signal-badge { padding: 0 8px; }
+.common-status-chip { padding: 0 10px; }
+.common-signal-badge--warm,
+.common-status-chip--warm {
+  border-color: rgba(240, 198, 116, 0.36);
+  color: var(--color-residual-warmth);
+  background: rgba(240, 198, 116, 0.06);
+}
+.common-signal-badge--danger,
+.common-status-chip--danger {
+  border-color: rgba(255, 90, 110, 0.34);
+  color: var(--color-threat-noise);
+  background: rgba(255, 90, 110, 0.06);
+}
+.common-signal-badge--muted,
+.common-status-chip--muted {
+  color: var(--color-signal-muted);
+  background: rgba(140, 195, 255, 0.03);
+}
+
+.common-tab-list {
+  display: flex;
+  gap: 1px;
+  border-block-end: 1px solid var(--color-line-subtle);
+}
+.common-tab-list__tab {
+  appearance: none;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  background: transparent;
+  color: var(--color-signal-muted);
+  cursor: pointer;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.common-tab-list__tab--active {
+  border-block-end-color: var(--color-signal-primary);
+  color: var(--color-signal-primary);
+}
+
+.common-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 8, 16, 0.72);
+}
+.common-modal__panel {
+  inline-size: min(680px, calc(100vw - 32px));
+  max-block-size: calc(100vh - 32px);
+  border: 1px solid var(--color-line-subtle);
+  background: var(--color-void-panel-solid);
+  overflow: auto;
+}
+.common-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-block-end: 1px solid var(--color-line-subtle);
+  padding: 14px 16px;
+}
+.common-modal__header h2 {
+  margin: 0;
+  color: var(--color-signal-readable);
+  font-size: 16px;
+}
+.common-modal__close {
+  inline-size: 32px;
+  block-size: 32px;
+  border: 1px solid var(--color-line-subtle);
+  background: transparent;
+  color: var(--color-signal-readable);
+  cursor: pointer;
+}
+.common-modal__body { padding: 16px; }
+
+.common-caption {
+  margin: 0;
+  color: var(--color-signal-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.common-caption--muted { color: var(--color-signal-muted); }
+.common-caption--danger { color: var(--color-threat-noise); }
+
 /* hint / help variant */
 .hint-card {
   border: 1px solid var(--mg-border);

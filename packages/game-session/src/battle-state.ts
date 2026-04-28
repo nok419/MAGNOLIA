@@ -102,6 +102,8 @@ export type InternalBattleFragmentState = {
   startRatio: number
   endRatio: number
   position: Vector2
+  originPosition?: Vector2
+  createdAtMs?: number
   radius: number
   expiresAtMs: number
   strength: number

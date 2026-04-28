@@ -1,5 +1,14 @@
 import type { AreaId, ThemeId, TransmissionId, Vector2 } from "./game-types"
 
+export type ExploreTransitionSourceFrame = {
+  screenAnchor: Vector2
+  playerPoint: Vector2
+  viewport: { x: number; y: number; width: number; height: number }
+  screenSize: { width: number; height: number }
+  padding: number
+  capturedAtMs: number
+}
+
 export type PresentationCueId =
   | "system.boot.message"
   | "system.reboot.sequence"
@@ -12,6 +21,8 @@ export type PresentationCueId =
   | "battle.player.hit"
   | "battle.noise.peak"
   | "battle.noise.clear"
+  | "battle.fragment.recovered"
+  | "battle.noiseSource.clear"
   | "battle.invincible.start"
 
 export type PresentationChannel =
@@ -28,6 +39,12 @@ export type PresentationCueSpec = {
   blocking: boolean
   skippable: boolean
   defaultDurationMs?: number
+  maxFlashHz?: number
+  reduceFlashingVariant?: {
+    defaultDurationMs?: number
+    motionScale: number
+    flashEnabled: boolean
+  }
   assetIds?: string[]
   themeId?: ThemeId
 }
@@ -88,6 +105,7 @@ export type TransitionPresentationRequest = {
   channel: "transition"
   blocking: true
   worldPosition: Vector2
+  sourceFrame?: ExploreTransitionSourceFrame
   areaId: AreaId
   transmissionId?: TransmissionId
   destination: "battle" | "explore"
@@ -116,6 +134,28 @@ export type NoiseClearPresentationRequest = {
   blocking: false
 }
 
+export type NoiseBandKind = "subtitle" | "speaker" | "metadata" | "fragment" | "waveform"
+
+export type FragmentRecoveredPresentationRequest = {
+  requestId: string
+  cueId: "battle.fragment.recovered"
+  channel: "battle"
+  blocking: false
+  fragmentId: string
+  chunkId: string
+}
+
+export type NoiseSourceClearPresentationRequest = {
+  requestId: string
+  cueId: "battle.noiseSource.clear"
+  channel: "battle"
+  blocking: false
+  enemyId: string
+  worldPosition: Vector2
+  noiseBandKind?: NoiseBandKind
+  analysisDelta: number
+}
+
 export type InvincibleStartPresentationRequest = {
   requestId: string
   cueId: "battle.invincible.start"
@@ -135,4 +175,6 @@ export type PresentationRequest =
   | HitPresentationRequest
   | NoisePeakPresentationRequest
   | NoiseClearPresentationRequest
+  | FragmentRecoveredPresentationRequest
+  | NoiseSourceClearPresentationRequest
   | InvincibleStartPresentationRequest

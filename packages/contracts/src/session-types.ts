@@ -9,11 +9,15 @@ import type {
   BattlePhase,
   BattlefieldHazardArea,
   BattlefieldHazardMotion,
+  BackgroundPreset,
   BulletPattern,
   BulletPatternId,
   CollectibleMapNode,
   ConditionId,
   ConditionSpec,
+  ContentHitboxPreset,
+  ContentLifecycle,
+  ContentVisualPreset,
   Difficulty,
   DifficultyModifiers,
   EffectId,
@@ -451,6 +455,10 @@ export type ContentBundle = {
   conditions: Record<ConditionId, ConditionSpec>
   visuals: Record<VisualPresetId, VisualPreset>
   hitboxes: Record<HitboxPresetId, HitboxPreset>
+  contentVisualPresets?: Record<VisualPresetId, ContentVisualPreset>
+  contentHitboxPresets?: Record<HitboxPresetId, ContentHitboxPreset>
+  backgroundPresets?: Record<VisualPresetId, BackgroundPreset>
+  contentLifecycle?: Partial<Record<ContentLifecycle, Record<string, string[]>>>
   themes: Record<ThemeId, UiThemePreset>
   presentationCues: Record<PresentationCueId, PresentationCueSpec>
   difficultyModifiers: Record<Difficulty, DifficultyModifiers>

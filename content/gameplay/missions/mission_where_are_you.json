@@ -16,6 +16,7 @@
   "waves": [
     {
       "atMs": 3000,
+      "intentTag": "kana-soft-search",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 1 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 2 }
@@ -23,6 +24,7 @@
     },
     {
       "atMs": 10000,
+      "intentTag": "kana-soft-search",
       "entries": [
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 3 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 4 },
@@ -31,24 +33,28 @@
     },
     {
       "atMs": 18000,
+      "intentTag": "kana-answer-not-required",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 6 }
       ]
     },
     {
       "atMs": 19400,
+      "intentTag": "kana-answer-not-required",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 7 }
       ]
     },
     {
       "atMs": 20800,
+      "intentTag": "kana-answer-not-required",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 8 }
       ]
     },
     {
       "atMs": 26000,
+      "intentTag": "takumi-public-route",
       "entries": [
         {
           "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 9,
@@ -62,6 +68,7 @@
     },
     {
       "atMs": 34000,
+      "intentTag": "takumi-public-route",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 11 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 12 },
@@ -70,12 +77,14 @@
     },
     {
       "atMs": 42000,
+      "intentTag": "takumi-public-route-collapse",
       "entries": [
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_center", "seed": 15 }
       ]
     },
     {
       "atMs": 52000,
+      "intentTag": "misaki-fragment-pressure",
       "entries": [
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_left", "seed": 16 },
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_right", "seed": 17 },
@@ -84,6 +93,7 @@
     },
     {
       "atMs": 62000,
+      "intentTag": "misaki-fragment-pressure",
       "entries": [
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_center", "seed": 19 },
         {
@@ -98,6 +108,7 @@
     },
     {
       "atMs": 72000,
+      "intentTag": "protect-final-word",
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 22 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 23 },
@@ -107,6 +118,7 @@
     },
     {
       "atMs": 80000,
+      "intentTag": "protect-final-word",
       "entries": [
         {
           "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 26,

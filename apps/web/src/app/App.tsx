@@ -11,6 +11,7 @@ import { PresentationOverlay } from "@/components/PresentationOverlay"
 import { EquipmentModal } from "@/components/EquipmentModal"
 import { applyAudioSettings } from "@/app/audio-controller"
 import { resolveDisplayOptions } from "@/app/display-options"
+import { TransitionPresentationLayer } from "@/app/presentation/TransitionPresentationLayer"
 import { useMagnoliaApp } from "@/app/use-magnolia-app"
 
 export function App() {
@@ -22,7 +23,6 @@ export function App() {
       app.settings?.reduceFlashing,
     ],
   )
-
   useEffect(() => {
     if (!app.settings) {
       return
@@ -70,25 +70,23 @@ export function App() {
           snapshot={app.snapshot.explore}
           renderState={app.exploreRenderState}
           presentation={app.explorePresentation}
+          exploreEvents={app.exploreEvents}
           itemPopups={app.itemPopups}
           shipVariant={app.settings.shipVariant}
           showEquipmentHint={app.shouldShowEquipmentHint}
-          onInteractNode={(nodeId) => void app.interactExploreNode(nodeId)}
+          onInteractNode={(nodeId, context) => void app.interactExploreNode(nodeId, context)}
           displayOptions={displayOptions}
         />
       )
       break
     case "map":
-      if (!app.exploreSnapshot || !app.exploreRenderState || !app.profile) {
+      if (!app.worldMapViewModel) {
         screen = null
         break
       }
       screen = (
         <MapScreen
-          content={app.content}
-          profile={app.profile}
-          snapshot={app.exploreSnapshot}
-          renderState={app.exploreRenderState}
+          viewModel={app.worldMapViewModel}
           displayOptions={displayOptions}
           onBack={() => void app.runCommand("closePanel")}
           onWarpToArea={(areaId) => void app.warpToArea(areaId)}
@@ -105,6 +103,7 @@ export function App() {
         <BattleScreen
           content={app.content}
           renderState={app.battleRenderState}
+          battleEvents={app.battleEvents}
           shipVariant={app.settings.shipVariant}
           displayOptions={displayOptions}
           onReturnToExplore={() => void app.returnToExplore()}
@@ -168,6 +167,10 @@ export function App() {
   return (
     <div className={appClassName}>
       {screen}
+      <TransitionPresentationLayer
+        events={app.transitionEvents}
+        displayOptions={displayOptions}
+      />
       {app.activeOverlayPresentation ? (
         <PresentationOverlay
           presentation={app.activeOverlayPresentation}

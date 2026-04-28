@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { CSSProperties, MouseEvent } from "react"
-import type { ExploreSnapshot, ShipVariant, WorldMapNodeId } from "@magnolia/contracts"
-import type { ExploreNodeRenderState, ExploreRenderState } from "@magnolia/game-session"
+import type {
+  ExploreSnapshot,
+  ExploreTransitionSourceFrame,
+  ShipVariant,
+  WorldMapNodeId,
+} from "@magnolia/contracts"
+import type { ExploreRenderState } from "@magnolia/game-session"
 import {
   REBOOT_SETTLE_BLACKOUT_RATIO,
   type ExplorePresentationState,
 } from "@/app/explore-presentation"
+import type {
+  ExploreChannelPresentationRequest,
+  TimedPresentationRequest,
+} from "@/app/presentation/presentation-state"
 import type { DisplayOptions } from "@/app/display-options"
 import { ExploreCanvas, type ExploreOverlayFrame } from "@/components/ExploreCanvas"
 import {
@@ -13,16 +22,25 @@ import {
   type InteractionPromptPlacement,
 } from "@/components/InteractionPrompt"
 import { MiniMap } from "@/components/MiniMap"
+import { isCanvasPointVisible, worldToCanvasPoint } from "@/render/shared/coordinates"
+import { buildMiniMapViewModel } from "@/view-models/map-view-model"
 
 type ExploreScreenProps = {
   snapshot: ExploreSnapshot
   renderState: ExploreRenderState
   presentation: ExplorePresentationState
+  exploreEvents?: TimedPresentationRequest<ExploreChannelPresentationRequest>[]
   itemPopups?: Array<{ id: string; title: string; detail: string }>
   shipVariant: ShipVariant
   showEquipmentHint?: boolean
-  onInteractNode?: (nodeId: WorldMapNodeId) => void
+  onInteractNode?: (nodeId: WorldMapNodeId, context: ExploreInteractionContext) => void
   displayOptions: DisplayOptions
+}
+
+type ExploreInteractionContext = {
+  nodeId: WorldMapNodeId
+  worldPosition: { x: number; y: number }
+  sourceFrame: ExploreTransitionSourceFrame
 }
 
 // signal パネルは非言語 User Interface（UI）を志向します。
@@ -38,6 +56,7 @@ export function ExploreScreen({
   snapshot,
   renderState,
   presentation,
+  exploreEvents = [],
   itemPopups = [],
   shipVariant,
   showEquipmentHint = false,
@@ -48,6 +67,10 @@ export function ExploreScreen({
   const clampedStrength = Math.max(0, Math.min(1, strength))
   const waveStrength = Math.max(0, Math.min(1, renderState.nearestAnyTransmissionStrength))
   const strongestSignalHint = renderState.signalHints[0]
+  const miniMapViewModel = useMemo(
+    () => buildMiniMapViewModel({ snapshot, renderState }),
+    [snapshot, renderState],
+  )
   const completionPct = Math.round(snapshot.hud.currentAreaCompletionRate * 100)
   // featureAccess に応じた "本来見せるべき" パネルの条件。
   // リブート中はこれらに `ehud--booting` クラスを付けて CSS transition で
@@ -115,6 +138,9 @@ export function ExploreScreen({
     ["--wave-strength" as keyof CSSProperties]: waveStrength,
   }
   const activeStrengthSegments = Math.round(clampedStrength * STRENGTH_SEGMENT_COUNT)
+  const signalStabilityPct = Math.round(Math.max(0, Math.min(1, renderState.signalStability)) * 100)
+  const scanCooldownPct = Math.round(Math.max(0, Math.min(1, renderState.scanCooldownRatio ?? 1)) * 100)
+  const movementModeLabel = readMovementModeLabel(renderState.movementMode)
   const canShowPrompts = presentation.kind === "none"
   const shouldShowScanHint = canShowPrompts && overlayFrame !== null && !hasSeenFirstScan
   const shipPromptPlacement = overlayFrame
@@ -135,11 +161,22 @@ export function ExploreScreen({
         x: event.clientX - rect.left,
         y: event.clientY - rect.top,
       }
-      const hitNodeId = readClickableExploreNodeId(renderState, overlayFrame, point)
-      if (!hitNodeId) {
+      const hitTarget = readClickableExploreTarget(renderState, overlayFrame, point)
+      if (!hitTarget) {
         return
       }
-      onInteractNode(hitNodeId)
+      onInteractNode(hitTarget.nodeId, {
+        nodeId: hitTarget.nodeId,
+        worldPosition: hitTarget.worldPosition,
+        sourceFrame: {
+          screenAnchor: hitTarget.screenAnchor,
+          playerPoint: overlayFrame.playerPoint,
+          viewport: overlayFrame.viewport,
+          screenSize: { width: overlayFrame.width, height: overlayFrame.height },
+          padding: overlayFrame.padding,
+          capturedAtMs: performance.now(),
+        },
+      })
     },
     [canShowPrompts, onInteractNode, overlayFrame, renderState],
   )
@@ -150,6 +187,7 @@ export function ExploreScreen({
         snapshot={snapshot}
         renderState={renderState}
         presentation={presentation}
+        exploreEvents={exploreEvents}
         shipVariant={shipVariant}
         onOverlayFrame={handleOverlayFrame}
         displayOptions={displayOptions}
@@ -205,6 +243,24 @@ export function ExploreScreen({
             <span className="ehud-status__val ehud-status__val--accent">
               {snapshot.hud.selfRepairPoints} pt
             </span>
+          </div>
+
+          <div className="ehud-status__divider" />
+
+          <div className="ehud-status__receiver" aria-label="receiver posture">
+            <div className="ehud-status__row">
+              <span className="ehud-status__key">receive</span>
+              <span className={`ehud-status__mode ehud-status__mode--${renderState.movementMode}`}>
+                {movementModeLabel}
+              </span>
+            </div>
+            <div className="ehud-status__row">
+              <span className="ehud-status__key">stable</span>
+              <span className="ehud-status__val">{signalStabilityPct}%</span>
+            </div>
+            <div className="ehud-status__cooldown" aria-hidden="true">
+              <span style={{ width: `${scanCooldownPct}%` }} />
+            </div>
           </div>
         </section>
       ) : null}
@@ -282,7 +338,7 @@ export function ExploreScreen({
             <span className="ehud__label">RADAR</span>
           </header>
 
-          <MiniMap snapshot={snapshot} renderState={renderState} displayOptions={displayOptions} />
+          <MiniMap viewModel={miniMapViewModel} displayOptions={displayOptions} />
         </section>
       ) : null}
 
@@ -341,59 +397,55 @@ function readSignalHintLabel(hint: ExploreRenderState["signalHints"][number]): s
   return `${(hint.category ?? "SIGNAL").toUpperCase()} ${band}`
 }
 
+function readMovementModeLabel(mode: ExploreRenderState["movementMode"]): string {
+  switch (mode) {
+    case "wideScan":
+      return "WIDE SCAN"
+    case "precisionReceive":
+      return "PRECISION"
+    case "normal":
+    default:
+      return "NORMAL"
+  }
+}
+
 type ExploreClickTarget = {
   nodeId: WorldMapNodeId
   x: number
   y: number
   radius: number
   distanceToPlayer: number
+  worldPosition: { x: number; y: number }
+  screenAnchor: { x: number; y: number }
 }
 
-function readClickableExploreNodeId(
+function readClickableExploreTarget(
   renderState: ExploreRenderState,
   overlayFrame: ExploreOverlayFrame,
   clickPoint: { x: number; y: number },
-): WorldMapNodeId | null {
-  const candidates: ExploreClickTarget[] = []
-
-  for (const node of renderState.visibleCollectibles) {
-    if (!isNodeInsideInteractionRange(renderState, node)) {
-      continue
-    }
-    const anchor = worldToOverlayPoint(overlayFrame, node.x, node.y)
-    if (!isOverlayPointVisible(anchor, overlayFrame) || !isNodeInsideVision(renderState, node)) {
-      continue
-    }
-    candidates.push({
-      nodeId: node.nodeId,
-      x: anchor.x,
-      y: anchor.y,
-      radius: node.markerKind === "resource" ? 17 : 20,
-      distanceToPlayer: worldDistance(renderState.playerPosition, node),
+): ExploreClickTarget | null {
+  const candidates: ExploreClickTarget[] = renderState.interactionTargets
+    .filter((target) => target.visible && target.clickable)
+    .flatMap((target) => {
+      const anchor = worldToOverlayPoint(overlayFrame, target.worldPosition.x, target.worldPosition.y)
+      if (!isOverlayPointVisible(anchor, overlayFrame)) {
+        return []
+      }
+      return [{
+        nodeId: target.nodeId,
+        x: anchor.x,
+        y: anchor.y,
+        radius: readOverlayInteractionRadius(target),
+        distanceToPlayer: worldDistance(renderState.playerPosition, target.worldPosition),
+        worldPosition: target.worldPosition,
+        screenAnchor: anchor,
+      }]
     })
-  }
-
-  for (const node of renderState.visibleTransmissions) {
-    if (node.state === "complete" || !isNodeInsideInteractionRange(renderState, node)) {
-      continue
-    }
-    const anchor = worldToOverlayPoint(overlayFrame, node.x, node.y)
-    if (!isOverlayPointVisible(anchor, overlayFrame) || !isNodeInsideVision(renderState, node)) {
-      continue
-    }
-    candidates.push({
-      nodeId: node.nodeId,
-      x: anchor.x,
-      y: anchor.y,
-      radius: 24,
-      distanceToPlayer: worldDistance(renderState.playerPosition, node),
-    })
-  }
 
   const clicked = candidates.filter((candidate) => {
     return Math.hypot(clickPoint.x - candidate.x, clickPoint.y - candidate.y) <= candidate.radius
   })
-  return clicked.sort((left, right) => left.distanceToPlayer - right.distanceToPlayer)[0]?.nodeId ?? null
+  return clicked.sort((left, right) => left.distanceToPlayer - right.distanceToPlayer)[0] ?? null
 }
 
 function isSameOverlayFrame(
@@ -421,12 +473,12 @@ function worldToOverlayPoint(
   worldX: number,
   worldY: number,
 ) {
-  const rx = (worldX - overlayFrame.viewport.x) / Math.max(1, overlayFrame.viewport.width)
-  const ry = (worldY - overlayFrame.viewport.y) / Math.max(1, overlayFrame.viewport.height)
-  return {
-    x: overlayFrame.padding + rx * (overlayFrame.width - overlayFrame.padding * 2),
-    y: overlayFrame.padding + ry * (overlayFrame.height - overlayFrame.padding * 2),
-  }
+  return worldToCanvasPoint({
+    bounds: overlayFrame.viewport,
+    size: { width: overlayFrame.width, height: overlayFrame.height },
+    padding: overlayFrame.padding,
+    worldPosition: { x: worldX, y: worldY },
+  })
 }
 
 function resolveInteractionPromptPlacement(
@@ -443,27 +495,12 @@ function isOverlayPointVisible(
   point: { x: number; y: number },
   overlayFrame: ExploreOverlayFrame,
 ) {
-  const margin = 20
-  return (
-    point.x >= overlayFrame.padding - margin &&
-    point.x <= overlayFrame.width - overlayFrame.padding + margin &&
-    point.y >= overlayFrame.padding - margin &&
-    point.y <= overlayFrame.height - overlayFrame.padding + margin
-  )
-}
-
-function isNodeInsideVision(
-  renderState: ExploreRenderState,
-  node: ExploreNodeRenderState,
-) {
-  return worldDistance(renderState.playerPosition, node) <= renderState.visionRadius
-}
-
-function isNodeInsideInteractionRange(
-  renderState: ExploreRenderState,
-  node: ExploreNodeRenderState,
-) {
-  return worldDistance(renderState.playerPosition, node) <= (node.interactionRadius ?? 0)
+  return isCanvasPointVisible({
+    point,
+    size: { width: overlayFrame.width, height: overlayFrame.height },
+    padding: overlayFrame.padding,
+    margin: 20,
+  })
 }
 
 function worldDistance(
@@ -471,6 +508,18 @@ function worldDistance(
   b: { x: number; y: number },
 ) {
   return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+function readOverlayInteractionRadius(
+  target: ExploreRenderState["interactionTargets"][number],
+) {
+  if (target.kind === "transmission") {
+    return 24
+  }
+  if (target.kind === "warp") {
+    return 22
+  }
+  return target.markerKind === "resource" ? 17 : 20
 }
 
 function EquipSlotRow({ label, value }: { label: string; value: string }) {

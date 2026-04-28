@@ -262,6 +262,40 @@
   text-shadow: 0 0 8px var(--mg-glow-blue);
 }
 
+.ehud-status__receiver {
+  display: grid;
+  gap: 5px;
+}
+
+.ehud-status__mode {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--mg-text);
+}
+
+.ehud-status__mode--wideScan {
+  color: #f0c674;
+}
+
+.ehud-status__mode--precisionReceive {
+  color: #8bf0c0;
+}
+
+.ehud-status__cooldown {
+  height: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(93, 164, 209, 0.16);
+  background: rgba(93, 164, 209, 0.06);
+}
+
+.ehud-status__cooldown > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(93, 164, 209, 0.4), rgba(139, 240, 192, 0.72));
+  transition: width 80ms linear;
+}
+
 /* equipment rows */
 .ehud-status__equip {
   display: grid;
