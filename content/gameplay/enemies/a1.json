@@ -1,0 +1,18 @@
+{
+  "enemyId": "a1",
+  "hp": 32,
+  "collisionDamage": 5,
+  "analysisValue": 5,
+  "behaviorKind": "straightDown",
+  "behaviorParams": {
+    "speed": 40,
+    "wobbleAmplitude": 24,
+    "wobblePeriodMs": 3000
+  },
+  "bulletPatternIds": [
+    "bp_scout_single"
+  ],
+  "visualPresetId": "vis_enemy_a1",
+  "hitboxPresetId": "hitbox_enemy_small",
+  "dropSelfRepairPoints": 5
+}

@@ -22,7 +22,7 @@
 
 .battle-screen__sidebar {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 1px;
   background: var(--mg-border);
   align-content: stretch;
@@ -47,18 +47,92 @@
   margin-inline: auto;
 }
 
-/* progress bar */
-.battle-progress {
-  height: 3px;
-  background: rgba(8, 18, 34, 0.8);
+/* mission progress */
+.battle-mission-panel {
   position: relative;
-  width: 100%;
+  overflow: hidden;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  isolation: isolate;
 }
-.battle-progress__fill {
-  height: 100%;
-  background: var(--mg-accent);
-  box-shadow: 0 0 8px var(--mg-glow-blue);
-  transition: width 100ms linear;
+
+.battle-mission-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(93, 164, 209, 0.1), transparent 54%),
+    radial-gradient(circle at 88% 12%, rgba(240, 198, 116, 0.1), transparent 34%);
+  pointer-events: none;
+}
+
+.battle-mission-panel__header,
+.battle-mission-panel__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.battle-mission-panel__header {
+  font-size: 12px;
+  color: var(--mg-text);
+}
+
+.battle-mission-panel__header span:last-child {
+  color: var(--mg-warm);
+}
+
+.battle-mission-panel__meta {
+  font-size: 10px;
+  color: var(--mg-text-muted);
+}
+
+.battle-mission-panel__meter {
+  position: relative;
+  overflow: hidden;
+  height: 18px;
+  border: 1px solid rgba(93, 164, 209, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    repeating-linear-gradient(90deg, rgba(93, 164, 209, 0.14) 0 1px, transparent 1px 22px),
+    rgba(4, 10, 20, 0.86);
+}
+
+.battle-mission-panel__meter::after {
+  content: "";
+  position: absolute;
+  inset: 7px 8px;
+  border-top: 1px solid rgba(216, 236, 248, 0.12);
+}
+
+.battle-mission-panel__fill {
+  position: absolute;
+  inset: 3px;
+  transform-origin: left center;
+  background:
+    linear-gradient(90deg, rgba(93, 164, 209, 0.22), rgba(131, 214, 216, 0.9) 72%, rgba(240, 198, 116, 0.76));
+  box-shadow:
+    0 0 14px rgba(93, 164, 209, 0.34),
+    0 0 4px rgba(216, 236, 248, 0.4);
+  transition: transform 90ms linear;
+}
+
+.battle-mission-panel__fill::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -1px;
+  bottom: -3px;
+  width: 1px;
+  background: rgba(216, 236, 248, 0.95);
+  box-shadow: 0 0 8px rgba(216, 236, 248, 0.75);
 }
 
 /* subtitle panel */

@@ -32,6 +32,7 @@ type BattleFrameDrawInput = {
   renderState: BattleRenderState
   transparentBg?: boolean
   shipVariant: ShipVariant
+  reduceFlashing?: boolean
 }
 
 // ここが見た目差し替えの入口です。装備や mission ごとの変更は registry に集約し、
@@ -48,7 +49,14 @@ const BATTLE_ENEMY_RENDERERS: Record<
   string,
   (ctx: CanvasRenderingContext2D, input: EnemyRendererInput) => void
 > = {
-  default: (ctx, input) => drawDefaultEnemy(ctx, input.enemy, input.timeMs),
+  a1: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
+  a2: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
+  c1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.c1),
+  b1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.b1),
+  enemy_scout: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
+  enemy_standard: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
+  enemy_heavy: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.heavy),
+  default: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
 }
 
 const BATTLE_PLAYER_PROJECTILE_RENDERERS: Record<
@@ -66,6 +74,8 @@ const BATTLE_ENEMY_PROJECTILE_RENDERERS: Record<
   (ctx: CanvasRenderingContext2D, input: ProjectileRendererInput) => void
 > = {
   proj_enemy_geo: (ctx, input) => drawGeoDiamondProjectile(ctx, input.projectile, input.timeMs),
+  proj_enemy_lance: (ctx, input) => drawEnemyLanceProjectile(ctx, input.projectile, input.timeMs),
+  proj_enemy_core: (ctx, input) => drawBossCoreProjectile(ctx, input.projectile, input.timeMs),
   // 廃止した花弁表現の content id は残しつつ、描画だけ非花形の信号片へ差し替えます。
   proj_enemy_petal: (ctx, input) => drawSignalShardProjectile(ctx, input.projectile, input.timeMs),
   default: (ctx, input) => drawNoiseOrbProjectile(ctx, input.projectile, input.timeMs),
@@ -91,7 +101,7 @@ export function drawBattleFrame(
   // 戦闘 Canvas は renderState の描画に専念し、当たり判定や字幕選択は session 側で完結させます。
   // UI 側で命中判定を持ち始めると、演出変更がルール破壊に直結するためです。
   for (const hazard of renderState.hazards) {
-    drawHazard(ctx, hazard, renderState.elapsedMs)
+    drawHazard(ctx, hazard, renderState.elapsedMs, input.reduceFlashing ?? false)
   }
 
   for (const field of renderState.supportFields) {
@@ -327,11 +337,85 @@ function drawDefaultPlayerShip(
 }
 
 /* ============================================================
-   ENEMY — orbital structure
+   ENEMY — orbital structure (circle-based)
    Center: filled circle
    Orbit 1: arc (partial, rotating)
    Orbit 2: wider arc (with diamond icon)
+   a1 / a2 / heavy: small enemies. c1 / b1: bosses (concentric rings).
    ============================================================ */
+type CircleEnemyProfile = {
+  accent: string
+  glow: string
+  outerOrbitScale: number   // r2 = r * outerOrbitScale (見た目の外周)
+  innerOrbitScale: number   // r1 = r * innerOrbitScale
+  iconSize: number
+  seedOffset: number
+}
+
+type CircleBossProfile = {
+  accent: string
+  secondary: string
+  glow: string
+  outerOrbitScale: number
+  innerOrbitScale: number
+  iconSize: number
+  iconCount: number          // 外周に並ぶダイヤアイコン数
+  midOrbitScale: number      // 中間の追加リング
+  seedOffset: number
+}
+
+const ENEMY_VISUAL_PROFILES: Record<string, CircleEnemyProfile> = {
+  a1: {
+    accent: "#ffc9a2",
+    glow: "rgba(255, 178, 116, 0.7)",
+    outerOrbitScale: PHI * PHI,    // 約 2.618
+    innerOrbitScale: PHI,          // 約 1.618
+    iconSize: 3,
+    seedOffset: 11,
+  },
+  a2: {
+    accent: "#ffd7a8",
+    glow: "rgba(255, 198, 130, 0.7)",
+    outerOrbitScale: PHI * PHI * 1.05,
+    innerOrbitScale: PHI * 1.05,
+    iconSize: 3.2,
+    seedOffset: 23,
+  },
+  heavy: {
+    accent: "#ffb16f",
+    glow: "rgba(255, 151, 82, 0.78)",
+    outerOrbitScale: PHI * PHI * 1.12,
+    innerOrbitScale: PHI * 1.12,
+    iconSize: 3.6,
+    seedOffset: 37,
+  },
+}
+
+const ENEMY_BOSS_VISUAL_PROFILES: Record<string, CircleBossProfile> = {
+  c1: {
+    accent: "#ffbc83",
+    secondary: "#fff0c4",
+    glow: "rgba(255, 172, 104, 0.86)",
+    outerOrbitScale: 2.35,
+    innerOrbitScale: 1.55,
+    midOrbitScale: 1.95,
+    iconSize: 3.6,
+    iconCount: 3,
+    seedOffset: 101,
+  },
+  b1: {
+    accent: "#ff976f",
+    secondary: "#ffe0a8",
+    glow: "rgba(255, 117, 86, 0.94)",
+    outerOrbitScale: 2.7,
+    innerOrbitScale: 1.7,
+    midOrbitScale: 2.18,
+    iconSize: 4,
+    iconCount: 4,
+    seedOffset: 211,
+  },
+}
+
 function drawEnemy(
   ctx: CanvasRenderingContext2D,
   enemy: BattleRenderState["enemies"][number],
@@ -345,30 +429,30 @@ function drawEnemy(
   renderer(ctx, { enemy, timeMs: t, renderState })
 }
 
-function drawDefaultEnemy(
+function drawCircleEnemy(
   ctx: CanvasRenderingContext2D,
   enemy: BattleRenderState["enemies"][number],
   t: number,
+  profile: CircleEnemyProfile,
 ) {
   const { x, y } = enemy.position
   const r = enemy.radius
   const hpRatio = Math.max(0, enemy.hp / Math.max(1, enemy.maxHp))
-  const baseColor = enemy.burning ? "#ffaf61" : "#ffc9a2"
+  const baseColor = enemy.burning ? "#ffaf61" : profile.accent
   const glowIntensity = 0.3 + hpRatio * 0.5
 
-  // seed rotation from instance for variation
-  const seed = hashString(enemy.enemyId)
+  const seed = hashString(enemy.enemyInstanceId) + profile.seedOffset
   const rotSpeed1 = 0.0008 + (seed % 5) * 0.0001
   const rotSpeed2 = 0.0005 + (seed % 3) * 0.00008
   const rot1 = t * rotSpeed1
   const rot2 = -t * rotSpeed2
 
   ctx.save()
-  ctx.shadowColor = baseColor
+  ctx.shadowColor = profile.glow
   ctx.shadowBlur = 6 * glowIntensity
 
-  // orbit 2 — wide arc with gap
-  const r2 = r * PHI * PHI  // r × 2.618
+  // orbit 2 — wide arc with gap (見た目用の外周)
+  const r2 = r * profile.outerOrbitScale
   ctx.strokeStyle = baseColor
   ctx.globalAlpha = 0.25 * glowIntensity
   ctx.lineWidth = 1
@@ -381,7 +465,7 @@ function drawDefaultEnemy(
   const iconAngle = rot2 + Math.PI
   const ix = x + Math.cos(iconAngle) * r2
   const iy = y + Math.sin(iconAngle) * r2
-  const iconSize = 3
+  const iconSize = profile.iconSize
   ctx.globalAlpha = 0.6 * glowIntensity
   ctx.fillStyle = baseColor
   ctx.beginPath()
@@ -393,7 +477,7 @@ function drawDefaultEnemy(
   ctx.fill()
 
   // orbit 1 — partial arc
-  const r1 = r * PHI  // r × 1.618
+  const r1 = r * profile.innerOrbitScale
   ctx.strokeStyle = baseColor
   ctx.globalAlpha = 0.4 * glowIntensity
   ctx.lineWidth = 1.5
@@ -428,6 +512,105 @@ function drawDefaultEnemy(
   ctx.restore()
 }
 
+function drawCircleBossEnemy(
+  ctx: CanvasRenderingContext2D,
+  enemy: BattleRenderState["enemies"][number],
+  t: number,
+  profile: CircleBossProfile,
+) {
+  const { x, y } = enemy.position
+  const r = enemy.radius
+  const hpRatio = Math.max(0, enemy.hp / Math.max(1, enemy.maxHp))
+  const baseColor = enemy.burning ? "#ffaf61" : profile.accent
+  const glowIntensity = 0.36 + hpRatio * 0.54
+
+  const seed = hashString(enemy.enemyInstanceId) + profile.seedOffset
+  const rot1 = t * (0.0006 + (seed % 5) * 0.00008)
+  const rot2 = -t * (0.00042 + (seed % 3) * 0.00006)
+  const rot3 = t * 0.00028
+
+  ctx.save()
+  ctx.shadowColor = profile.glow
+  ctx.shadowBlur = 11 * glowIntensity
+
+  // outer orbit — full arc with gap, larger radius
+  const r2 = r * profile.outerOrbitScale
+  ctx.strokeStyle = baseColor
+  ctx.globalAlpha = 0.26 * glowIntensity
+  ctx.lineWidth = 1.1
+  const gapAngle = 22 * Math.PI / 180
+  ctx.beginPath()
+  ctx.arc(x, y, r2, rot2 + gapAngle, rot2 + TAU - gapAngle)
+  ctx.stroke()
+
+  // orbital diamond icons (multiple, evenly spaced)
+  const iconSize = profile.iconSize
+  ctx.globalAlpha = 0.7 * glowIntensity
+  ctx.fillStyle = baseColor
+  for (let i = 0; i < profile.iconCount; i++) {
+    const a = rot2 + (TAU / profile.iconCount) * i + Math.PI / profile.iconCount
+    const ix = x + Math.cos(a) * r2
+    const iy = y + Math.sin(a) * r2
+    ctx.beginPath()
+    ctx.moveTo(ix, iy - iconSize)
+    ctx.lineTo(ix + iconSize, iy)
+    ctx.lineTo(ix, iy + iconSize)
+    ctx.lineTo(ix - iconSize, iy)
+    ctx.closePath()
+    ctx.fill()
+  }
+
+  // mid orbit — counter-rotating thin ring
+  const rMid = r * profile.midOrbitScale
+  ctx.globalAlpha = 0.22 * glowIntensity
+  ctx.strokeStyle = profile.secondary
+  ctx.lineWidth = 0.8
+  ctx.beginPath()
+  ctx.arc(x, y, rMid, rot3 + 0.4, rot3 + TAU - 0.4)
+  ctx.stroke()
+
+  // inner orbit — partial arc
+  const r1 = r * profile.innerOrbitScale
+  ctx.strokeStyle = baseColor
+  ctx.globalAlpha = 0.45 * glowIntensity
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.arc(x, y, r1, rot1, rot1 + Math.PI * 1.2)
+  ctx.stroke()
+
+  // center body
+  ctx.globalAlpha = 0.16 * glowIntensity
+  ctx.fillStyle = baseColor
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, TAU)
+  ctx.fill()
+
+  ctx.globalAlpha = 0.85
+  ctx.strokeStyle = baseColor
+  ctx.lineWidth = 1.9
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, TAU)
+  ctx.stroke()
+
+  // core highlight (boss は中心が一段明るい)
+  ctx.globalAlpha = 0.7
+  ctx.fillStyle = profile.secondary
+  ctx.beginPath()
+  ctx.arc(x, y, r * 0.22, 0, TAU)
+  ctx.fill()
+
+  if (hpRatio < 1) {
+    ctx.globalAlpha = 0.34 * (1 - hpRatio)
+    ctx.strokeStyle = "#ff5a6e"
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.arc(x, y, r * 0.6, 0, TAU * (1 - hpRatio))
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
 /* ============================================================
    PLAYER PROJECTILE — Energy Lance
    ============================================================ */
@@ -441,6 +624,9 @@ function drawPlayerProjectile(
     BATTLE_PLAYER_PROJECTILE_RENDERERS,
     buildEntityRendererKeys(p.projectileId, renderState.missionId),
   )
+  if (p.inversePhaseVisual && p.projectileId !== "proj_player_pulse_melee") {
+    drawInversePhaseProjectileAura(ctx, p, t)
+  }
   renderer(ctx, { projectile: p, timeMs: t, renderState })
 }
 
@@ -453,7 +639,7 @@ function drawDefaultPlayerProjectile(
   const width = p.radius * 0.7
 
   ctx.save()
-  
+
   // Outer aura
   ctx.shadowColor = "rgba(93, 164, 209, 0.9)"
   ctx.shadowBlur = 8
@@ -476,6 +662,37 @@ function drawDefaultPlayerProjectile(
   ctx.closePath()
   ctx.fill()
 
+  ctx.restore()
+}
+
+function drawInversePhaseProjectileAura(
+  ctx: CanvasRenderingContext2D,
+  p: BattleRenderState["projectiles"][number],
+  t: number,
+) {
+  const { x, y } = p.position
+  const seed = hashString(p.projectileInstanceId)
+  const glitch = Math.sin(t * 0.018 + seed) * 1.4
+
+  ctx.save()
+  ctx.globalCompositeOperation = "lighter"
+  ctx.lineWidth = 0.7
+  ctx.strokeStyle = "rgba(168, 220, 255, 0.26)"
+  ctx.shadowColor = "rgba(90, 170, 230, 0.38)"
+  ctx.shadowBlur = 8
+  ctx.beginPath()
+  ctx.ellipse(x + glitch, y - glitch * 0.35, p.radius * 1.45, p.radius * 2.15, 0, 0, TAU)
+  ctx.stroke()
+
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = "rgba(40, 78, 120, 0.28)"
+  for (let i = 0; i < 3; i++) {
+    const yy = y + (i - 1) * p.radius * 0.72 + Math.sin(t * 0.012 + seed + i) * 1.2
+    ctx.beginPath()
+    ctx.moveTo(x - p.radius * (1.4 + i * 0.16), yy)
+    ctx.lineTo(x + p.radius * (1.2 - i * 0.1), yy + glitch * 0.35)
+    ctx.stroke()
+  }
   ctx.restore()
 }
 
@@ -554,30 +771,261 @@ function drawPulseMelee(
     position: { x: number; y: number }
     velocity: { x: number; y: number }
     radius: number
+    progress?: number
   },
   t: number,
 ) {
   const { x, y } = p.position
   const direction = normalizeCanvasVector(p.velocity.x, p.velocity.y)
   const angle = Math.atan2(direction.y, direction.x)
-  const arcRadius = p.radius * 1.45
+  const rawProgress = clamp01(p.progress ?? 0)
+  const swingPhase = clamp01((rawProgress - 0.08) / 0.74)
+  const progress = easeInOutCubic(swingPhase)
+  const fadeIn = clamp01(rawProgress / 0.12)
+  const fadeOut = clamp01((1 - rawProgress) / 0.26)
+  const alpha = Math.min(fadeIn, fadeOut)
+  if (alpha <= 0.01) {
+    return
+  }
+
+  const sweepSpan = 2.08
+  const bladeAngle = angle - sweepSpan * 0.5 + sweepSpan * progress
+  const bladeLength = p.radius * 1.28
+  const bladeStart = Math.max(12, p.radius * 0.13)
+  const bladeWidth = Math.max(7.4, p.radius * 0.105)
+  const impactPulse = Math.sin(Math.PI * swingPhase)
+  const surfacePulse = 0.9 + Math.sin(t * 0.008) * 0.06
+  const grip = {
+    x: x - Math.cos(bladeAngle) * Math.max(15, p.radius * 0.22),
+    y: y - Math.sin(bladeAngle) * Math.max(15, p.radius * 0.22),
+  }
+  const blade = buildPulseMeleeBladeGeometry(
+    x,
+    y,
+    bladeAngle,
+    bladeStart,
+    bladeLength,
+    bladeWidth * (1 + impactPulse * 0.22),
+  )
 
   ctx.save()
-  ctx.strokeStyle = "rgba(220, 248, 255, 0.88)"
-  ctx.lineWidth = 2
+  ctx.globalAlpha = alpha
+  ctx.lineCap = "round"
+  ctx.lineJoin = "round"
   ctx.shadowColor = "rgba(93, 164, 209, 0.9)"
-  ctx.shadowBlur = 12
+  ctx.shadowBlur = 17
+  ctx.globalCompositeOperation = "lighter"
+
+  // 判定は前方範囲のまま、見た目は太い一枚刃を遅く振り抜く表現へ寄せます。
+  drawPulseMeleeWake(ctx, x, y, angle - sweepSpan * 0.5, bladeAngle, bladeLength, alpha, progress)
+  drawPulseMeleeAfterImages(
+    ctx,
+    x,
+    y,
+    angle,
+    sweepSpan,
+    swingPhase,
+    bladeStart,
+    bladeLength,
+    bladeWidth,
+    alpha,
+  )
+
+  const bladeGradient = ctx.createLinearGradient(blade.start.x, blade.start.y, blade.tip.x, blade.tip.y)
+  bladeGradient.addColorStop(0, "rgba(72, 166, 232, 0.1)")
+  bladeGradient.addColorStop(0.28, `rgba(140, 226, 255, ${(0.64 * surfacePulse).toFixed(3)})`)
+  bladeGradient.addColorStop(0.72, "rgba(238, 252, 255, 0.98)")
+  bladeGradient.addColorStop(1, "rgba(255, 255, 255, 1)")
+  ctx.fillStyle = bladeGradient
+  tracePulseMeleeBlade(ctx, blade)
+  ctx.fill()
+
+  drawPulseMeleeGlitchTrail(ctx, x, y, bladeAngle, bladeLength, alpha, t)
+
+  ctx.shadowBlur = 10
+  ctx.strokeStyle = `rgba(246, 253, 255, ${(0.94 * alpha).toFixed(3)})`
+  ctx.lineWidth = Math.max(2.6, bladeWidth * 0.42)
   ctx.beginPath()
-  ctx.arc(x, y, arcRadius, angle - 0.82, angle + 0.82)
+  ctx.moveTo(grip.x, grip.y)
+  ctx.quadraticCurveTo(
+    x + Math.cos(bladeAngle) * p.radius * 0.42,
+    y + Math.sin(bladeAngle) * p.radius * 0.42,
+    blade.tip.x,
+    blade.tip.y,
+  )
   ctx.stroke()
 
-  ctx.globalAlpha = 0.16 + 0.04 * Math.sin(t * 0.02)
-  ctx.fillStyle = "#9fdcff"
+  ctx.shadowBlur = 18
+  ctx.fillStyle = `rgba(248, 253, 255, ${(0.74 * alpha).toFixed(3)})`
   ctx.beginPath()
-  ctx.arc(x, y, arcRadius * 0.9, angle - 0.72, angle + 0.72)
-  ctx.lineTo(x, y)
-  ctx.closePath()
+  ctx.arc(blade.tip.x, blade.tip.y, Math.max(3.4, p.radius * 0.052), 0, TAU)
   ctx.fill()
+
+  ctx.shadowBlur = 7
+  ctx.strokeStyle = `rgba(154, 226, 255, ${(0.3 * alpha).toFixed(3)})`
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(
+    x + Math.cos(angle - sweepSpan * 0.5) * p.radius * 0.28,
+    y + Math.sin(angle - sweepSpan * 0.5) * p.radius * 0.28,
+  )
+  ctx.lineTo(
+    x + Math.cos(angle - sweepSpan * 0.5) * p.radius * 0.48,
+    y + Math.sin(angle - sweepSpan * 0.5) * p.radius * 0.48,
+  )
+  ctx.moveTo(
+    x + Math.cos(angle + sweepSpan * 0.5) * p.radius * 0.28,
+    y + Math.sin(angle + sweepSpan * 0.5) * p.radius * 0.28,
+  )
+  ctx.lineTo(
+    x + Math.cos(angle + sweepSpan * 0.5) * p.radius * 0.48,
+    y + Math.sin(angle + sweepSpan * 0.5) * p.radius * 0.48,
+  )
+  ctx.stroke()
+  ctx.restore()
+}
+
+type PulseMeleeBladeGeometry = {
+  start: { x: number; y: number }
+  mid: { x: number; y: number }
+  tip: { x: number; y: number }
+  normal: { x: number; y: number }
+  width: number
+  tipWidth: number
+}
+
+function buildPulseMeleeBladeGeometry(
+  x: number,
+  y: number,
+  angle: number,
+  startDistance: number,
+  bladeLength: number,
+  bladeWidth: number,
+): PulseMeleeBladeGeometry {
+  return {
+    start: {
+      x: x + Math.cos(angle) * startDistance,
+      y: y + Math.sin(angle) * startDistance,
+    },
+    mid: {
+      x: x + Math.cos(angle) * ((startDistance + bladeLength) * 0.58),
+      y: y + Math.sin(angle) * ((startDistance + bladeLength) * 0.58),
+    },
+    tip: {
+      x: x + Math.cos(angle) * bladeLength,
+      y: y + Math.sin(angle) * bladeLength,
+    },
+    normal: { x: -Math.sin(angle), y: Math.cos(angle) },
+    width: bladeWidth,
+    tipWidth: Math.max(1.8, bladeWidth * 0.3),
+  }
+}
+
+function tracePulseMeleeBlade(
+  ctx: CanvasRenderingContext2D,
+  blade: PulseMeleeBladeGeometry,
+): void {
+  const n = blade.normal
+  ctx.beginPath()
+  ctx.moveTo(blade.start.x + n.x * blade.width, blade.start.y + n.y * blade.width)
+  ctx.quadraticCurveTo(
+    blade.mid.x + n.x * blade.width * 1.08,
+    blade.mid.y + n.y * blade.width * 1.08,
+    blade.tip.x + n.x * blade.tipWidth,
+    blade.tip.y + n.y * blade.tipWidth,
+  )
+  ctx.lineTo(blade.tip.x - n.x * blade.tipWidth, blade.tip.y - n.y * blade.tipWidth)
+  ctx.quadraticCurveTo(
+    blade.mid.x - n.x * blade.width * 0.86,
+    blade.mid.y - n.y * blade.width * 0.86,
+    blade.start.x - n.x * blade.width,
+    blade.start.y - n.y * blade.width,
+  )
+  ctx.closePath()
+}
+
+function drawPulseMeleeWake(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  startAngle: number,
+  bladeAngle: number,
+  bladeLength: number,
+  alpha: number,
+  progress: number,
+): void {
+  const wakeAlpha = alpha * (0.36 + 0.22 * (1 - progress))
+  for (let layer = 0; layer < 3; layer += 1) {
+    const layerAlpha = wakeAlpha * (1 - layer * 0.28)
+    ctx.strokeStyle = `rgba(103, 202, 255, ${layerAlpha.toFixed(3)})`
+    ctx.lineWidth = 20 - layer * 5.2
+    ctx.beginPath()
+    ctx.arc(x, y, bladeLength * (0.78 - layer * 0.08), startAngle, bladeAngle)
+    ctx.stroke()
+  }
+}
+
+function drawPulseMeleeAfterImages(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  baseAngle: number,
+  sweepSpan: number,
+  swingPhase: number,
+  bladeStart: number,
+  bladeLength: number,
+  bladeWidth: number,
+  alpha: number,
+): void {
+  // 残像は刃そのものの過去位置を薄く残し、単なる円弧に戻らないようにします。
+  for (let index = 6; index >= 1; index -= 1) {
+    const ghostPhase = clamp01(swingPhase - index * 0.055)
+    if (ghostPhase <= 0) {
+      continue
+    }
+    const ghostProgress = easeInOutCubic(ghostPhase)
+    const ghostAngle = baseAngle - sweepSpan * 0.5 + sweepSpan * ghostProgress
+    const ghostBlade = buildPulseMeleeBladeGeometry(
+      x,
+      y,
+      ghostAngle,
+      bladeStart,
+      bladeLength * (0.98 - index * 0.018),
+      bladeWidth * (0.74 - index * 0.055),
+    )
+    const ageFade = Math.pow(1 - index / 7, 1.9)
+    ctx.fillStyle = `rgba(118, 211, 255, ${(alpha * 0.18 * ageFade).toFixed(3)})`
+    tracePulseMeleeBlade(ctx, ghostBlade)
+    ctx.fill()
+  }
+}
+
+function drawPulseMeleeGlitchTrail(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  bladeAngle: number,
+  bladeLength: number,
+  alpha: number,
+  timeMs: number,
+): void {
+  const normal = { x: -Math.sin(bladeAngle), y: Math.cos(bladeAngle) }
+  const forward = { x: Math.cos(bladeAngle), y: Math.sin(bladeAngle) }
+
+  ctx.save()
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = `rgba(180, 232, 255, ${(0.12 * alpha).toFixed(3)})`
+  ctx.lineWidth = 0.8
+  for (let i = 0; i < 4; i++) {
+    const phase = (i + 1) / 5
+    const jitter = Math.sin(timeMs * 0.024 + i * 2.13) * 3.2
+    const cx = x + forward.x * bladeLength * (0.34 + phase * 0.52) + normal.x * jitter
+    const cy = y + forward.y * bladeLength * (0.34 + phase * 0.52) + normal.y * jitter
+    ctx.beginPath()
+    ctx.moveTo(cx - normal.x * 7, cy - normal.y * 7)
+    ctx.lineTo(cx + normal.x * (7 + i * 1.6), cy + normal.y * (7 + i * 1.6))
+    ctx.stroke()
+  }
   ctx.restore()
 }
 
@@ -621,6 +1069,8 @@ function drawNoiseOrbProjectile(
   const breathe = 0.88 + 0.12 * Math.sin(t * 0.004 + seed)
   const pulse = 0.8 + 0.2 * Math.sin(t * 0.01 + seed)
   const rot = t * 0.0025 * dir + seed * 0.1
+
+  ctx.save()
 
   // 1. 呼吸するハロー (有機的な拡縮)
   ctx.globalAlpha = 0.07 + 0.04 * breathe
@@ -689,7 +1139,7 @@ function drawNoiseOrbProjectile(
   ctx.arc(x, y, r * 0.2 * pulse, 0, TAU)
   ctx.fill()
 
-  ctx.globalAlpha = 1
+  ctx.restore()
 }
 
 /* ── Variant 2: ジオ・ダイアモンド (回転菱形, 幾何学的) ── */
@@ -739,6 +1189,134 @@ function drawGeoDiamondProjectile(
   ctx.fillStyle = `hsl(${hue + 5}, 40%, 95%)`
   ctx.beginPath()
   ctx.arc(0, 0, r * 0.15, 0, TAU)
+  ctx.fill()
+
+  ctx.restore()
+}
+
+/* ── 三角弾: 進行方向に向く軽い三角形 + 円ハロー。
+   ランス系の鋭さを抑え、丸+三角の幾何学的な美しさだけ残します。      ── */
+function drawEnemyLanceProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: {
+    projectileInstanceId: string
+    position: { x: number; y: number }
+    velocity: { x: number; y: number }
+    radius: number
+  },
+  t: number,
+) {
+  const { x, y } = p.position
+  const r = p.radius
+  const seed = hashString(p.projectileInstanceId)
+  const hue = 28 + (seed % 9)
+  const direction = normalizeCanvasVector(p.velocity.x, p.velocity.y)
+  const angle = Math.atan2(direction.y, direction.x) + Math.PI / 2
+  const pulse = 0.86 + 0.14 * Math.sin(t * 0.006 + seed)
+
+  ctx.save()
+  ctx.translate(x, y)
+
+  // 1. ソフトハロー (円)
+  ctx.globalAlpha = 0.09 + 0.04 * pulse
+  ctx.fillStyle = `hsl(${hue}, 70%, 70%)`
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 1.55, 0, TAU)
+  ctx.fill()
+
+  ctx.rotate(angle)
+
+  // 2. 三角アウトライン (進行方向に向く正三角形)
+  const tip = r * 1.05
+  const base = r * 0.78
+  ctx.globalAlpha = 0.62
+  ctx.strokeStyle = `hsla(${hue}, 78%, 82%, 0.9)`
+  ctx.lineWidth = 0.95
+  ctx.lineJoin = "round"
+  ctx.beginPath()
+  ctx.moveTo(0, -tip)
+  ctx.lineTo(base, tip * 0.55)
+  ctx.lineTo(-base, tip * 0.55)
+  ctx.closePath()
+  ctx.stroke()
+
+  // 3. 三角内側フィル
+  ctx.globalAlpha = 0.16
+  ctx.fillStyle = `hsl(${hue}, 72%, 78%)`
+  ctx.fill()
+
+  // 4. 中心ドット
+  ctx.globalAlpha = 0.92
+  ctx.fillStyle = `hsl(${hue + 6}, 38%, 96%)`
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.16 * pulse, 0, TAU)
+  ctx.fill()
+
+  ctx.restore()
+}
+
+/* ── ボス弾: 大型サイズの円バリアント。中心の三角アクセントで
+   通常弾と差別化しつつ、過度な攻撃感は出さないように調整します。 ── */
+function drawBossCoreProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: { projectileInstanceId: string; position: { x: number; y: number }; radius: number },
+  t: number,
+) {
+  const { x, y } = p.position
+  const r = p.radius
+  const seed = hashString(p.projectileInstanceId)
+  const hue = 24 + (seed % 8)
+  const rot = t * 0.0018 * (seed % 2 === 0 ? 1 : -1) + seed * 0.04
+  const pulse = 0.86 + 0.14 * Math.sin(t * 0.005 + seed)
+  const breathe = 0.94 + 0.06 * Math.sin(t * 0.003 + seed)
+
+  ctx.save()
+  ctx.translate(x, y)
+
+  // 1. ソフトハロー (大きめ)
+  ctx.globalAlpha = 0.1
+  ctx.fillStyle = `hsl(${hue}, 68%, 72%)`
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 2.05 * breathe, 0, TAU)
+  ctx.fill()
+
+  // 2. 外周リング (円アウトライン)
+  ctx.globalAlpha = 0.6
+  ctx.strokeStyle = `hsla(${hue}, 76%, 82%, 0.92)`
+  ctx.lineWidth = 1.1
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 1.18, 0, TAU)
+  ctx.stroke()
+
+  // 3. 内側リング (薄く)
+  ctx.globalAlpha = 0.32
+  ctx.lineWidth = 0.7
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.78, 0, TAU)
+  ctx.stroke()
+
+  // 4. 中心の小三角 (回転、丸+三角の対比)
+  ctx.rotate(rot)
+  ctx.globalAlpha = 0.78
+  ctx.strokeStyle = `hsla(${hue + 4}, 80%, 88%, 0.92)`
+  ctx.lineWidth = 0.9
+  const triR = r * 0.46
+  ctx.beginPath()
+  for (let i = 0; i < 3; i++) {
+    const a = (TAU / 3) * i - Math.PI / 2
+    const px = Math.cos(a) * triR
+    const py = Math.sin(a) * triR
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  ctx.stroke()
+
+  // 5. 中心コア
+  ctx.globalAlpha = 0.95
+  ctx.fillStyle = `hsl(${hue + 6}, 38%, 96%)`
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.2 * pulse, 0, TAU)
   ctx.fill()
 
   ctx.restore()
@@ -1130,6 +1708,7 @@ function drawHazard(
     size: { width: number; height: number }
   },
   t: number,
+  reduceFlashing: boolean,
 ) {
   const { x, y } = hazard.position
   const { width: w, height: h } = hazard.size
@@ -1140,7 +1719,7 @@ function drawHazard(
 
   if (isTelegraph) {
     /* ── 予告フェーズ: ダッシュ枠 + グリッチ予兆 ── */
-    const pulse = 0.45 + 0.35 * Math.sin(t * 0.016)
+    const pulse = reduceFlashing ? 0.54 + 0.1 * Math.sin(t * 0.006) : 0.45 + 0.35 * Math.sin(t * 0.016)
 
     ctx.fillStyle = `rgba(255, 72, 96, ${0.08 + pulse * 0.1})`
     ctx.fillRect(x, y, w, h)
@@ -1169,7 +1748,7 @@ function drawHazard(
   } else {
     /* ── アクティブ / フェードフェーズ ── */
     const phaseAlpha = isFading ? 1 - growth : growth
-    const turbulenceScale = 0.12 + growth * 0.88
+    const turbulenceScale = reduceFlashing ? 0.08 + growth * 0.32 : 0.12 + growth * 0.88
     const glitchIntensity = phaseAlpha * turbulenceScale
 
     /* ── 0. 暗域フォグ: 影響範囲を示す、境界線がぼやけた暗い面 ──
@@ -1229,6 +1808,16 @@ function drawHazard(
     ctx.rect(x, y, w, h)
     ctx.clip()
 
+    drawMagneticStormNoise(ctx, {
+      x,
+      y,
+      width: w,
+      height: h,
+      timeMs: t,
+      phaseAlpha,
+      glitchIntensity,
+    })
+
     /* ── 1. グリッチ変位バー: 水平帯が不規則にズレる ── */
     const glitchFrame = Math.floor(t * 0.012)
     for (let i = 0; i < 5; i++) {
@@ -1251,13 +1840,15 @@ function drawHazard(
         const tearY = y + seededRandom(tearFrame + i * 89) * h
         const tearH = 2 + seededRandom(tearFrame + i * 31) * 12 * glitchIntensity
         const tearShift = (seededRandom(tearFrame + i * 47) - 0.5) * 40 * glitchIntensity
-        // 引き裂かれた帯 — 白/黒のコントラストが激しい
-        ctx.globalAlpha = 0.15 + 0.2 * glitchIntensity
-        ctx.fillStyle = seededRandom(tearFrame + i * 61) > 0.5 ? "#fff" : "#000"
+        // 引き裂かれた帯は赤い警告域の範囲内に抑え、白黒の閃きを強くしすぎない。
+        ctx.globalAlpha = 0.05 + 0.08 * glitchIntensity
+        ctx.fillStyle = seededRandom(tearFrame + i * 61) > 0.5
+          ? "rgba(255, 190, 205, 0.8)"
+          : "rgba(24, 4, 9, 0.8)"
         ctx.fillRect(x + tearShift, tearY, w, tearH)
-        // ティアの境界線 (鋭い白線)
-        ctx.globalAlpha = 0.35 * glitchIntensity
-        ctx.fillStyle = "#fff"
+        // ティアの境界線は警告色に寄せ、ノイズの層として見せる。
+        ctx.globalAlpha = 0.18 * glitchIntensity
+        ctx.fillStyle = "rgba(255, 126, 144, 0.9)"
         ctx.fillRect(x + tearShift, tearY, w, 1)
       }
     }
@@ -1337,8 +1928,10 @@ function drawHazard(
         const spy = regionY + seededRandom(staticBurst * 100 + i * 13) * regionH
         const spw = 1 + seededRandom(staticBurst * 100 + i * 3) * 3
         const sph = 1 + seededRandom(staticBurst * 100 + i * 17) * 2
-        ctx.globalAlpha = 0.15 + seededRandom(staticBurst * 100 + i * 29) * 0.35
-        ctx.fillStyle = seededRandom(staticBurst * 100 + i * 41) > 0.5 ? "#fff" : "#111"
+        ctx.globalAlpha = 0.07 + seededRandom(staticBurst * 100 + i * 29) * 0.16
+        ctx.fillStyle = seededRandom(staticBurst * 100 + i * 41) > 0.5
+          ? "rgba(255, 190, 205, 0.85)"
+          : "rgba(32, 5, 12, 0.8)"
         ctx.fillRect(spx, spy, spw, sph)
       }
     }
@@ -1351,8 +1944,10 @@ function drawHazard(
         const vw = 1 + seededRandom(vFrame + i * 23) * 3
         const vy = y + seededRandom(vFrame + i * 97) * h * 0.3
         const vh = h * (0.3 + seededRandom(vFrame + i * 41) * 0.7)
-        ctx.globalAlpha = 0.1 + 0.2 * glitchIntensity
-        ctx.fillStyle = seededRandom(vFrame + i * 53) > 0.3 ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.8)"
+        ctx.globalAlpha = 0.06 + 0.12 * glitchIntensity
+        ctx.fillStyle = seededRandom(vFrame + i * 53) > 0.3
+          ? "rgba(255, 160, 178, 0.65)"
+          : "rgba(24, 4, 9, 0.72)"
         ctx.fillRect(vx, vy, vw, vh)
       }
     }
@@ -1401,13 +1996,13 @@ function drawHazard(
       const cy2 = y + seededRandom(corruptFrame * 113) * h * 0.5
       const cw = 20 + seededRandom(corruptFrame * 47) * 50
       const ch2 = 8 + seededRandom(corruptFrame * 59) * 20
-      // 黒い欠損ブロック
-      ctx.globalAlpha = 0.25 + 0.2 * glitchIntensity
-      ctx.fillStyle = "#000"
+      // 黒い欠損ブロックは赤い嵐の影として薄く残す。
+      ctx.globalAlpha = 0.12 + 0.12 * glitchIntensity
+      ctx.fillStyle = "rgba(18, 2, 7, 0.95)"
       ctx.fillRect(cx2, cy2, cw, ch2)
-      // ブロック内にホワイトノイズ線
-      ctx.globalAlpha = 0.4 * glitchIntensity
-      ctx.fillStyle = "#fff"
+      // ブロック内に赤いノイズ線
+      ctx.globalAlpha = 0.22 * glitchIntensity
+      ctx.fillStyle = "rgba(255, 150, 170, 0.9)"
       for (let ln = 0; ln < 3; ln++) {
         const lny = cy2 + seededRandom(corruptFrame + ln * 71) * ch2
         ctx.fillRect(cx2, lny, cw, 1)
@@ -1427,14 +2022,127 @@ function drawHazard(
     }
 
     ctx.restore()
+    drawMagneticWarningRim(ctx, {
+      x,
+      y,
+      width: w,
+      height: h,
+      timeMs: t,
+      phaseAlpha,
+    })
   }
 
   ctx.restore()
 }
 
+function drawMagneticStormNoise(
+  ctx: CanvasRenderingContext2D,
+  input: {
+    x: number
+    y: number
+    width: number
+    height: number
+    timeMs: number
+    phaseAlpha: number
+    glitchIntensity: number
+  },
+) {
+  const { x, y, width, height, timeMs, phaseAlpha, glitchIntensity } = input
+  const frame = Math.floor(timeMs * 0.018)
+
+  ctx.save()
+  ctx.globalCompositeOperation = "lighter"
+
+  // 粒状ノイズは矩形の一様塗りを避けるため、座標 seed で位置を固定しつつ明滅だけ動かす。
+  const particleCount = Math.max(44, Math.floor((width * height) / 900))
+  for (let i = 0; i < particleCount; i += 1) {
+    const seed = hashString(`${Math.round(x)}:${Math.round(y)}:${i}`)
+    const drift = (timeMs * (0.00005 + seededRandom(seed + 3) * 0.00008) + seededRandom(seed + 7)) % 1
+    const baseX = x + ((seededRandom(seed + 11) + drift * 0.12) % 1) * width
+    const baseY =
+      y +
+      ((seededRandom(seed + 13) +
+        Math.sin(timeMs * 0.0012 + seed) * 0.025 +
+        drift * 0.04) % 1) *
+        height
+    const radius = 0.7 + seededRandom(seed + 17) * 2.6
+    const flicker = 0.38 + 0.62 * seededRandom(frame + seed * 5)
+    const alpha = (0.025 + seededRandom(seed + 19) * 0.07) * phaseAlpha * flicker
+    const dot = ctx.createRadialGradient(baseX, baseY, 0, baseX, baseY, radius * 5)
+    dot.addColorStop(0, `rgba(255, 168, 188, ${(alpha * 1.25).toFixed(3)})`)
+    dot.addColorStop(0.42, `rgba(255, 72, 106, ${(alpha * 0.68).toFixed(3)})`)
+    dot.addColorStop(1, "rgba(255, 72, 106, 0)")
+    ctx.fillStyle = dot
+    ctx.beginPath()
+    ctx.arc(baseX, baseY, radius * 5, 0, TAU)
+    ctx.fill()
+  }
+
+  // 斜めの流線で「嵐」の向きを作る。線は短く、警告域の赤を保つ。
+  ctx.lineCap = "round"
+  ctx.lineWidth = 0.8
+  for (let i = 0; i < 18; i += 1) {
+    const seed = hashString(`storm:${Math.round(x)}:${Math.round(y)}:${i}`)
+    const progress = (timeMs * (0.00018 + seededRandom(seed + 1) * 0.00018) + seededRandom(seed + 2)) % 1
+    const sx = x + progress * width
+    const sy = y + (seededRandom(seed + 3) * 0.9 + 0.05) * height
+    const sway = Math.sin(timeMs * 0.0018 + seed) * height * 0.035
+    const length = 22 + seededRandom(seed + 4) * 54
+    const alpha = (0.055 + seededRandom(seed + 5) * 0.08) * phaseAlpha * (0.55 + glitchIntensity * 0.45)
+    const line = ctx.createLinearGradient(sx - length, sy + sway + length * 0.25, sx + length, sy + sway - length * 0.25)
+    line.addColorStop(0, "rgba(255, 72, 106, 0)")
+    line.addColorStop(0.5, `rgba(255, 156, 176, ${alpha.toFixed(3)})`)
+    line.addColorStop(1, "rgba(255, 72, 106, 0)")
+    ctx.strokeStyle = line
+    ctx.beginPath()
+    ctx.moveTo(sx - length, sy + sway + length * 0.25)
+    ctx.quadraticCurveTo(sx, sy + sway - length * 0.08, sx + length, sy + sway - length * 0.25)
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+function drawMagneticWarningRim(
+  ctx: CanvasRenderingContext2D,
+  input: { x: number; y: number; width: number; height: number; timeMs: number; phaseAlpha: number },
+) {
+  const pulse = 0.65 + 0.35 * Math.sin(input.timeMs * 0.004)
+
+  ctx.save()
+  ctx.strokeStyle = `rgba(255, 72, 96, ${(0.2 + pulse * 0.18) * input.phaseAlpha})`
+  ctx.lineWidth = 2
+  ctx.setLineDash([10, 8])
+  ctx.lineDashOffset = -(input.timeMs * 0.035)
+  ctx.shadowColor = `rgba(255, 72, 96, ${(0.2 * input.phaseAlpha).toFixed(3)})`
+  ctx.shadowBlur = 12
+  ctx.strokeRect(input.x, input.y, input.width, input.height)
+  ctx.setLineDash([])
+
+  ctx.strokeStyle = `rgba(255, 168, 188, ${(0.08 + pulse * 0.08) * input.phaseAlpha})`
+  ctx.lineWidth = 7
+  ctx.shadowBlur = 18
+  ctx.strokeRect(input.x, input.y, input.width, input.height)
+  ctx.restore()
+}
+
 function easeOutCubic(value: number): number {
-  const clamped = Math.max(0, Math.min(1, value))
+  const clamped = clamp01(value)
   return 1 - (1 - clamped) ** 3
+}
+
+function easeInOutCubic(value: number): number {
+  const clamped = clamp01(value)
+  return clamped < 0.5
+    ? 4 * clamped * clamped * clamped
+    : 1 - (-2 * clamped + 2) ** 3 / 2
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  return Math.max(0, Math.min(1, value))
 }
 
 /* ============================================================

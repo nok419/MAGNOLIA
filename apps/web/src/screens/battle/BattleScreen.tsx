@@ -1,6 +1,7 @@
 import type { ContentBundle, ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
 import { readEquipmentSlotLabel } from "@/app/display-helpers"
+import type { DisplayOptions } from "@/app/display-options"
 import { BattleCanvas } from "@/components/BattleCanvas"
 import { ActionButton } from "@/components/ActionButton"
 
@@ -8,13 +9,16 @@ type BattleScreenProps = {
   content: ContentBundle
   renderState: BattleRenderState
   shipVariant: ShipVariant
+  displayOptions: DisplayOptions
   onReturnToExplore: () => void
 }
 
-export function BattleScreen({ content, renderState, shipVariant, onReturnToExplore }: BattleScreenProps) {
+export function BattleScreen({ content, renderState, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
   const progress = renderState.missionDurationMs > 0
-    ? Math.min(1, renderState.elapsedMs / renderState.missionDurationMs)
+    ? Math.max(0, Math.min(1, renderState.elapsedMs / renderState.missionDurationMs))
     : 0
+  const progressPercent = Math.round(progress * 100)
+  const remainingSeconds = Math.ceil(Math.max(0, renderState.missionDurationMs - renderState.elapsedMs) / 1000)
   const grantedEquipment = (renderState.pendingResult?.grantedEquipmentIds ?? []).flatMap((equipmentId) => {
     const equipment = content.equipment[equipmentId]
     return equipment ? [equipment] : []
@@ -23,16 +27,34 @@ export function BattleScreen({ content, renderState, shipVariant, onReturnToExpl
   return (
     <main className="battle-screen">
       <div className="battle-screen__playfield">
-        <div className="battle-progress">
-          <div
-            className="battle-progress__fill"
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
-        <BattleCanvas renderState={renderState} shipVariant={shipVariant} />
+        <BattleCanvas renderState={renderState} shipVariant={shipVariant} displayOptions={displayOptions} />
       </div>
 
       <div className="battle-screen__sidebar">
+        {/* 進行度はキャンバス外へ置き、表示幅が狭い環境でも見切れないようにする。 */}
+        <section className="battle-mission-panel" aria-label="mission progress">
+          <div className="battle-mission-panel__header">
+            <span>mission</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <div
+            className="battle-mission-panel__meter"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPercent}
+          >
+            <span
+              className="battle-mission-panel__fill"
+              style={{ transform: `scaleX(${progress})` }}
+            />
+          </div>
+          <div className="battle-mission-panel__meta">
+            <span>remain</span>
+            <span>{formatMissionTime(remainingSeconds)}</span>
+          </div>
+        </section>
+
         {renderState.activeSubtitle ? (
           <div className="battle-subtitle-panel">
             {renderState.activeSubtitle.speakerLabel ? (
@@ -126,6 +148,12 @@ export function BattleScreen({ content, renderState, shipVariant, onReturnToExpl
       ) : null}
     </main>
   )
+}
+
+function formatMissionTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, "0")}`
 }
 
 function ResultMetric(input: { label: string; value: string }) {

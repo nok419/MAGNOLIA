@@ -25,9 +25,9 @@ export type VolumeLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7
  * 描画ロジックは `apps/web/src/app/ship-renderer.ts` に一元化されており、
  * バリアントはビジュアルの層数・装飾だけを切り替える（当たり判定やサイズには影響しない）。
  *
- * - "solid": 初期からある視認性重視の3ピース機体。戦闘中の可読性を最優先する。
- * - "art":   装備 UI / 探索時のコンテクスト向けに、花弁状の装飾アークや
- *            コアの結晶表現を加えた多層バージョン。silhouette は solid と一致。
+ * - "solid": 三角形を基調にした視認性重視の高速機体。戦闘中の可読性を最優先する。
+ * - "art":   装備画面 / 探索時のコンテクスト向けに、別設計の多層面と
+ *            内部導線を加えたバージョン。サイズ上の扱いは solid と共有する。
  *
  * バックエンド側でバリデーションを行う場合、許容値は "solid" | "art" の 2 つのみ。
  * 将来バリアントを追加する際はこの union と `apps/web/src/app/ship-renderer.ts` の
@@ -116,6 +116,7 @@ export type DifficultyModifiers = {
   difficulty: Difficulty
   enemyHpMultiplier: number
   enemyNoiseDamageMultiplier: number
+  enemyCadenceMultiplier: number
   noiseDecayRateMultiplier: number
   hearingThresholdOffset: number
   selfRepairPointMultiplier: number

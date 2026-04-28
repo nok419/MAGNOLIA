@@ -1,0 +1,13 @@
+{
+  "bulletPatternId": "bp_c1_pressure_ring",
+  "patternKind": "radial",
+  "projectileId": "proj_enemy_core",
+  "cadenceMs": 2600,
+  "burstCount": 10,
+  "params": {
+    "aimAtPlayer": false,
+    "baseAngleDeg": 0,
+    "rotationDegPerSec": 10,
+    "phaseOffsetDeg": 18
+  }
+}

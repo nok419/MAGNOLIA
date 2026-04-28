@@ -38,6 +38,245 @@
 }
 
 /* =========================================================
+   EXPLORE HUD OVERRIDES
+   ========================================================= */
+.explore-fullscreen .ehud {
+  border-color: rgba(117, 179, 218, 0.18);
+  background:
+    linear-gradient(90deg, rgba(93, 164, 209, 0.06), transparent 28%),
+    radial-gradient(circle at 0 0, rgba(93, 164, 209, 0.055) 1px, transparent 1px) 0 0 / 18px 18px,
+    linear-gradient(135deg, rgba(8, 18, 34, 0.84) 0%, rgba(3, 7, 16, 0.93) 100%);
+}
+
+.explore-fullscreen .ehud::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(93, 164, 209, 0.055);
+  pointer-events: none;
+}
+
+.explore-fullscreen .ehud--status {
+  width: min(280px, calc(100vw - 32px));
+}
+
+.explore-fullscreen .ehud--signal {
+  width: min(500px, calc(100vw - 32px));
+  min-width: 320px;
+  padding: 13px 16px 14px;
+  overflow: hidden;
+}
+
+.explore-fullscreen .ehud--signal::before {
+  top: 10%;
+  bottom: 10%;
+  background:
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(93, 164, 209, 0.18) 18%,
+      rgba(200, 230, 255, calc(0.28 + var(--signal-strength, 0) * 0.32)) 48%,
+      rgba(93, 164, 209, 0.16) 82%,
+      transparent 100%
+    );
+}
+
+.explore-fullscreen .ehud--signal .ehud__header {
+  margin-bottom: 9px;
+}
+
+.ehud-signal__body {
+  display: grid;
+  gap: 10px;
+}
+
+.ehud-signal__frequency {
+  position: relative;
+  min-width: 0;
+}
+
+/* 音声編集ソフトの波形表示に近い密な縦線計です。
+   実際の Background Music（BGM）波形へ差し替える前提で、距離による振幅だけ CSS 変数に分離します。 */
+.ehud-signal__waveform {
+  position: relative;
+  height: 92px;
+  border: 1px solid rgba(112, 184, 232, 0.18);
+  background:
+    linear-gradient(rgba(112, 184, 232, 0.055) 1px, transparent 1px) 0 0 / 100% 12px,
+    linear-gradient(90deg, rgba(112, 184, 232, 0.04) 1px, transparent 1px) 0 0 / 18px 100%,
+    linear-gradient(180deg, rgba(6, 16, 31, 0.2), rgba(1, 5, 12, 0.72));
+  overflow: hidden;
+}
+
+.ehud-signal__waveform::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(93, 164, 209, 0.12), transparent 56%),
+    linear-gradient(90deg, transparent, rgba(93, 164, 209, 0.08), transparent);
+  opacity: calc(0.16 + var(--wave-strength, 0) * 0.22);
+  pointer-events: none;
+}
+
+.ehud-signal__waveform-baseline,
+.ehud-signal__waveform-cursor {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.ehud-signal__waveform-baseline {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(200, 234, 255, 0.34);
+  z-index: 1;
+}
+
+.ehud-signal__waveform-cursor {
+  top: 0;
+  bottom: 0;
+  left: calc(7% + var(--wave-strength, 0) * 84%);
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(221, 246, 255, 0.72), transparent);
+  box-shadow: 0 0 12px rgba(93, 164, 209, 0.48);
+  opacity: calc(0.22 + var(--wave-strength, 0) * 0.4);
+  transition: left 70ms linear, opacity 70ms linear;
+  z-index: 2;
+}
+
+.ehud-signal__waveform-bars {
+  position: absolute;
+  inset: 7px 8px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.ehud-signal__waveform-bar {
+  flex: 1;
+  height: calc((var(--bar-amp, 0.5) * (0.12 + var(--wave-strength, 0) * 0.88)) * 100%);
+  min-height: 1px;
+  background: linear-gradient(180deg, rgba(232, 250, 255, 0.92), rgba(112, 197, 240, 0.74) 58%, rgba(72, 142, 206, 0.38));
+  box-shadow: 0 0 5px rgba(93, 164, 209, calc(0.1 + var(--wave-strength, 0) * 0.28));
+  opacity: calc(0.3 + var(--wave-strength, 0) * 0.68);
+  transition: height 70ms linear, opacity 70ms linear, box-shadow 70ms linear;
+}
+
+.ehud-signal__strength {
+  display: grid;
+  gap: 5px;
+}
+
+.ehud-signal__strength-readout {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: rgba(191, 229, 247, 0.82);
+}
+
+.ehud-signal__meter {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(18, 1fr);
+  gap: 3px;
+  height: 20px;
+  padding: 4px;
+  border: 1px solid rgba(112, 184, 232, 0.16);
+  background:
+    linear-gradient(90deg, rgba(93, 164, 209, 0.08), transparent 44%),
+    rgba(2, 6, 14, 0.62);
+  overflow: hidden;
+}
+
+.ehud-signal__meter-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--signal-strength, 0) * 100%);
+  background: linear-gradient(90deg, rgba(89, 210, 169, 0.07), rgba(98, 182, 237, 0.16), rgba(230, 197, 118, 0.2));
+  transition: width 60ms linear;
+}
+
+.ehud-signal__meter-needle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--signal-strength, 0) * 100%);
+  width: 1px;
+  background: rgba(226, 248, 255, 0.88);
+  box-shadow: 0 0 12px rgba(93, 164, 209, 0.72);
+  transform: translateX(-1px);
+  transition: left 60ms linear;
+}
+
+.ehud-signal__meter-seg {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(93, 164, 209, 0.1);
+  background: rgba(93, 164, 209, 0.045);
+  transition: background-color 60ms linear, border-color 60ms linear, box-shadow 60ms linear;
+}
+
+.ehud-signal__meter-seg--on {
+  border-color: rgba(137, 221, 190, 0.38);
+  background: linear-gradient(180deg, rgba(195, 248, 225, 0.72), rgba(73, 180, 142, 0.28));
+  box-shadow: 0 0 8px rgba(91, 214, 169, 0.28);
+}
+
+.ehud-signal__meter-seg--on:nth-of-type(n + 9) {
+  border-color: rgba(150, 213, 247, 0.42);
+  background: linear-gradient(180deg, rgba(216, 245, 255, 0.76), rgba(93, 164, 209, 0.32));
+  box-shadow: 0 0 8px rgba(93, 164, 209, 0.34);
+}
+
+.ehud-signal__meter-seg--on:nth-of-type(n + 15) {
+  border-color: rgba(230, 197, 118, 0.48);
+  background: linear-gradient(180deg, rgba(255, 238, 190, 0.76), rgba(218, 177, 89, 0.3));
+  box-shadow: 0 0 9px rgba(230, 197, 118, 0.32);
+}
+
+.explore-fullscreen .ehud--radar {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(93, 164, 209, 0.055), transparent 68%),
+    linear-gradient(135deg, rgba(8, 18, 34, 0.82), rgba(3, 7, 16, 0.92));
+}
+
+@media (max-width: 960px) {
+  .explore-fullscreen .ehud--signal {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+    min-width: 0;
+    transform: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .boot-console__instrument-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .ehud-signal__waveform {
+    height: 64px;
+  }
+
+  .ehud-signal__meter {
+    height: 18px;
+    gap: 2px;
+  }
+}
+
+/* =========================================================
    BOOT CONSOLE (system.boot.message の没入型演出)
    ─────────────────────────────────────────────────────────
    レイヤ構成:
@@ -246,6 +485,154 @@
 .boot-console__corner--bl::after { bottom: 6px; left: 6px; border-width: 0 0 1px 1px; }
 .boot-console__corner--br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
 .boot-console__corner--br::after { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+
+.boot-console__instrument-panel {
+  display: grid;
+  grid-template-columns: 1fr 0.72fr 1.85fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.boot-console__status-bank,
+.boot-console__readout-grid,
+.boot-console__scope {
+  min-height: 64px;
+  border: 1px solid rgba(93, 164, 209, 0.18);
+  background:
+    linear-gradient(180deg, rgba(93, 164, 209, 0.055), rgba(2, 6, 14, 0.62));
+}
+
+.boot-console__status-bank {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  padding: 8px;
+}
+
+.boot-console__lamp {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(127, 150, 175, 0.18);
+  color: rgba(154, 180, 202, 0.5);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.boot-console__lamp--on {
+  border-color: rgba(132, 240, 163, 0.34);
+  color: rgba(204, 255, 224, 0.9);
+  background: rgba(104, 210, 148, 0.08);
+  box-shadow: 0 0 10px rgba(104, 210, 148, 0.18);
+}
+
+.boot-console__readout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  gap: 0;
+  padding: 7px 8px;
+  text-align: center;
+}
+
+.boot-console__readout-grid span {
+  color: rgba(170, 202, 222, 0.58);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.boot-console__readout-grid strong {
+  color: rgba(216, 247, 255, 0.92);
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 400;
+  text-shadow: 0 0 10px rgba(93, 164, 209, 0.28);
+}
+
+.boot-console__scope {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 5px;
+  padding: 7px 9px 8px;
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(112, 184, 232, 0.055) 1px, transparent 1px) 0 18px / 100% 10px,
+    linear-gradient(90deg, rgba(112, 184, 232, 0.04) 1px, transparent 1px) 0 0 / 16px 100%,
+    radial-gradient(circle at 62% 50%, rgba(93, 164, 209, 0.14), transparent 62%),
+    linear-gradient(180deg, rgba(4, 14, 28, 0.78), rgba(1, 5, 12, 0.92));
+}
+
+.boot-console__scope::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(158, 218, 255, 0.08), transparent);
+  opacity: 0.58;
+  pointer-events: none;
+}
+
+.boot-console__scope-label {
+  position: relative;
+  z-index: 2;
+  align-self: start;
+  width: max-content;
+  color: rgba(172, 216, 240, 0.68);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.boot-console__scope-baseline,
+.boot-console__scope-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.boot-console__scope-baseline {
+  left: 9px;
+  right: 9px;
+  top: 56%;
+  height: 1px;
+  background: rgba(204, 239, 255, 0.3);
+}
+
+.boot-console__scope-cursor {
+  top: 0;
+  bottom: 0;
+  left: var(--scope-cursor-left, 9px);
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(228, 250, 255, 0.8), transparent);
+  box-shadow: 0 0 12px rgba(112, 197, 240, 0.48);
+  opacity: 0.58;
+}
+
+.boot-console__scope-bars {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  min-height: 40px;
+}
+
+.boot-console__scope-bar {
+  flex: 1;
+  height: calc((0.08 + var(--scope-amp, 0.4) * 0.92) * 100%);
+  min-height: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(238, 252, 255, 0.94),
+    rgba(135, 214, 248, 0.72) 58%,
+    rgba(72, 142, 206, 0.32)
+  );
+  box-shadow: 0 0 5px rgba(93, 164, 209, 0.22);
+  opacity: 0.82;
+  transition: height 70ms linear, opacity 70ms linear;
+}
 
 /* ターミナルログ */
 .boot-console__log {

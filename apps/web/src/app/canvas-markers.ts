@@ -132,6 +132,8 @@ export function drawTransmissionMarker(
   const pulse = 0.76 + Math.sin(input.timeMs * 0.004 + input.x * 0.03 + input.y * 0.02) * 0.24
   const orbitRadius = input.size * (1.3 * variant.orbitScale)
   const rotation = input.timeMs * 0.00075
+  const satelliteAngle = -rotation * 0.72 + input.x * 0.011
+  const satelliteRadius = orbitRadius * 1.34
 
   ctx.save()
 
@@ -185,6 +187,32 @@ export function drawTransmissionMarker(
   ctx.beginPath()
   ctx.arc(input.x, input.y, orbitRadius * 0.76, -rotation * 0.85, -rotation * 0.85 + Math.PI * 0.44)
   ctx.stroke()
+
+  if (variant.shadowScale > 0.4) {
+    const sx = input.x + Math.cos(satelliteAngle) * satelliteRadius
+    const sy = input.y + Math.sin(satelliteAngle) * satelliteRadius
+    ctx.save()
+    ctx.translate(sx, sy)
+    ctx.rotate(satelliteAngle + Math.PI / 2)
+    ctx.strokeStyle = `rgba(${theme.haloRgb}, ${(0.34 * pulse).toFixed(3)})`
+    ctx.fillStyle = `rgba(${theme.haloRgb}, ${(0.12 * pulse).toFixed(3)})`
+    ctx.lineWidth = Math.max(0.55, 0.72 * variant.lineScale)
+    ctx.beginPath()
+    ctx.moveTo(0, -input.size * 0.28)
+    ctx.lineTo(input.size * 0.22, 0)
+    ctx.lineTo(0, input.size * 0.28)
+    ctx.lineTo(-input.size * 0.22, 0)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(-input.size * 0.45, 0)
+    ctx.lineTo(-input.size * 0.24, 0)
+    ctx.moveTo(input.size * 0.24, 0)
+    ctx.lineTo(input.size * 0.45, 0)
+    ctx.stroke()
+    ctx.restore()
+  }
 
   if (variant.shadowScale > 0.01) {
     ctx.shadowColor = `rgba(${theme.haloRgb}, ${(0.7 * variant.shadowScale).toFixed(3)})`
@@ -397,17 +425,18 @@ function drawCollectibleGlyph(
       return
     }
     case "resource": {
-      const innerRadius = size * 0.26
+      const innerRadius = size * 0.2
       ctx.beginPath()
       ctx.arc(x, y, innerRadius, 0, TAU)
       ctx.fill()
 
       ctx.lineWidth = Math.max(0.7, 0.95 * lineScale)
       ctx.beginPath()
-      ctx.moveTo(x - size * 0.46, y)
-      ctx.lineTo(x + size * 0.46, y)
-      ctx.moveTo(x, y - size * 0.46)
-      ctx.lineTo(x, y + size * 0.46)
+      ctx.arc(x, y, size * 0.46, -Math.PI * 0.18, Math.PI * 1.18)
+      ctx.moveTo(x + size * 0.52, y)
+      ctx.lineTo(x + size * 0.72, y)
+      ctx.moveTo(x - size * 0.52, y)
+      ctx.lineTo(x - size * 0.72, y)
       ctx.stroke()
       return
     }

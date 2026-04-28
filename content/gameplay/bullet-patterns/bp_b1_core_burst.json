@@ -1,0 +1,13 @@
+{
+  "bulletPatternId": "bp_b1_core_burst",
+  "patternKind": "radial",
+  "projectileId": "proj_enemy_core",
+  "cadenceMs": 3100,
+  "burstCount": 16,
+  "params": {
+    "aimAtPlayer": false,
+    "baseAngleDeg": 0,
+    "rotationDegPerSec": 7,
+    "phaseOffsetDeg": 0
+  }
+}

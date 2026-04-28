@@ -352,9 +352,30 @@ export function computeNearestTransmissionStrength(input: {
 }): number {
   const candidates = input.mapLogic.transmissionNodes
     .filter((node) => input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId))
-    .filter((node) =>
-      isTransmissionIncomplete(input.transmissionProgress[node.transmissionId]),
-    )
+    // 下段の強度計は「まだ発見していない通信」だけに反応させます。
+    // 既に接続履歴がある通信は、未クリアでも波形側だけで距離反応を残します。
+    .filter((node) => !input.transmissionProgress[node.transmissionId])
+  if (candidates.length === 0) {
+    return 0
+  }
+  const nearestDistance = Math.min(
+    ...candidates.map((node) => Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)),
+  )
+  return clamp01(1 - nearestDistance / 300)
+}
+
+/**
+ * 全てのアクセス可能な通信ノード（クリア済みを含む）に対する近接度。
+ * 波形表示用。強度バー（新規ミッション用）とは異なり、
+ * 既に完了したミッションの通信にも反応する。
+ */
+export function computeNearestAnyTransmissionStrength(input: {
+  playerPosition: Vector2
+  mapLogic: WorldMapLogic
+  featureAccess: ExploreFeatureAccess
+}): number {
+  const candidates = input.mapLogic.transmissionNodes
+    .filter((node) => input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId))
   if (candidates.length === 0) {
     return 0
   }

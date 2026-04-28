@@ -11,6 +11,7 @@ import type {
   ShipVariant,
 } from "@magnolia/contracts"
 import { KeyVisualModal } from "@/components/KeyVisualModal"
+import type { DisplayOptions } from "@/app/display-options"
 import { ArchivePanel } from "@/screens/menu/ArchivePanel"
 import { EquipmentPanel } from "@/screens/menu/EquipmentPanel"
 import { MenuBackdropCanvas } from "@/screens/menu/MenuBackdropCanvas"
@@ -41,6 +42,7 @@ type MenuScreenProps = {
   onSaveToSlot: (slotId: SaveSlotId) => void
   onReturnToTitle: () => void
   onBack: () => void
+  displayOptions: DisplayOptions
 }
 
 export function MenuScreen({
@@ -66,6 +68,7 @@ export function MenuScreen({
   onSaveToSlot,
   onReturnToTitle,
   onBack,
+  displayOptions,
 }: MenuScreenProps) {
   // この画面は UI 合成だけを担当し、装備判定や保存判定は props で受け取った結果をそのまま使います。
   const hasEquipment = Boolean(profile) && featureAccess.canOpenEquipment
@@ -107,7 +110,7 @@ export function MenuScreen({
 
   return (
     <main className="menu-screen">
-      <MenuBackdropCanvas />
+      <MenuBackdropCanvas displayOptions={displayOptions} />
 
       {/* tab bar */}
       <nav className="menu-tabs">
@@ -169,7 +172,13 @@ export function MenuScreen({
           />
         )}
       </div>
-      {keyVisualVariant && <KeyVisualModal variant={keyVisualVariant} onClose={() => setKeyVisualVariant(null)} />}
+      {keyVisualVariant && (
+        <KeyVisualModal
+          variant={keyVisualVariant}
+          onClose={() => setKeyVisualVariant(null)}
+          displayOptions={displayOptions}
+        />
+      )}
     </main>
   )
 }

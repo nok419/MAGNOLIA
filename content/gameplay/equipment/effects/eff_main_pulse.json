@@ -6,13 +6,18 @@
     "projectileId": "proj_player_pulse",
     "damage": 10,
     "cadenceMs": 120,
-    "shotCount": 1,
-    "spreadDeg": 0,
+    "shotCount": 3,
+    "spreadDeg": 28,
+    "foldSideProjectiles": true,
+    "foldBendAfterMs": 130,
+    "foldBendDurationMs": 90,
     "meleeEnabled": true,
-    "meleeRange": 80,
+    "meleeStyle": "swordSweep",
+    "meleeRange": 92,
     "meleeProjectileId": "proj_player_pulse_melee",
-    "meleeDamage": 8,
-    "meleeSpreadDeg": 120,
-    "meleeShotCount": 3
+    "meleeDamage": 22,
+    "meleeSpreadDeg": 132,
+    "meleeSweepDurationMs": 660,
+    "meleeCooldownMs": 920
   }
 }

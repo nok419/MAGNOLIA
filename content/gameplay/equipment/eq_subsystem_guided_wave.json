@@ -21,24 +21,24 @@
       "level": 1,
       "selfRepairPointCost": 0,
       "effectOverrides": {
-        "homingStrength": 0.3,
-        "homingRange": 150
+        "homingStrength": 1.35,
+        "homingRange": 230
       }
     },
     {
       "level": 2,
       "selfRepairPointCost": 80,
       "effectOverrides": {
-        "homingStrength": 0.45,
-        "homingRange": 180
+        "homingStrength": 1.7,
+        "homingRange": 270
       }
     },
     {
       "level": 3,
       "selfRepairPointCost": 160,
       "effectOverrides": {
-        "homingStrength": 0.6,
-        "homingRange": 210
+        "homingStrength": 2.05,
+        "homingRange": 310
       }
     }
   ]

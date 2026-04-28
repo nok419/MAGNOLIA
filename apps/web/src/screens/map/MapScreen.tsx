@@ -18,6 +18,7 @@ import {
   drawCollectibleMarker,
   drawTransmissionMarker,
 } from "@/app/canvas-markers"
+import type { DisplayOptions } from "@/app/display-options"
 import { ActionButton } from "@/components/ActionButton"
 
 type MapScreenProps = {
@@ -25,6 +26,7 @@ type MapScreenProps = {
   profile: ProfileAggregate
   snapshot: ExploreSnapshot
   renderState: ExploreRenderState
+  displayOptions: DisplayOptions
   onBack: () => void
   onWarpToArea: (areaId: AreaId) => void
   onOpenArchive: (areaId: AreaId, transmissionId: TransmissionId) => void
@@ -46,6 +48,7 @@ export function MapScreen({
   profile,
   snapshot,
   renderState,
+  displayOptions,
   onBack,
   onWarpToArea,
   onOpenArchive,
@@ -135,7 +138,7 @@ export function MapScreen({
 
       const width = Math.max(320, sizeRef.current.width || canvas.clientWidth || 640)
       const height = Math.max(320, sizeRef.current.height || canvas.clientHeight || 640)
-      const dpr = window.devicePixelRatio || 1
+      const dpr = displayOptions.canvasPixelRatio
       canvas.width = width * dpr
       canvas.height = height * dpr
       canvas.style.width = `${width}px`
@@ -169,6 +172,7 @@ export function MapScreen({
     }
   }, [
     content,
+    displayOptions,
     focusBounds,
     mapLogic,
     renderState,
@@ -355,6 +359,7 @@ function drawMapCanvas(input: {
   gradient.addColorStop(1, "#040810")
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, width, height)
+  drawMapAmbientNoise(ctx, width, height, input.timeMs)
 
   drawMapFog(ctx, input.snapshot.map.fogBitmap, input.renderState.worldBounds, input.focusBounds, width, height, padding)
   drawMapGrid(ctx, input.focusBounds, width, height, padding)
@@ -428,9 +433,65 @@ function drawMapCanvas(input: {
     input.snapshot.playerPosition.x,
     input.snapshot.playerPosition.y,
   )
-  drawPlayerPoint(ctx, playerPoint.x, playerPoint.y)
+  const playerAngle =
+    Math.atan2(input.renderState.playerFacing.y, input.renderState.playerFacing.x) + Math.PI / 2
+  const visionRadiusPx =
+    (input.renderState.visionRadius / Math.max(1, input.focusBounds.width)) * (width - padding * 2)
+  drawMapVisionWave(ctx, playerPoint.x, playerPoint.y, visionRadiusPx, input.timeMs)
+  drawPlayerPoint(ctx, playerPoint.x, playerPoint.y, playerAngle, input.timeMs)
 
   input.hitTargetsRef.current = hitTargets
+}
+
+function drawMapAmbientNoise(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  timeMs: number,
+) {
+  ctx.save()
+  // 全体マップの平面感を減らすため、座標固定の微細な点を低不透明度で重ねる。
+  const count = Math.max(90, Math.floor((width * height) / 9000))
+  for (let i = 0; i < count; i += 1) {
+    const seed = i * 97
+    const x = seededUnit(seed + 1) * width
+    const y = seededUnit(seed + 2) * height
+    const twinkle = 0.62 + 0.38 * Math.sin(timeMs * 0.0012 + seed)
+    const alpha = (0.018 + seededUnit(seed + 3) * 0.032) * twinkle
+    ctx.fillStyle = `rgba(140, 195, 255, ${alpha.toFixed(3)})`
+    ctx.fillRect(x, y, 1, 1)
+  }
+  ctx.restore()
+}
+
+function drawMapVisionWave(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  timeMs: number,
+) {
+  if (radius <= 1) {
+    return
+  }
+
+  ctx.save()
+  const pulse = 0.5 + 0.5 * Math.sin(timeMs * 0.0016)
+  const halo = ctx.createRadialGradient(x, y, radius * 0.66, x, y, radius * 1.08)
+  halo.addColorStop(0, "rgba(93, 164, 209, 0)")
+  halo.addColorStop(0.62, `rgba(140, 220, 255, ${(0.026 + pulse * 0.018).toFixed(3)})`)
+  halo.addColorStop(1, "rgba(93, 164, 209, 0)")
+  ctx.fillStyle = halo
+  ctx.beginPath()
+  ctx.arc(x, y, radius * 1.08, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.strokeStyle = `rgba(150, 220, 255, ${(0.12 + pulse * 0.08).toFixed(3)})`
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.restore()
 }
 
 function drawMapFog(
@@ -529,16 +590,36 @@ function drawAreaPoint(ctx: CanvasRenderingContext2D, x: number, y: number, sele
   ctx.restore()
 }
 
-function drawPlayerPoint(ctx: CanvasRenderingContext2D, x: number, y: number) {
+function drawPlayerPoint(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  timeMs: number,
+) {
+  const pulse = 0.7 + 0.3 * Math.sin(timeMs * 0.004)
   ctx.save()
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, 22)
+  glow.addColorStop(0, `rgba(247, 251, 255, ${(0.2 * pulse).toFixed(3)})`)
+  glow.addColorStop(0.45, `rgba(93, 164, 209, ${(0.12 * pulse).toFixed(3)})`)
+  glow.addColorStop(1, "rgba(93, 164, 209, 0)")
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(x, y, 22, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.translate(x, y)
+  ctx.rotate(angle)
   ctx.fillStyle = "#f7fbff"
   ctx.strokeStyle = "#5da4d1"
   ctx.lineWidth = 1.6
+  ctx.shadowColor = "rgba(140, 220, 255, 0.55)"
+  ctx.shadowBlur = 8
   ctx.beginPath()
-  ctx.moveTo(x, y - 10)
-  ctx.lineTo(x + 8, y + 8)
-  ctx.lineTo(x, y + 4)
-  ctx.lineTo(x - 8, y + 8)
+  ctx.moveTo(0, -10)
+  ctx.lineTo(8, 8)
+  ctx.lineTo(0, 4)
+  ctx.lineTo(-8, 8)
   ctx.closePath()
   ctx.fill()
   ctx.stroke()
@@ -593,4 +674,9 @@ function worldToCanvas(bounds: Rect, width: number, height: number, padding: num
 
 function toProgressRecord(progressRows: ProfileAggregate["transmissionProgress"]) {
   return Object.fromEntries(progressRows.map((row) => [row.transmissionId, row]))
+}
+
+function seededUnit(seed: number): number {
+  const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453
+  return value - Math.floor(value)
 }

@@ -223,7 +223,6 @@ export function EquipmentPanel({
     ? profile.profile.equipmentLevels?.[selectedEquipmentId] ?? 0
     : 0
   const canUpgrade = selected && isSelectedOwned && currentLevel < selected.maxLevel
-
   return (
     <div className="equip-4col">
       {/* ship status */}
