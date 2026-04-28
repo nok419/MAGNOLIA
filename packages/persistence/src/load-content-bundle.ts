@@ -382,6 +382,7 @@ function validateBundle(bundle: ContentBundle): void {
       }
     }
 
+    let previousChunkEndMs = -Infinity
     for (const chunkId of transmission.transcriptChunkIds) {
       const chunk = bundle.transcriptChunks[chunkId]
       if (!chunk) {
@@ -393,6 +394,13 @@ function validateBundle(bundle: ContentBundle): void {
           `Transcript chunk ${chunkId} belongs to ${chunk.transmissionId}, expected ${transmission.transmissionId}.`,
         )
       }
+      if (chunk.endMs <= chunk.startMs) {
+        throw new Error(`Transcript chunk ${chunkId} must have endMs greater than startMs.`)
+      }
+      if (chunk.startMs < previousChunkEndMs) {
+        throw new Error(`Transcript chunk ${chunkId} overlaps previous chunk in ${transmission.transmissionId}.`)
+      }
+      previousChunkEndMs = chunk.endMs
     }
   }
 

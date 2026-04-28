@@ -314,6 +314,10 @@ export function useMagnoliaApp() {
         const equipmentPressed = input.isEquipmentPressed(settings)
         // explore 専用の演出 state を正本にし、入力停止の条件をここ 1 か所へ寄せます。
         const inputsLocked = explorePresentation.blocksInput
+        if (inputsLocked) {
+          // 演出中の click / key edge を通常操作へ持ち越さないよう、この frame で消費します。
+          input.syncButtonEdges(settings)
+        }
 
         if (mapPressed && !inputsLocked) {
           if (!tryOpenMap(session)) {
@@ -344,6 +348,9 @@ export function useMagnoliaApp() {
           interactPressed: inputsLocked
             ? false
             : input.isInteractPressed(settings) || input.isPrimaryMouseJustPressed(),
+          scanPressed: inputsLocked
+            ? false
+            : input.isScanPressed(settings) || input.isSecondaryMouseJustPressed(),
         })
         syncFromSession(session, result.presentationRequests, result.events)
         return
@@ -364,6 +371,8 @@ export function useMagnoliaApp() {
           focus: input.isDashPressed(settings),
           pausePressed: false,
         })
+        // 戦闘中の副ボタンは sub 用です。探索へ戻った直後の scan として再利用しません。
+        input.syncButtonEdges(settings)
         syncFromSession(session, result.presentationRequests)
         return
       }

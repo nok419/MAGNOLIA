@@ -1,10 +1,14 @@
 import type {
   AreaId,
+  BattleFragmentViewModel,
   EquipmentId,
+  ExploreScanPulseViewModel,
+  ExploreSignalHintViewModel,
   HazardId,
   HazardPhase,
   MissionId,
   MissionResult,
+  TranscriptViewChunk,
   ThemeId,
   TransmissionId,
   Vector2,
@@ -47,6 +51,9 @@ export type ExploreRenderState = {
   nearestTransmissionStrength: number
   /** 全通信（クリア済み含む）に対する近接度。波形表示用。 */
   nearestAnyTransmissionStrength: number
+  elapsedMs: number
+  signalHints: ExploreSignalHintViewModel[]
+  scanPulses: ExploreScanPulseViewModel[]
   tutorialRestricted: boolean
 }
 
@@ -110,6 +117,8 @@ export type SubtitleRenderState = {
   speakerLabel?: string
   text: string
   audible: boolean
+  noiseLevel: number
+  hearingThreshold: number
   progress: number
 }
 
@@ -130,9 +139,11 @@ export type BattleRenderState = {
   projectiles: ProjectileRenderState[]
   supportFields: SupportFieldRenderState[]
   pickups: BattlePickupRenderState[]
+  fragments: BattleFragmentViewModel[]
   hazards: HazardRenderState[]
   activeSubtitle?: SubtitleRenderState
   pendingResult?: MissionResult
+  resultTranscriptPreview?: TranscriptViewChunk[]
   equippedMainId?: EquipmentId
   equippedSubId?: EquipmentId
 }

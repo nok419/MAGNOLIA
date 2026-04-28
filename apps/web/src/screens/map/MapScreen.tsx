@@ -396,9 +396,9 @@ function drawMapCanvas(input: {
   }
 
   for (const node of input.mapLogic.transmissionNodes) {
-    // 全体マップは探索中の視界ではなく、到達済み・接続可能な通信を一覧する画面です。
-    // ここで fog 基準にすると、実装済みの通信が map 上で欠けて見えやすくなります。
-    if (!input.snapshot.featureAccess.accessibleTransmissionIds.includes(node.transmissionId)) {
+    // 未識別通信は正確な座標を map に出さず、session selector 済みの node だけを描画します。
+    // 一度 signal confidence が確定した通信は snapshot 側に残るため、再探索は不要です。
+    if (!input.snapshot.map.visibleTransmissionNodeIds.includes(node.nodeId)) {
       continue
     }
     const point = worldToCanvas(input.focusBounds, width, height, padding, node.x, node.y)

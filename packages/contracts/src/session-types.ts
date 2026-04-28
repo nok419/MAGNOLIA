@@ -291,6 +291,7 @@ export type ExploreFrameInput = {
   move: Vector2
   dashPressed: boolean
   interactPressed: boolean
+  scanPressed: boolean
   menuCommand?: "openMap" | "openArchive" | "openEquipment" | "openSettings"
 }
 

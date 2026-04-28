@@ -4,6 +4,7 @@ import type {
   MissionResult,
   NoiseState,
   TimeRange,
+  TranscriptChunkId,
   TranscriptChunk,
   TransmissionMaster,
   Vector2,
@@ -95,6 +96,17 @@ export type InternalPickupState = {
   remainingMs: number
 }
 
+export type InternalBattleFragmentState = {
+  fragmentId: string
+  chunkId: TranscriptChunkId
+  startRatio: number
+  endRatio: number
+  position: Vector2
+  radius: number
+  expiresAtMs: number
+  strength: number
+}
+
 export type InternalBattleState = {
   mission: MissionMaster
   transmission: TransmissionMaster
@@ -121,10 +133,12 @@ export type InternalBattleState = {
   barrier?: InternalBarrierState
   supportFields: InternalSupportFieldState[]
   pickups: InternalPickupState[]
+  fragments: InternalBattleFragmentState[]
   enemies: InternalEnemyState[]
   projectiles: InternalProjectileState[]
   activeResult?: MissionResult
   previousNoiseAudible: boolean
+  lastFragmentSpawnedAtMs: number
   previousSubPressed: boolean
   hazards: BattlefieldHazardState[]
 }

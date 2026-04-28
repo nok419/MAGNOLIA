@@ -65,6 +65,41 @@ export type TimeRange = {
   endMs: number
 }
 
+export type TranscriptSpan = {
+  chunkId: TranscriptChunkId
+  startRatio: number
+  endRatio: number
+}
+
+export type BattleFragmentViewModel = {
+  fragmentId: string
+  chunkId: TranscriptChunkId
+  startRatio: number
+  endRatio: number
+  x: number
+  y: number
+  expiresAtMs: number
+  strength: number
+}
+
+export type ExploreSignalHintViewModel = {
+  nodeId: WorldMapNodeId
+  kind: "transmission" | "collectible" | "equipment" | "repair"
+  category?: "private" | "broadcast" | "automated" | "maintenance"
+  bearingRad: number
+  distanceBand: "near" | "mid" | "far"
+  strength: number
+  confidence: number
+  expiresAtMs?: number
+}
+
+export type ExploreScanPulseViewModel = {
+  pulseId: string
+  startedAtMs: number
+  radius: number
+  durationMs: number
+}
+
 export type MetadataUnlocked = {
   title: boolean
   sender: boolean
@@ -105,6 +140,7 @@ export type SettingsKeybindings = {
   fireMain: string
   fireSub: string
   interact: string
+  scan: string
   dash: string
   openMap: string
   openArchive: string
@@ -243,6 +279,8 @@ export type TranscriptChunk = {
 
 export type TranscriptViewChunk = TranscriptChunk & {
   audible: boolean
+  restorationRatio: number
+  restoredSpans: TranscriptSpan[]
 }
 
 export type MissionMaster = {
@@ -612,6 +650,9 @@ export type TransmissionProgressRow = {
   bestRunRestorationRate: number
   archiveRestorationRate: number
   heardRanges: TimeRange[]
+  transcriptSpans: TranscriptSpan[]
+  signalConfidence?: number
+  signalDiscoveredAt?: string
   metadataUnlocked: MetadataUnlocked
   latestRunId?: number
 }
@@ -627,6 +668,7 @@ export type MissionRunRow = {
   analysisRate: number
   restorationRate: number
   heardRanges: TimeRange[]
+  transcriptSpans: TranscriptSpan[]
   damageRanges: TimeRange[]
   destroyedAnalysisValue: number
   score: number
@@ -738,6 +780,7 @@ export type MissionResult = {
   analysisRate: number
   restorationRate: number
   heardRanges: TimeRange[]
+  transcriptSpans: TranscriptSpan[]
   damageRanges: TimeRange[]
   destroyedAnalysisValue: number
   score: number
