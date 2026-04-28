@@ -1,5 +1,6 @@
 {
   "missionId": "mission_good_morning",
+  "visualProfileId": "mission_good_morning",
   "transmissionId": "tx_good_morning",
   "durationMs": 60000,
   "scrollSpeed": 120,

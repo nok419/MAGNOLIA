@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react"
 import type { ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
 import type { DisplayOptions } from "@/app/display-options"
-import { BATTLE_CANVAS_HEIGHT, BATTLE_CANVAS_WIDTH, drawBattleFrame } from "@/components/battle-renderer"
+import { BATTLE_CANVAS_HEIGHT, BATTLE_CANVAS_WIDTH, drawBattleFrame } from "@/render/battle/battle-renderer-impl"
 
 type BattleCanvasProps = {
   renderState: BattleRenderState

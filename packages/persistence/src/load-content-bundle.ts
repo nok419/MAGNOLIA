@@ -1,6 +1,8 @@
 import type {
   AreaMaster,
   BulletPattern,
+  BulletVisualRoleCollection,
+  BulletVisualRoleSpec,
   ConditionId,
   ConditionSpec,
   ContentBundle,
@@ -14,6 +16,9 @@ import type {
   MapId,
   MissionId,
   MissionMaster,
+  MissionVisualProfile,
+  MissionVisualProfileCollection,
+  ProjectileVisualRole,
   ProjectileId,
   ProjectileSpec,
   TranscriptChunk,
@@ -84,6 +89,8 @@ import txWhereAreYouChunksJson from "../../../content/gameplay/transmissions/tx_
 import txWhereAreYouJson from "../../../content/gameplay/transmissions/tx_where_are_you.json"
 import txEvacuationChunksJson from "../../../content/gameplay/transmissions/tx_evacuation.chunks.json"
 import txEvacuationJson from "../../../content/gameplay/transmissions/tx_evacuation.json"
+import bulletVisualRolesJson from "../../../content/gameplay/visual-presets/bullet_visual_roles.json"
+import missionVisualProfilesJson from "../../../content/gameplay/visual-presets/mission_visual_profiles.json"
 import {
   createDefaultDifficultyModifiers,
   createDefaultHitboxes,
@@ -183,6 +190,14 @@ export function loadContentBundle(): ContentBundle {
     condAlwaysJson,
     condMissionGoodMorningClearedJson,
   ] as ConditionSpec[]
+  const missionVisualProfileCollection =
+    missionVisualProfilesJson as MissionVisualProfileCollection
+  const bulletVisualRoleCollection =
+    bulletVisualRolesJson as BulletVisualRoleCollection
+  validateVisualCollectionMetadata(
+    missionVisualProfileCollection,
+    bulletVisualRoleCollection,
+  )
 
   const bundle: ContentBundle = {
     playerShipSpec: createDefaultPlayerShipSpec(),
@@ -197,6 +212,14 @@ export function loadContentBundle(): ContentBundle {
     equipment: indexBy("equipmentId", equipment),
     effects: indexBy("effectId", effects),
     conditions: indexBy("conditionId", conditions),
+    missionVisualProfiles: indexBy(
+      "visualProfileId",
+      missionVisualProfileCollection.profiles,
+    ),
+    bulletVisualRoles: indexBy(
+      "visualRole",
+      bulletVisualRoleCollection.roles,
+    ),
     visuals: createDefaultVisuals(collectVisualPresetIds(missions, enemies, projectiles)),
     hitboxes: filterHitboxes(collectHitboxPresetIds(enemies, projectiles)),
     themes: createDefaultThemes(areas.map((area) => area.themeId)),
@@ -289,6 +312,31 @@ function filterPresentationCues(ids: PresentationCueId[]) {
   return filtered
 }
 
+function validateVisualCollectionMetadata(
+  missionVisualProfileCollection: MissionVisualProfileCollection,
+  bulletVisualRoleCollection: BulletVisualRoleCollection,
+): void {
+  // visual-presets は runtime bundle の一部として扱うため、support file のままなら起動時に止めます。
+  if (String(missionVisualProfileCollection.kind) !== "missionVisualProfiles") {
+    throw new Error("Invalid mission visual profile collection kind.")
+  }
+  if (Number(missionVisualProfileCollection.schemaVersion) !== 1) {
+    throw new Error("Unsupported mission visual profile schemaVersion.")
+  }
+  if (String(missionVisualProfileCollection.runtimeStatus) !== "runtimeData") {
+    throw new Error("Mission visual profiles must be marked as runtimeData.")
+  }
+  if (String(bulletVisualRoleCollection.kind) !== "bulletVisualRoles") {
+    throw new Error("Invalid bullet visual role collection kind.")
+  }
+  if (Number(bulletVisualRoleCollection.schemaVersion) !== 1) {
+    throw new Error("Unsupported bullet visual role schemaVersion.")
+  }
+  if (String(bulletVisualRoleCollection.runtimeStatus) !== "runtimeData") {
+    throw new Error("Bullet visual roles must be marked as runtimeData.")
+  }
+}
+
 function validateBundle(bundle: ContentBundle): void {
   const validSpawnPointIds = new Set([
     "spawn_player_center",
@@ -302,6 +350,9 @@ function validateBundle(bundle: ContentBundle): void {
   ])
   const validNodeIds = new Set<string>()
   const areaMapIds = new Set<string>()
+
+  validateMissionVisualProfiles(bundle)
+  validateBulletVisualRoles(bundle)
 
   for (const mapLogic of Object.values(bundle.mapLogic)) {
     for (const node of [
@@ -404,12 +455,29 @@ function validateBundle(bundle: ContentBundle): void {
     }
   }
 
+  const activeEnemyIds = new Set<string>()
+  const activeBulletPatternIds = new Set<string>()
+
   for (const mission of Object.values(bundle.missions)) {
     assertConditionExists(bundle, mission.visibilityConditionId, `mission ${mission.missionId}`)
     assertConditionExists(bundle, mission.startConditionId, `mission ${mission.missionId}`)
     if (!bundle.transmissions[mission.transmissionId]) {
       throw new Error(
         `Missing transmission ${mission.transmissionId} for mission ${mission.missionId}.`,
+      )
+    }
+    if (!mission.visualProfileId) {
+      throw new Error(`Missing visualProfileId for active mission ${mission.missionId}.`)
+    }
+    const missionVisualProfile = bundle.missionVisualProfiles[mission.visualProfileId]
+    if (!missionVisualProfile) {
+      throw new Error(
+        `Missing mission visual profile ${mission.visualProfileId} for mission ${mission.missionId}.`,
+      )
+    }
+    if (!missionVisualProfile.missionIds.includes(mission.missionId)) {
+      throw new Error(
+        `Mission visual profile ${mission.visualProfileId} does not list mission ${mission.missionId}.`,
       )
     }
 
@@ -426,6 +494,7 @@ function validateBundle(bundle: ContentBundle): void {
             `Missing enemy ${entry.enemyId} in mission ${mission.missionId}.`,
           )
         }
+        activeEnemyIds.add(entry.enemyId)
         if (!validSpawnPointIds.has(entry.spawnPointId)) {
           throw new Error(
             `Unsupported enemy spawn ${entry.spawnPointId} in mission ${mission.missionId}.`,
@@ -459,16 +528,51 @@ function validateBundle(bundle: ContentBundle): void {
     if (!SUPPORTED_ENEMY_BEHAVIOR_KINDS.has(enemy.behaviorKind)) {
       throw new Error(`Unsupported behavior ${enemy.behaviorKind} for enemy ${enemy.enemyId}.`)
     }
+    if (enemy.staged && activeEnemyIds.has(enemy.enemyId)) {
+      throw new Error(`Staged enemy ${enemy.enemyId} is referenced by an active mission.`)
+    }
     for (const bulletPatternId of enemy.bulletPatternIds) {
       if (!bundle.bulletPatterns[bulletPatternId]) {
         throw new Error(
           `Missing bullet pattern ${bulletPatternId} for enemy ${enemy.enemyId}.`,
         )
       }
+      // active mission から到達する pattern を記録し、staged 誤参照を検出します。
+      if (activeEnemyIds.has(enemy.enemyId)) {
+        activeBulletPatternIds.add(bulletPatternId)
+      }
     }
   }
 
   for (const bulletPattern of Object.values(bundle.bulletPatterns)) {
+    if (bulletPattern.staged && activeBulletPatternIds.has(bulletPattern.bulletPatternId)) {
+      throw new Error(
+        `Staged bullet pattern ${bulletPattern.bulletPatternId} is used by an active enemy.`,
+      )
+    }
+    if (activeBulletPatternIds.has(bulletPattern.bulletPatternId)) {
+      if (!bulletPattern.visualRole) {
+        throw new Error(
+          `Missing visualRole for active bullet pattern ${bulletPattern.bulletPatternId}.`,
+        )
+      }
+      const visualRole = bundle.bulletVisualRoles[bulletPattern.visualRole]
+      if (!visualRole) {
+        throw new Error(
+          `Missing bullet visual role ${bulletPattern.visualRole} for active pattern ${bulletPattern.bulletPatternId}.`,
+        )
+      }
+      if (!visualRole.bulletPatternIds.includes(bulletPattern.bulletPatternId)) {
+        throw new Error(
+          `Bullet visual role ${bulletPattern.visualRole} does not list active pattern ${bulletPattern.bulletPatternId}.`,
+        )
+      }
+      if (!visualRole.projectileIds.includes(bulletPattern.projectileId)) {
+        throw new Error(
+          `Bullet visual role ${bulletPattern.visualRole} does not list projectile ${bulletPattern.projectileId}.`,
+        )
+      }
+    }
     if (!SUPPORTED_BULLET_PATTERN_KINDS.has(bulletPattern.patternKind)) {
       throw new Error(
         `Unsupported pattern kind ${bulletPattern.patternKind} for ${bulletPattern.bulletPatternId}.`,
@@ -613,6 +717,125 @@ function validateBundle(bundle: ContentBundle): void {
         }
         break
     }
+  }
+}
+
+function validateMissionVisualProfiles(bundle: ContentBundle): void {
+  const profileByMissionId = new Map<MissionId, MissionVisualProfile>()
+
+  for (const profile of Object.values(bundle.missionVisualProfiles)) {
+    if (profile.missionIds.length === 0) {
+      throw new Error(`Mission visual profile ${profile.visualProfileId} must list at least one mission.`)
+    }
+    assertFiniteVisualTuningValue(
+      profile.carrierDensity,
+      `carrierDensity for mission visual profile ${profile.visualProfileId}`,
+    )
+    assertFiniteVisualTuningValue(
+      profile.memoryTone,
+      `memoryTone for mission visual profile ${profile.visualProfileId}`,
+    )
+    assertFiniteVisualTuningValue(
+      profile.dangerTone,
+      `dangerTone for mission visual profile ${profile.visualProfileId}`,
+    )
+    assertFiniteVisualTuningValue(
+      profile.backgroundSink,
+      `backgroundSink for mission visual profile ${profile.visualProfileId}`,
+    )
+
+    for (const missionId of profile.missionIds) {
+      if (!bundle.missions[missionId]) {
+        throw new Error(
+          `Mission visual profile ${profile.visualProfileId} references missing mission ${missionId}.`,
+        )
+      }
+      const existingProfile = profileByMissionId.get(missionId)
+      if (existingProfile) {
+        throw new Error(
+          `Mission ${missionId} is listed by both visual profiles ${existingProfile.visualProfileId} and ${profile.visualProfileId}.`,
+        )
+      }
+      profileByMissionId.set(missionId, profile)
+    }
+  }
+}
+
+function validateBulletVisualRoles(bundle: ContentBundle): void {
+  const patternRoleById = new Map<string, ProjectileVisualRole>()
+
+  for (const bulletVisualRole of Object.values(bundle.bulletVisualRoles)) {
+    if (!bulletVisualRole) {
+      continue
+    }
+    validateBulletVisualRole(bundle, bulletVisualRole, patternRoleById)
+  }
+}
+
+function validateBulletVisualRole(
+  bundle: ContentBundle,
+  bulletVisualRole: BulletVisualRoleSpec,
+  patternRoleById: Map<string, ProjectileVisualRole>,
+): void {
+  if (bulletVisualRole.projectileIds.length === 0) {
+    throw new Error(`Bullet visual role ${bulletVisualRole.visualRole} must list at least one projectile.`)
+  }
+  if (bulletVisualRole.bulletPatternIds.length === 0) {
+    throw new Error(`Bullet visual role ${bulletVisualRole.visualRole} must list at least one bullet pattern.`)
+  }
+  assertFiniteVisualTuningValue(
+    bulletVisualRole.seedBucket,
+    `seedBucket for bullet visual role ${bulletVisualRole.visualRole}`,
+  )
+  assertFiniteVisualTuningValue(
+    bulletVisualRole.scale,
+    `scale for bullet visual role ${bulletVisualRole.visualRole}`,
+  )
+  assertFiniteVisualTuningValue(
+    bulletVisualRole.glowStrength,
+    `glowStrength for bullet visual role ${bulletVisualRole.visualRole}`,
+  )
+
+  for (const projectileId of bulletVisualRole.projectileIds) {
+    if (!bundle.projectiles[projectileId]) {
+      throw new Error(
+        `Bullet visual role ${bulletVisualRole.visualRole} references missing projectile ${projectileId}.`,
+      )
+    }
+  }
+
+  for (const bulletPatternId of bulletVisualRole.bulletPatternIds) {
+    const bulletPattern = bundle.bulletPatterns[bulletPatternId]
+    if (!bulletPattern) {
+      throw new Error(
+        `Bullet visual role ${bulletVisualRole.visualRole} references missing pattern ${bulletPatternId}.`,
+      )
+    }
+    if (bulletPattern.visualRole !== bulletVisualRole.visualRole) {
+      throw new Error(
+        `Bullet pattern ${bulletPatternId} declares visualRole ${bulletPattern.visualRole ?? "<missing>"}, expected ${bulletVisualRole.visualRole}.`,
+      )
+    }
+    if (!bulletVisualRole.projectileIds.includes(bulletPattern.projectileId)) {
+      throw new Error(
+        `Bullet visual role ${bulletVisualRole.visualRole} does not list projectile ${bulletPattern.projectileId} used by ${bulletPatternId}.`,
+      )
+    }
+
+    const existingRole = patternRoleById.get(bulletPatternId)
+    if (existingRole) {
+      throw new Error(
+        `Bullet pattern ${bulletPatternId} is listed by both visual roles ${existingRole} and ${bulletVisualRole.visualRole}.`,
+      )
+    }
+    patternRoleById.set(bulletPatternId, bulletVisualRole.visualRole)
+  }
+}
+
+function assertFiniteVisualTuningValue(value: number, label: string): void {
+  // JSON 由来の数値は描画計算へ直接渡るため、NaN や Infinity を bundle 作成時点で止めます。
+  if (!Number.isFinite(value)) {
+    throw new Error(`Invalid ${label}.`)
   }
 }
 

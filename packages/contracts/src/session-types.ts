@@ -11,6 +11,7 @@ import type {
   BattlefieldHazardMotion,
   BulletPattern,
   BulletPatternId,
+  BulletVisualRoleSpec,
   CollectibleMapNode,
   ConditionId,
   ConditionSpec,
@@ -34,9 +35,11 @@ import type {
   MissionMaster,
   MissionPhase,
   MissionRunRow,
+  MissionVisualProfile,
   ProfileId,
   ProfileRow,
   PrimaryEquipmentSlot,
+  ProjectileVisualRole,
   ProjectileId,
   ProjectileSpec,
   RuntimeEffectRequest,
@@ -55,6 +58,7 @@ import type {
   Vector2,
   VisualPreset,
   VisualPresetId,
+  VisualProfileId,
   WorldMapLogic,
   WorldMapNodeId,
 } from "./game-types"
@@ -449,6 +453,8 @@ export type ContentBundle = {
   equipment: Record<EquipmentId, EquipmentMaster>
   effects: Record<EffectId, EffectSpec>
   conditions: Record<ConditionId, ConditionSpec>
+  missionVisualProfiles: Record<VisualProfileId, MissionVisualProfile>
+  bulletVisualRoles: Partial<Record<ProjectileVisualRole, BulletVisualRoleSpec>>
   visuals: Record<VisualPresetId, VisualPreset>
   hitboxes: Record<HitboxPresetId, HitboxPreset>
   themes: Record<ThemeId, UiThemePreset>

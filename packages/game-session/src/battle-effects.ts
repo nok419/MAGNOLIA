@@ -22,6 +22,8 @@ import {
   normalizeVector,
 } from "./explore-world"
 
+const PULSE_MELEE_BLADE_LENGTH_RATIO = 1.28
+
 export function applyBattleEffectRequests(input: {
   battle: InternalBattleState
   effectRequests: RuntimeEffectRequest[]
@@ -332,45 +334,10 @@ function spawnTrailExplosions(input: {
   return visuals
 }
 
-function applyMeleeSweepDamage(input: {
-  battle: InternalBattleState
-  origin: { x: number; y: number }
-  direction: { x: number; y: number }
-  range: number
-  arcDeg: number
-  damage: number
-  burnDamagePerSec?: number
-  burnDurationMs?: number
-}): void {
-  const forward = normalizeVector(input.direction)
-  const halfArcRadians = (Math.max(1, input.arcDeg) * Math.PI) / 360
-
-  for (const enemy of input.battle.enemies) {
-    const toEnemy = {
-      x: enemy.position.x - input.origin.x,
-      y: enemy.position.y - input.origin.y,
-    }
-    const distance = Math.hypot(toEnemy.x, toEnemy.y)
-    if (distance > input.range + enemy.radius) {
-      continue
-    }
-
-    const targetDirection = normalizeVector(toEnemy)
-    const dot = Math.max(
-      -1,
-      Math.min(1, forward.x * targetDirection.x + forward.y * targetDirection.y),
-    )
-    const angle = Math.acos(dot)
-    if (angle > halfArcRadians) {
-      continue
-    }
-
-    enemy.hp -= input.damage
-    if (input.burnDamagePerSec && input.burnDurationMs) {
-      enemy.burnDamagePerSec = input.burnDamagePerSec
-      enemy.burnUntilMs = input.battle.elapsedMs + input.burnDurationMs
-    }
-  }
+function resolveMeleeActivationRange(params: Record<string, number | string | boolean> | undefined): number {
+  const meleeRange = readRequestNumericParam(params, "meleeRange", 80)
+  const meleeStyle = typeof params?.meleeStyle === "string" ? params.meleeStyle : "burst"
+  return meleeStyle === "swordSweep" ? meleeRange * PULSE_MELEE_BLADE_LENGTH_RATIO : meleeRange
 }
 
 function readRequestNumericParam(
@@ -506,7 +473,7 @@ function spawnProjectilesFromRequest(input: {
     hasEnemyWithinRange(
       input.battle.enemies,
       input.request.position,
-      typeof input.request.params.meleeRange === "number" ? input.request.params.meleeRange : 80,
+      resolveMeleeActivationRange(input.request.params),
     )
   ) {
     const meleeProjectileId = input.request.params.meleeProjectileId
@@ -518,23 +485,13 @@ function spawnProjectilesFromRequest(input: {
     const meleeSpreadDeg = readRequestNumericParam(input.request.params, "meleeSpreadDeg", 120)
 
     if (meleeStyle === "swordSweep") {
-      // 近接は円弧状の弾をばら撒かず、前方扇形の判定と一つの表示用スイープに分けます。
-      applyMeleeSweepDamage({
-        battle: input.battle,
-        origin: input.request.position,
-        direction: input.request.direction,
-        range: meleeRange,
-        arcDeg: meleeSpreadDeg,
-        damage: meleeDamage,
-        burnDamagePerSec,
-        burnDurationMs,
-      })
-
       const sweepDurationMs = readRequestNumericParam(
         input.request.params,
         "meleeSweepDurationMs",
         380,
       )
+      // ダメージ判定は発生時点で固定せず、anchorToPlayer の表示用 projectile に持たせます。
+      // これにより、自機移動後も現在の剣の位置だけが当たり判定になります。
       input.battle.projectiles.push({
         projectileInstanceId: input.nextInstanceId(meleeProjectileId),
         projectileId: meleeProjectileId,
@@ -550,6 +507,13 @@ function spawnProjectilesFromRequest(input: {
         noiseDamage: 0,
         nonColliding: true,
         anchorToPlayer: true,
+        meleeSweep: {
+          damage: meleeDamage,
+          arcDeg: meleeSpreadDeg,
+          hitEnemyInstanceIds: [],
+          burnDamagePerSec,
+          burnDurationMs,
+        },
         inversePhaseVisual: Boolean(input.modifierPatch.visibilityModifiers?.inversePhaseVisual),
       })
       // main 弾の連射とは別に、近接の一振りだけを重く遅くします。

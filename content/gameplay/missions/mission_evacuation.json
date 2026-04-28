@@ -1,5 +1,6 @@
 {
   "missionId": "mission_evacuation",
+  "visualProfileId": "mission_evacuation",
   "transmissionId": "tx_evacuation",
   "durationMs": 60000,
   "scrollSpeed": 162,

@@ -42,7 +42,7 @@
   color: var(--mg-text);
 }
 .archive-log__text--damaged {
-  color: rgba(216, 231, 246, 0.72);
+  color: rgba(var(--mg-text-rgb), 0.72);
 }
 
 /* =========================================================
@@ -88,8 +88,8 @@
 }
 
 .settings-section {
-  background: rgba(8, 18, 34, 0.4);
-  border: 1px solid rgba(93, 164, 209, 0.2);
+  background: rgba(var(--mg-panel-rgb), 0.4);
+  border: 1px solid rgba(var(--mg-signal-rgb), 0.2);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -101,13 +101,13 @@
   top: 0; left: 0;
   width: 4px;
   height: 100%;
-  background: rgba(93, 164, 209, 0.5);
+  background: rgba(var(--mg-signal-rgb), 0.5);
 }
 .settings-section--danger::before {
-  background: rgba(220, 80, 80, 0.6);
+  background: rgba(var(--mg-danger-rgb), 0.6);
 }
 .settings-section--danger {
-  border-color: rgba(220, 80, 80, 0.2);
+  border-color: rgba(var(--mg-danger-rgb), 0.2);
 }
 
 .settings-section__title {
@@ -115,17 +115,17 @@
   padding:
     clamp(10px, 1.5vh, 12px)
     clamp(12px, 1.6vw, 16px);
-  background: rgba(93, 164, 209, 0.08);
+  background: rgba(var(--mg-signal-rgb), 0.08);
   font-family: var(--font-mono);
   font-size: clamp(10px, 0.8vw, 11px);
   letter-spacing: 0.2em;
   color: var(--mg-text);
-  border-bottom: 1px solid rgba(93, 164, 209, 0.1);
+  border-bottom: 1px solid rgba(var(--mg-signal-rgb), 0.1);
 }
 .settings-section--danger .settings-section__title {
-  background: rgba(220, 80, 80, 0.06);
-  border-bottom-color: rgba(220, 80, 80, 0.1);
-  color: rgba(255, 180, 180, 0.9);
+  background: rgba(var(--mg-danger-rgb), 0.06);
+  border-bottom-color: rgba(var(--mg-danger-rgb), 0.1);
+  color: rgba(var(--mg-danger-rgb), 0.9);
 }
 
 .settings-section__content {
@@ -150,7 +150,7 @@
 }
 .settings-row + .settings-row {
   padding-top: 16px;
-  border-top: 1px solid rgba(93, 164, 209, 0.1);
+  border-top: 1px solid rgba(var(--mg-signal-rgb), 0.1);
 }
 
 .settings-row__info {
@@ -173,7 +173,7 @@
 .settings-save-slots {
   margin-top: 8px;
   padding-top: 20px;
-  border-top: 1px solid rgba(220, 80, 80, 0.15);
+  border-top: 1px solid rgba(var(--mg-danger-rgb), 0.15);
 }
 
 .settings-save-slots--compact {
@@ -191,8 +191,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 9px 12px;
-  background: rgba(4, 8, 16, 0.6);
-  border: 1px solid rgba(93, 164, 209, 0.2);
+  background: rgba(var(--mg-void-rgb), 0.6);
+  border: 1px solid rgba(var(--mg-signal-rgb), 0.2);
 }
 .save-slot-card__info {
   display: flex;
@@ -203,7 +203,7 @@
   margin: 0;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--mg-accent);
+  color: var(--mg-signal);
   letter-spacing: 0.15em;
 }
 .save-slot-card__meta {

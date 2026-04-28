@@ -10,6 +10,7 @@ export type HazardId = string
 export type BulletPatternId = string
 export type ProjectileId = string
 export type VisualPresetId = string
+export type VisualProfileId = string
 export type HitboxPresetId = string
 export type ThemeId = string
 export type MapId = string
@@ -40,6 +41,87 @@ export type SubsystemIndex = 0 | 1
 export type BattlePhase = "explore" | "battle"
 export type MissionPhase = "intro" | "playing" | "outro"
 export type HazardPhase = "telegraph" | "active" | "fading"
+export type ProjectileVisualRole =
+  | "enemyNoise"
+  | "enemyGeometry"
+  | "enemyLance"
+  | "enemyCore"
+  | "enemyShard"
+  | "playerCarrier"
+  | "playerPulse"
+export type VisualRgbTokenRole =
+  | "void"
+  | "abyss"
+  | "deep"
+  | "panel"
+  | "panelRaised"
+  | "line"
+  | "signal"
+  | "signalBright"
+  | "memory"
+  | "danger"
+  | "text"
+  | "textSecondary"
+export type MissionVisualMotif =
+  | "sparse-carrier-wave"
+  | "interrupted-arc"
+  | "compression-band"
+export type MissionParticleDensity = "sparse" | "normal" | "dense"
+export type MissionVisualProfile = {
+  visualProfileId: VisualProfileId
+  missionIds: MissionId[]
+  motif: MissionVisualMotif
+  particleDensity: MissionParticleDensity
+  carrierDensity: number
+  memoryTone: number
+  dangerTone: number
+  backgroundSink: number
+  seedKey: string
+  tokenRoles: {
+    background: VisualRgbTokenRole
+    line: VisualRgbTokenRole
+    signal: VisualRgbTokenRole
+    memory: VisualRgbTokenRole
+    danger: VisualRgbTokenRole
+  }
+  primitiveRefs: string[]
+}
+export type MissionVisualProfileCollection = {
+  schemaVersion: 1
+  kind: "missionVisualProfiles"
+  runtimeStatus: "runtimeData"
+  notes?: string[]
+  profiles: MissionVisualProfile[]
+}
+export type BulletBodyPrimitive =
+  | "diamondCluster"
+  | "noiseCluster"
+  | "lance"
+  | "coreOrb"
+  | "signalShard"
+export type BulletTrailPrimitive = "trailA" | "trailB" | "trailC"
+export type BulletVisualRoleSpec = {
+  visualRole: ProjectileVisualRole
+  projectileIds: ProjectileId[]
+  bulletPatternIds: BulletPatternId[]
+  expectedRendererKey: string
+  bodyPrimitive: BulletBodyPrimitive
+  trailPrimitive: BulletTrailPrimitive
+  seedBucket: number
+  scale: number
+  glowStrength: number
+  tokenRoles: {
+    body: VisualRgbTokenRole
+    glow: VisualRgbTokenRole
+  }
+}
+export type BulletVisualRoleCollection = {
+  schemaVersion: 1
+  kind: "bulletVisualRoles"
+  runtimeStatus: "runtimeData"
+  notes?: string[]
+  roles: BulletVisualRoleSpec[]
+}
 export type SubsystemHookKind =
   | "onExploreStep"
   | "onBattleStep"
@@ -76,8 +158,11 @@ export type BattleFragmentViewModel = {
   chunkId: TranscriptChunkId
   startRatio: number
   endRatio: number
+  originX: number
+  originY: number
   x: number
   y: number
+  spawnedAtMs: number
   expiresAtMs: number
   strength: number
 }
@@ -285,6 +370,7 @@ export type TranscriptViewChunk = TranscriptChunk & {
 
 export type MissionMaster = {
   missionId: MissionId
+  visualProfileId?: VisualProfileId
   transmissionId: TransmissionId
   durationMs: number
   scrollSpeed: number
@@ -351,6 +437,8 @@ export type EnemySpawn = {
 
 export type EnemyArchetype = {
   enemyId: EnemyId
+  staged?: boolean
+  introducedInMissionId?: MissionId
   hp: number
   collisionDamage: number
   analysisValue: number
@@ -365,8 +453,11 @@ export type EnemyArchetype = {
 
 export type BulletPattern = {
   bulletPatternId: BulletPatternId
+  staged?: boolean
+  introducedInMissionId?: MissionId
   patternKind: string
   projectileId: ProjectileId
+  visualRole?: ProjectileVisualRole
   cadenceMs: number
   burstCount: number
   params: Record<string, number | string | boolean>

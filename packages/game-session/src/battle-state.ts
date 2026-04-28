@@ -3,6 +3,7 @@ import type {
   MissionMaster,
   MissionResult,
   NoiseState,
+  ProjectileVisualRole,
   TimeRange,
   TranscriptChunkId,
   TranscriptChunk,
@@ -33,6 +34,7 @@ export type InternalEnemyState = {
 export type InternalProjectileState = {
   projectileInstanceId: string
   projectileId: string
+  visualRole?: ProjectileVisualRole
   side: "player" | "enemy"
   position: Vector2
   velocity: Vector2
@@ -60,6 +62,13 @@ export type InternalProjectileState = {
   explosionVisualProjectileId?: string
   nonColliding?: boolean
   anchorToPlayer?: boolean
+  meleeSweep?: {
+    damage: number
+    arcDeg: number
+    hitEnemyInstanceIds: string[]
+    burnDamagePerSec?: number
+    burnDurationMs?: number
+  }
   inversePhaseVisual?: boolean
 }
 
@@ -101,8 +110,10 @@ export type InternalBattleFragmentState = {
   chunkId: TranscriptChunkId
   startRatio: number
   endRatio: number
+  origin: Vector2
   position: Vector2
   radius: number
+  spawnedAtMs: number
   expiresAtMs: number
   strength: number
 }

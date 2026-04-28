@@ -13,7 +13,7 @@ export function EquipmentModal({
   nodeId,
   onDismiss,
 }: EquipmentModalProps) {
-  // Find which equipment this node represents
+  // map logic を正本にし、取得 node から表示対象の装備を解決します。
   let equipmentId = ""
   for (const mapLogic of Object.values(content.mapLogic)) {
     const node = mapLogic.collectibleNodes.find((n) => n.nodeId === nodeId)
@@ -25,10 +25,15 @@ export function EquipmentModal({
 
   const equipment = content.equipment[equipmentId]
 
-  // Allow dismissing with Enter or Space
+  // 装備取得は確認だけの modal なので、主要キーで閉じられるようにします。
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.code === "Enter" || e.code === "Space" || e.code === "Escape") {
+      if (
+        e.code === "Enter" ||
+        e.code === "NumpadEnter" ||
+        e.code === "Space" ||
+        e.code === "Escape"
+      ) {
         onDismiss()
       }
     },
@@ -45,9 +50,17 @@ export function EquipmentModal({
   }
 
   return (
-    <div className="equipment-modal-backdrop">
-      <div className="equipment-modal">
-        <h2 className="equipment-modal__title">equipment acquired</h2>
+    <div className="equipment-modal-backdrop" onClick={onDismiss}>
+      <div
+        className="equipment-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="equipment-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="equipment-modal-title" className="equipment-modal__title">
+          equipment acquired
+        </h2>
         <div className="equipment-modal__box">
           <h3 className="equipment-modal__name">{equipment.name}</h3>
           <p className="equipment-modal__desc">{equipment.summary}</p>

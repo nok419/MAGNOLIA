@@ -81,10 +81,10 @@ export function createDefaultThemes(themeIds: ThemeId[]): Record<ThemeId, UiThem
       {
         themeId,
         backgroundColor:
-          themeId === "theme_broadcast_facility" ? "#122033" : "#111827",
-        panelColor: themeId === "theme_broadcast_facility" ? "#1f3352" : "#1c2b45",
+          themeId === "theme_broadcast_facility" ? "var(--mg-deep)" : "var(--mg-void)",
+        panelColor: themeId === "theme_broadcast_facility" ? "var(--mg-panel-raised)" : "var(--mg-panel-solid)",
         accentColor:
-          themeId === "theme_broadcast_facility" ? "#e4f1ff" : "#9ed7ff",
+          themeId === "theme_broadcast_facility" ? "var(--mg-signal-bright)" : "var(--mg-signal)",
         fontFamily: "\"IBM Plex Sans JP\", sans-serif",
       },
     ]),
@@ -280,8 +280,8 @@ function createVisualPreset(id: VisualPresetId): VisualPreset {
     return {
       visualPresetId: id,
       kind: "magneticDisaster",
-      telegraphColor: id.endsWith("gentle") ? "#ff6b7d" : "#ff3b5a",
-      activeColor: id.endsWith("gentle") ? "#ff4f6d" : "#ff2248",
+      telegraphColor: id.endsWith("gentle") ? "var(--mg-danger-bright)" : "var(--mg-danger)",
+      activeColor: id.endsWith("gentle") ? "var(--mg-danger)" : "var(--mg-danger-bright)",
       telegraphFlashHz: id.endsWith("gentle") ? 2 : 2.8,
       noiseScrollSpeed: id.endsWith("gentle") ? 0.16 : 0.22,
       edgeFeather: 18,

@@ -1,29 +1,26 @@
-import type { ContentBundle, ShipVariant } from "@magnolia/contracts"
+import type { ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
 import type { ReactNode } from "react"
 import { readEquipmentSlotLabel } from "@/app/display-helpers"
 import type { DisplayOptions } from "@/app/display-options"
+import { resolveTextSignalDistortion } from "@/app/signal-distortion"
 import { BattleCanvas } from "@/components/BattleCanvas"
 import { ActionButton } from "@/components/ActionButton"
 
 type BattleScreenProps = {
-  content: ContentBundle
   renderState: BattleRenderState
   shipVariant: ShipVariant
   displayOptions: DisplayOptions
   onReturnToExplore: () => void
 }
 
-export function BattleScreen({ content, renderState, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
+export function BattleScreen({ renderState, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
   const progress = renderState.missionDurationMs > 0
     ? Math.max(0, Math.min(1, renderState.elapsedMs / renderState.missionDurationMs))
     : 0
   const progressPercent = Math.round(progress * 100)
   const remainingSeconds = Math.ceil(Math.max(0, renderState.missionDurationMs - renderState.elapsedMs) / 1000)
-  const grantedEquipment = (renderState.pendingResult?.grantedEquipmentIds ?? []).flatMap((equipmentId) => {
-    const equipment = content.equipment[equipmentId]
-    return equipment ? [equipment] : []
-  })
+  const grantedEquipment = renderState.grantedEquipment ?? []
   const resultTranscriptPreview = selectResultTranscriptPreview(renderState.resultTranscriptPreview)
 
   return (
@@ -107,7 +104,7 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
         <div className="battle-result-overlay">
           <div className="battle-result-overlay__backdrop" />
           <section className="battle-result-overlay__panel">
-            <p className="battle-result-overlay__eyebrow">mission complete</p>
+            <p className="battle-result-overlay__eyebrow">archive capture</p>
             {resultTranscriptPreview.length > 0 ? (
               <div className="battle-result-transcript" aria-label="restored transcript preview">
                 {resultTranscriptPreview.map((chunk) => (
@@ -140,7 +137,7 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
               <div className="battle-result-overlay__rewards battle-result-overlay__rewards--highlight">
                 <div className="battle-result-rewards__banner" aria-hidden="true">
                   <span className="battle-result-rewards__diamond">◆</span>
-                  <span className="battle-result-rewards__banner-label">NEW EQUIPMENT ACQUIRED</span>
+                  <span className="battle-result-rewards__banner-label">maintenance record restored</span>
                   <span className="battle-result-rewards__diamond">◆</span>
                 </div>
                 <ul className="battle-result-overlay__reward-list battle-result-overlay__reward-list--highlight">
@@ -199,32 +196,27 @@ function renderSubtitleText(input: {
     if (/\s/u.test(glyph)) {
       return glyph
     }
-    const roll = seededUnit(`${seed}:${index}`)
-    const threshold = 0.12 + severity * 0.74
-    if (roll > threshold) {
+    const distortion = resolveTextSignalDistortion({
+      seed,
+      index,
+      severity,
+      reduceFlashing: input.reduceFlashing,
+    })
+    if (!distortion.visible) {
       return glyph
     }
-
-    const hardMask = input.reduceFlashing || roll < severity * 0.5
-    const replacement = hardMask
-      ? "█"
-      : roll < severity * 0.74
-        ? "░"
-        : GLITCH_GLYPHS[Math.floor(seededUnit(`${seed}:g:${index}`) * GLITCH_GLYPHS.length)] ?? "…"
 
     return (
       <span
         key={`${index}:${glyph}`}
-        className={hardMask ? "subtitle-corrupt subtitle-corrupt--mask" : "subtitle-corrupt"}
+        className={distortion.hardMask ? "subtitle-corrupt subtitle-corrupt--mask" : "subtitle-corrupt"}
         aria-hidden="true"
       >
-        {replacement}
+        {distortion.replacement}
       </span>
     )
   })
 }
-
-const GLITCH_GLYPHS = ["…", "▧", "░", "ノ", "ヰ", "�"]
 
 function readSubtitleCorruptionSeverity(noiseLevel: number, hearingThreshold: number): number {
   const overThreshold = noiseLevel / Math.max(0.01, hearingThreshold) - 1
@@ -248,20 +240,6 @@ function readIntlSegmenter(): { segment(text: string): Iterable<{ segment: strin
   return maybeIntl.Segmenter
     ? new maybeIntl.Segmenter("ja", { granularity: "grapheme" })
     : null
-}
-
-function seededUnit(seed: string): number {
-  const hash = hashString(seed)
-  return (hash % 10000) / 10000
-}
-
-function hashString(input: string): number {
-  let hash = 2166136261
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index)
-    hash = Math.imul(hash, 16777619)
-  }
-  return hash >>> 0
 }
 
 function formatMissionTime(totalSeconds: number) {

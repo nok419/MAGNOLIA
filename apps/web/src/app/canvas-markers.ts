@@ -1,3 +1,5 @@
+import { tokenRgba, type VisualRgbRole } from "@/app/visual-tokens"
+
 const PHI_INV = 1 / 1.618033988749895
 const TAU = Math.PI * 2
 
@@ -18,17 +20,17 @@ type MarkerVariantSpec = {
 }
 
 type TransmissionMarkerTheme = {
-  accent: string
-  haloRgb: string
-  core: string
+  accentRole: VisualRgbRole
+  haloRole: VisualRgbRole
+  coreRole: VisualRgbRole
   fillAlpha: number
   orbitAlpha: number
 }
 
 type CollectibleMarkerTheme = {
-  accent: string
-  haloRgb: string
-  core: string
+  accentRole: VisualRgbRole
+  haloRole: VisualRgbRole
+  coreRole: VisualRgbRole
   shellAlpha: number
   glyph: "equipment" | "resource" | "investigation"
 }
@@ -58,30 +60,30 @@ const MARKER_VARIANTS: Record<CanvasMarkerVariant, MarkerVariantSpec> = {
 // state と kind の対応だけを置き、表示条件やゲームルールは他レイヤへ持ち込みません。
 const TRANSMISSION_MARKER_THEMES: Record<TransmissionMarkerState, TransmissionMarkerTheme> = {
   locked: {
-    accent: "#7f96af",
-    haloRgb: "127, 150, 175",
-    core: "#d8e0eb",
+    accentRole: "markerLocked",
+    haloRole: "markerLocked",
+    coreRole: "text",
     fillAlpha: 0.08,
     orbitAlpha: 0.18,
   },
   available: {
-    accent: "#8fdcff",
-    haloRgb: "143, 220, 255",
-    core: "#f4fbff",
+    accentRole: "signalBright",
+    haloRole: "signalBright",
+    coreRole: "text",
     fillAlpha: 0.12,
     orbitAlpha: 0.24,
   },
   partial: {
-    accent: "#d8e7f6",
-    haloRgb: "216, 231, 246",
-    core: "#ffffff",
+    accentRole: "text",
+    haloRole: "text",
+    coreRole: "text",
     fillAlpha: 0.15,
     orbitAlpha: 0.28,
   },
   complete: {
-    accent: "#69d3ff",
-    haloRgb: "105, 211, 255",
-    core: "#ffffff",
+    accentRole: "signalBright",
+    haloRole: "signalBright",
+    coreRole: "text",
     fillAlpha: 0.18,
     orbitAlpha: 0.34,
   },
@@ -92,23 +94,23 @@ const COLLECTIBLE_MARKER_THEMES: Record<
   CollectibleMarkerTheme
 > = {
   equipment: {
-    accent: "#f0c674",
-    haloRgb: "240, 198, 116",
-    core: "#fff2cc",
+    accentRole: "memory",
+    haloRole: "memory",
+    coreRole: "text",
     shellAlpha: 0.18,
     glyph: "equipment",
   },
   resource: {
-    accent: "#8bf0c0",
-    haloRgb: "139, 240, 192",
-    core: "#f4fff9",
+    accentRole: "markerResource",
+    haloRole: "markerResource",
+    coreRole: "text",
     shellAlpha: 0.18,
     glyph: "resource",
   },
   investigation: {
-    accent: "#b7ecff",
-    haloRgb: "183, 236, 255",
-    core: "#f7fbff",
+    accentRole: "markerInvestigation",
+    haloRole: "markerInvestigation",
+    coreRole: "text",
     shellAlpha: 0.16,
     glyph: "investigation",
   },
@@ -145,9 +147,9 @@ export function drawTransmissionMarker(
     input.y,
     input.size * 2.2 * variant.haloScale,
   )
-  haloGradient.addColorStop(0, `rgba(${theme.haloRgb}, ${(0.2 * pulse).toFixed(3)})`)
-  haloGradient.addColorStop(0.45, `rgba(${theme.haloRgb}, ${(0.08 * pulse).toFixed(3)})`)
-  haloGradient.addColorStop(1, `rgba(${theme.haloRgb}, 0)`)
+  haloGradient.addColorStop(0, tokenRgba(theme.haloRole, 0.2 * pulse))
+  haloGradient.addColorStop(0.45, tokenRgba(theme.haloRole, 0.08 * pulse))
+  haloGradient.addColorStop(1, tokenRgba(theme.haloRole, 0))
   ctx.globalAlpha = baseAlpha
   ctx.fillStyle = haloGradient
   ctx.beginPath()
@@ -165,7 +167,7 @@ export function drawTransmissionMarker(
       const echoR = input.size * (0.9 + phase * 2.1)
       const echoAlpha = (1 - phase) * (1 - phase) * 0.14
       if (echoAlpha < 0.005) continue
-      ctx.strokeStyle = `rgba(${theme.haloRgb}, ${echoAlpha.toFixed(3)})`
+      ctx.strokeStyle = tokenRgba(theme.haloRole, echoAlpha)
       ctx.lineWidth = Math.max(0.55, 0.75 * variant.lineScale)
       ctx.beginPath()
       ctx.arc(input.x, input.y, echoR, 0, TAU)
@@ -173,7 +175,7 @@ export function drawTransmissionMarker(
     }
   }
 
-  ctx.strokeStyle = `rgba(${theme.haloRgb}, ${(theme.orbitAlpha * pulse).toFixed(3)})`
+  ctx.strokeStyle = tokenRgba(theme.haloRole, theme.orbitAlpha * pulse)
   ctx.lineWidth = Math.max(0.7, 1.05 * variant.lineScale)
   ctx.beginPath()
   ctx.arc(input.x, input.y, orbitRadius, rotation, rotation + Math.PI * 0.62)
@@ -182,7 +184,7 @@ export function drawTransmissionMarker(
   ctx.arc(input.x, input.y, orbitRadius, rotation + Math.PI, rotation + Math.PI + Math.PI * 0.48)
   ctx.stroke()
 
-  ctx.strokeStyle = `rgba(${theme.haloRgb}, ${(theme.orbitAlpha * 0.8).toFixed(3)})`
+  ctx.strokeStyle = tokenRgba(theme.haloRole, theme.orbitAlpha * 0.8)
   ctx.lineWidth = Math.max(0.55, 0.8 * variant.lineScale)
   ctx.beginPath()
   ctx.arc(input.x, input.y, orbitRadius * 0.76, -rotation * 0.85, -rotation * 0.85 + Math.PI * 0.44)
@@ -194,8 +196,8 @@ export function drawTransmissionMarker(
     ctx.save()
     ctx.translate(sx, sy)
     ctx.rotate(satelliteAngle + Math.PI / 2)
-    ctx.strokeStyle = `rgba(${theme.haloRgb}, ${(0.34 * pulse).toFixed(3)})`
-    ctx.fillStyle = `rgba(${theme.haloRgb}, ${(0.12 * pulse).toFixed(3)})`
+    ctx.strokeStyle = tokenRgba(theme.haloRole, 0.34 * pulse)
+    ctx.fillStyle = tokenRgba(theme.haloRole, 0.12 * pulse)
     ctx.lineWidth = Math.max(0.55, 0.72 * variant.lineScale)
     ctx.beginPath()
     ctx.moveTo(0, -input.size * 0.28)
@@ -215,27 +217,27 @@ export function drawTransmissionMarker(
   }
 
   if (variant.shadowScale > 0.01) {
-    ctx.shadowColor = `rgba(${theme.haloRgb}, ${(0.7 * variant.shadowScale).toFixed(3)})`
+    ctx.shadowColor = tokenRgba(theme.haloRole, 0.7 * variant.shadowScale)
     ctx.shadowBlur = 14 * variant.shadowScale
   }
 
   ctx.globalAlpha = baseAlpha
-  ctx.fillStyle = `rgba(247, 251, 255, ${theme.fillAlpha.toFixed(3)})`
+  ctx.fillStyle = tokenRgba("text", theme.fillAlpha)
   drawDiamondPath(ctx, input.x, input.y, input.size)
   ctx.fill()
 
-  ctx.strokeStyle = theme.accent
+  ctx.strokeStyle = tokenRgba(theme.accentRole, 0.94)
   ctx.lineWidth = Math.max(0.9, 1.35 * variant.lineScale)
   drawDiamondPath(ctx, input.x, input.y, input.size)
   ctx.stroke()
 
   ctx.shadowBlur = 0
-  ctx.strokeStyle = "rgba(247, 251, 255, 0.82)"
+  ctx.strokeStyle = tokenRgba("text", 0.82)
   ctx.lineWidth = Math.max(0.7, 0.9 * variant.lineScale)
   drawDiamondPath(ctx, input.x, input.y, input.size * 0.56)
   ctx.stroke()
 
-  ctx.fillStyle = theme.core
+  ctx.fillStyle = tokenRgba(theme.coreRole, 0.96)
   ctx.globalAlpha = baseAlpha * pulse
   ctx.beginPath()
   ctx.arc(input.x, input.y, Math.max(1.3, input.size * 0.18), 0, TAU)
@@ -243,7 +245,7 @@ export function drawTransmissionMarker(
 
   if (input.selected) {
     ctx.globalAlpha = baseAlpha
-    ctx.strokeStyle = "rgba(247, 251, 255, 0.72)"
+    ctx.strokeStyle = tokenRgba("text", 0.72)
     ctx.lineWidth = Math.max(0.9, 1.25 * variant.lineScale)
     ctx.beginPath()
     ctx.arc(input.x, input.y, input.size * 1.75, 0, TAU)
@@ -281,15 +283,15 @@ export function drawCollectibleMarker(
     input.y,
     input.size * 2.35 * variant.haloScale,
   )
-  haloGradient.addColorStop(0, `rgba(${theme.haloRgb}, ${(0.18 * pulse).toFixed(3)})`)
-  haloGradient.addColorStop(0.52, `rgba(${theme.haloRgb}, ${(0.06 * pulse).toFixed(3)})`)
-  haloGradient.addColorStop(1, `rgba(${theme.haloRgb}, 0)`)
+  haloGradient.addColorStop(0, tokenRgba(theme.haloRole, 0.18 * pulse))
+  haloGradient.addColorStop(0.52, tokenRgba(theme.haloRole, 0.06 * pulse))
+  haloGradient.addColorStop(1, tokenRgba(theme.haloRole, 0))
   ctx.fillStyle = haloGradient
   ctx.beginPath()
   ctx.arc(input.x, input.y, input.size * 2.35 * variant.haloScale, 0, TAU)
   ctx.fill()
 
-  ctx.strokeStyle = `rgba(${theme.haloRgb}, ${(0.28 * pulse).toFixed(3)})`
+  ctx.strokeStyle = tokenRgba(theme.haloRole, 0.28 * pulse)
   ctx.lineWidth = Math.max(0.65, 0.95 * variant.lineScale)
   ctx.beginPath()
   ctx.arc(input.x, input.y, input.size * 1.35 * variant.orbitScale, orbitAngle, orbitAngle + Math.PI * 0.58)
@@ -317,7 +319,7 @@ export function drawCollectibleMarker(
       const mx = input.x + Math.cos(angle) * baseR
       const my = input.y + Math.sin(angle) * baseR
       const life = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(input.timeMs * 0.0016 + seed * 5.2))
-      ctx.fillStyle = `rgba(${theme.haloRgb}, ${(0.3 * life * pulse).toFixed(3)})`
+      ctx.fillStyle = tokenRgba(theme.haloRole, 0.3 * life * pulse)
       ctx.beginPath()
       ctx.arc(mx, my, 0.75, 0, TAU)
       ctx.fill()
@@ -325,12 +327,12 @@ export function drawCollectibleMarker(
   }
 
   if (variant.shadowScale > 0.01) {
-    ctx.shadowColor = `rgba(${theme.haloRgb}, ${(0.7 * variant.shadowScale).toFixed(3)})`
+    ctx.shadowColor = tokenRgba(theme.haloRole, 0.7 * variant.shadowScale)
     ctx.shadowBlur = 12 * variant.shadowScale
   }
 
-  ctx.fillStyle = `rgba(${theme.haloRgb}, ${(theme.shellAlpha * pulse).toFixed(3)})`
-  ctx.strokeStyle = theme.accent
+  ctx.fillStyle = tokenRgba(theme.haloRole, theme.shellAlpha * pulse)
+  ctx.strokeStyle = tokenRgba(theme.accentRole, 0.94)
   ctx.lineWidth = Math.max(0.85, 1.25 * variant.lineScale)
   drawCollectibleShell(ctx, theme.glyph, input.x, input.y, input.size)
   ctx.fill()
@@ -338,12 +340,12 @@ export function drawCollectibleMarker(
   ctx.stroke()
 
   ctx.shadowBlur = 0
-  ctx.strokeStyle = "rgba(247, 251, 255, 0.9)"
-  ctx.fillStyle = theme.core
+  ctx.strokeStyle = tokenRgba("text", 0.9)
+  ctx.fillStyle = tokenRgba(theme.coreRole, 0.96)
   drawCollectibleGlyph(ctx, theme.glyph, input.x, input.y, input.size, variant.lineScale)
 
   if (input.selected) {
-    ctx.strokeStyle = "rgba(247, 251, 255, 0.68)"
+    ctx.strokeStyle = tokenRgba("text", 0.68)
     ctx.lineWidth = Math.max(0.9, 1.15 * variant.lineScale)
     ctx.beginPath()
     ctx.arc(input.x, input.y, input.size * 1.85, 0, TAU)

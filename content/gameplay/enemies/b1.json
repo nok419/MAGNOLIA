@@ -1,5 +1,6 @@
 {
   "enemyId": "b1",
+  "staged": true,
   "hp": 760,
   "collisionDamage": 22,
   "analysisValue": 80,

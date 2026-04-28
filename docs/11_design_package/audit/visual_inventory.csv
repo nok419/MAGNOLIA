@@ -1,0 +1,27 @@
+category,component,source,role,status,recommended_action
+battle,battle background,apps/web/src/components/battle-renderer.ts:166,gradient/grid/particles,generic_sf_background,replace_with_drawSignalSpaceBackground
+battle,player ship,apps/web/src/components/battle-renderer.ts:292; apps/web/src/app/ship-renderer.ts,player silhouette,good_core,keep_and_tokenize_effects
+battle,enemy visual profiles,apps/web/src/components/battle-renderer.ts:371,circle enemy profile,good_core,keep_as_noise_source_family
+battle,noise orb projectile,apps/web/src/components/battle-renderer.ts:1062,basic enemy bullet,good_core,keep_as_enemy_bullet_baseline
+battle,geo diamond projectile,apps/web/src/components/battle-renderer.ts:1150,geometric enemy bullet,needs_semantic_role,classify_as_packet_interference
+battle,enemy lance projectile,apps/web/src/components/battle-renderer.ts:1203,directional enemy bullet,useful,classify_as_directed_interference
+battle,boss core projectile,apps/web/src/components/battle-renderer.ts:1264,boss pressure bullet,useful,classify_as_pressure_overload
+battle,signal shard projectile,apps/web/src/components/battle-renderer.ts:1331,shard bullet,ambiguous,avoid_archive_fragment_conflict
+battle,battle fragment,apps/web/src/components/battle-renderer.ts:1442,collectible fragment,good_core,extract_FragmentGlyph
+battle,barrier gauge,apps/web/src/components/battle-renderer.ts:1525,barrier meter,too_gamey,convert_to_MetricMeter_FieldRing
+battle,support field,apps/web/src/components/battle-renderer.ts:1676,sub arm field,overlaps_rings,convert_to_FieldRing
+battle,hazard,apps/web/src/components/battle-renderer.ts:1786,hazard distortion,overcrowded_glitch,collapse_to_SignalDistortion
+explore,explore background,apps/web/src/components/ExploreCanvas.tsx:340,explore void background,mixed,tokenize_and_share_primitives
+explore,fog grid,apps/web/src/components/ExploreCanvas.tsx:422,fog bitmap,functional,make_unexplored_as_information_absence
+explore,vision scanner,apps/web/src/components/ExploreCanvas.tsx:528,scan overlay,overlap,convert_to_ScanPulse
+explore,scan pulse layer,apps/web/src/components/ExploreCanvas.tsx:1048,scan pulses,good_core,extract_ScanPulse
+explore,signal hint layer,apps/web/src/components/ExploreCanvas.tsx:1088,interaction hint,good,align_with_signal_attraction
+explore,reboot sequence,apps/web/src/components/ExploreCanvas.tsx:1175,reboot movie,good_core,extract_transition_primitives
+explore,explore trail,apps/web/src/components/ExploreCanvas.tsx:2592,ship trail,good_core,extract_ResidualTrail
+explore,boundary release,apps/web/src/components/ExploreCanvas.tsx:3091,boundary unlock,good_core,use_in_mode_transitions
+map,minimap,apps/web/src/components/MiniMap.tsx,radar/minimap,useful_but_ring_overlap,define_map_ring_style
+map,canvas markers,apps/web/src/app/canvas-markers.ts,map icons/glyphs,useful,unify_marker_diamond_family
+menu,menu backdrop,apps/web/src/screens/menu/MenuBackdropCanvas.tsx,floating particles,too_simple,use_SignalParticleField_CarrierLineField
+title,signal backdrop,apps/web/src/components/title/SignalBackdropCanvas.tsx,title particles/lines,good_but_independent,share_background_primitives
+css,base keyframes,apps/web/src/styles/base.css,global motion,mixed,map_to_motion_intents
+css,menu equipment keyframes,apps/web/src/styles/menu-equipment.css,menu pulse/scan/spin,over_specific,reduce_and_tokenize

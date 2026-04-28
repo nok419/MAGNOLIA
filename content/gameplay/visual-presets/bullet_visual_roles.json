@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "kind": "bulletVisualRoles",
+  "runtimeStatus": "runtimeData",
+  "notes": [
+    "Loaded into ContentBundle.bulletVisualRoles at runtime.",
+    "Every active enemy bullet pattern visualRole must resolve to one role entry."
+  ],
+  "roles": [
+    {
+      "visualRole": "enemyNoise",
+      "projectileIds": ["proj_enemy_basic"],
+      "bulletPatternIds": ["bp_heavy_burst", "bp_scout_single"],
+      "expectedRendererKey": "role:enemyNoise",
+      "bodyPrimitive": "noiseCluster",
+      "trailPrimitive": "trailA",
+      "seedBucket": 11,
+      "scale": 1,
+      "glowStrength": 0.55,
+      "tokenRoles": {
+        "body": "signal",
+        "glow": "signalBright"
+      }
+    },
+    {
+      "visualRole": "enemyGeometry",
+      "projectileIds": ["proj_enemy_geo"],
+      "bulletPatternIds": ["bp_spiral_stream"],
+      "expectedRendererKey": "role:enemyGeometry",
+      "bodyPrimitive": "diamondCluster",
+      "trailPrimitive": "trailB",
+      "seedBucket": 23,
+      "scale": 1.04,
+      "glowStrength": 0.58,
+      "tokenRoles": {
+        "body": "line",
+        "glow": "signalBright"
+      }
+    },
+    {
+      "visualRole": "enemyLance",
+      "projectileIds": ["proj_enemy_lance"],
+      "bulletPatternIds": ["bp_a2_lance_spread", "bp_b1_lance_stream"],
+      "expectedRendererKey": "role:enemyLance",
+      "bodyPrimitive": "lance",
+      "trailPrimitive": "trailC",
+      "seedBucket": 37,
+      "scale": 1.12,
+      "glowStrength": 0.62,
+      "tokenRoles": {
+        "body": "danger",
+        "glow": "memory"
+      }
+    },
+    {
+      "visualRole": "enemyCore",
+      "projectileIds": ["proj_enemy_core"],
+      "bulletPatternIds": ["bp_b1_core_burst", "bp_c1_pressure_ring"],
+      "expectedRendererKey": "role:enemyCore",
+      "bodyPrimitive": "coreOrb",
+      "trailPrimitive": "trailB",
+      "seedBucket": 41,
+      "scale": 1.18,
+      "glowStrength": 0.68,
+      "tokenRoles": {
+        "body": "danger",
+        "glow": "signalBright"
+      }
+    },
+    {
+      "visualRole": "enemyShard",
+      "projectileIds": ["proj_enemy_petal"],
+      "bulletPatternIds": ["bp_radial_burst", "bp_standard_spread"],
+      "expectedRendererKey": "role:enemyShard",
+      "bodyPrimitive": "signalShard",
+      "trailPrimitive": "trailA",
+      "seedBucket": 53,
+      "scale": 0.96,
+      "glowStrength": 0.52,
+      "tokenRoles": {
+        "body": "memory",
+        "glow": "line"
+      }
+    }
+  ]
+}

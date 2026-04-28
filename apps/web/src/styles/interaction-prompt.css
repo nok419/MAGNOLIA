@@ -2,75 +2,29 @@
    INTERACTION PROMPT
    自機、マップ上のアイコン、通常のメニュー要素に同じ誘導を付ける。
    ========================================================= */
-@keyframes mg-interaction-prompt-draw {
-  from { stroke-dashoffset: 220; }
-  to   { stroke-dashoffset: 0; }
-}
-
-@keyframes mg-interaction-prompt-fade-in {
-  from { opacity: 0; transform: var(--interaction-prompt-transform) translateY(4px); }
-  to   { opacity: 1; transform: var(--interaction-prompt-transform); }
-}
-
-@keyframes mg-interaction-prompt-anchor-pulse {
-  0%, 100% { opacity: 0.82; }
-  50%      { opacity: 1; }
-}
-
-@keyframes mg-interaction-prompt-ring-pulse {
-  0% {
-    opacity: 0.52;
-    transform: scale(0.7);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.9);
-  }
-}
-
-@keyframes mg-interaction-prompt-key-pulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow:
-      0 0 0 1px rgba(var(--interaction-prompt-rgb), 0.7),
-      0 0 10px rgba(var(--interaction-prompt-rgb), 0.4);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow:
-      0 0 0 1px rgba(var(--interaction-prompt-rgb), 0.95),
-      0 0 22px rgba(var(--interaction-prompt-rgb), 0.7);
-  }
-}
-
-@keyframes mg-interaction-prompt-label-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 .interaction-prompt,
 .interaction-prompt-anchor {
-  --interaction-prompt-accent: var(--mg-warm);
+  --interaction-prompt-accent: var(--mg-memory);
   --interaction-prompt-rgb: 240, 198, 116;
-  --interaction-prompt-key-text: #0b1424;
+  --interaction-prompt-key-text: var(--mg-text-inverse);
 }
 
 .interaction-prompt--cyan {
-  --interaction-prompt-accent: #9ed4ff;
-  --interaction-prompt-rgb: 158, 212, 255;
-  --interaction-prompt-key-text: #06111f;
+  --interaction-prompt-accent: var(--mg-signal-ice);
+  --interaction-prompt-rgb: var(--mg-signal-bright-rgb);
+  --interaction-prompt-key-text: var(--mg-text-inverse);
 }
 
 .interaction-prompt--green {
-  --interaction-prompt-accent: var(--mg-green);
-  --interaction-prompt-rgb: 132, 240, 163;
-  --interaction-prompt-key-text: #06160d;
+  --interaction-prompt-accent: var(--mg-signal);
+  --interaction-prompt-rgb: var(--mg-signal-rgb);
+  --interaction-prompt-key-text: var(--mg-text-inverse);
 }
 
 .interaction-prompt--red {
-  --interaction-prompt-accent: var(--mg-red);
+  --interaction-prompt-accent: var(--mg-danger);
   --interaction-prompt-rgb: 255, 90, 110;
-  --interaction-prompt-key-text: #1b070a;
+  --interaction-prompt-key-text: var(--mg-text-inverse);
 }
 
 .interaction-prompt--callout {
@@ -81,7 +35,7 @@
   pointer-events: none;
   opacity: 0;
   --interaction-prompt-transform: translate(-24px, -96px);
-  animation: mg-interaction-prompt-fade-in 600ms var(--ease-out-expo) 120ms forwards;
+  animation: mg-interaction-fade-in 600ms var(--ease-out-expo) 120ms forwards;
 }
 
 .interaction-prompt__svg {
@@ -100,12 +54,12 @@
   stroke-dasharray: 220;
   stroke-dashoffset: 220;
   opacity: 0.9;
-  animation: mg-interaction-prompt-draw 900ms var(--ease-out-quart) 200ms forwards;
+  animation: mg-interaction-draw 900ms var(--ease-out-quart) 200ms forwards;
 }
 
 .interaction-prompt__anchor-dot {
   fill: var(--interaction-prompt-accent);
-  animation: mg-interaction-prompt-anchor-pulse 1.6s ease-in-out infinite;
+  opacity: 0.88;
 }
 
 .interaction-prompt__anchor-ring {
@@ -114,7 +68,8 @@
   stroke-width: 0.8;
   transform-box: fill-box;
   transform-origin: center;
-  animation: mg-interaction-prompt-ring-pulse 2.2s ease-out infinite;
+  opacity: 0.34;
+  transform: scale(1.28);
 }
 
 .interaction-prompt__node {
@@ -142,7 +97,7 @@
   white-space: nowrap;
   text-shadow: 0 0 10px rgba(var(--interaction-prompt-rgb), 0.42);
   opacity: 0;
-  animation: mg-interaction-prompt-label-in 340ms var(--ease-out-expo) 960ms forwards;
+  animation: mg-label-in 340ms var(--ease-out-expo) 960ms forwards;
 }
 
 .interaction-prompt__label--above {
@@ -167,7 +122,9 @@
   background: var(--interaction-prompt-accent);
   border: 1px solid rgba(var(--interaction-prompt-rgb), 0.95);
   border-radius: 3px;
-  animation: mg-interaction-prompt-key-pulse 1.8s ease-in-out infinite 1200ms;
+  box-shadow:
+    0 0 0 1px rgba(var(--interaction-prompt-rgb), 0.7),
+    0 0 10px rgba(var(--interaction-prompt-rgb), 0.32);
 }
 
 .interaction-prompt__text {
@@ -194,9 +151,9 @@
   gap: 6px;
   padding: 4px 6px;
   border: 1px solid rgba(var(--interaction-prompt-rgb), 0.32);
-  background: rgba(4, 10, 20, 0.92);
+  background: rgba(var(--mg-abyss-rgb), 0.92);
   box-shadow:
-    0 0 0 1px rgba(4, 10, 20, 0.88),
+    0 0 0 1px rgba(var(--mg-abyss-rgb), 0.88),
     0 0 18px rgba(var(--interaction-prompt-rgb), 0.18);
   color: var(--interaction-prompt-accent);
   font-family: var(--font-mono);

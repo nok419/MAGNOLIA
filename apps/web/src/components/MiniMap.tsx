@@ -6,6 +6,7 @@ import {
   drawTransmissionMarker,
 } from "@/app/canvas-markers"
 import type { DisplayOptions } from "@/app/display-options"
+import { tokenRgba, visualToken } from "@/app/visual-tokens"
 
 type MiniMapProps = {
   snapshot: ExploreSnapshot
@@ -56,7 +57,7 @@ export function MiniMap({ snapshot, renderState, displayOptions }: MiniMapProps)
       ctx.clip()
 
       // background
-      ctx.fillStyle = "#030810"
+      ctx.fillStyle = visualToken.color.void
       ctx.fillRect(0, 0, SIZE, SIZE)
 
       // fog cells
@@ -142,7 +143,7 @@ function drawCells(ctx: CanvasRenderingContext2D, fogBitmap: string) {
   const ch = SIZE / Math.max(1, rows.length)
   rows.forEach((row, yi) => {
     row.split("").forEach((cell, xi) => {
-      ctx.fillStyle = cell === "1" ? "rgba(93, 164, 209, 0.1)" : "rgba(0, 0, 0, 0.45)"
+      ctx.fillStyle = cell === "1" ? tokenRgba("signal", 0.1) : tokenRgba("void", 0.45)
       ctx.fillRect(xi * cw, yi * ch, cw, ch)
     })
   })
@@ -152,7 +153,7 @@ function drawCells(ctx: CanvasRenderingContext2D, fogBitmap: string) {
    INTERNAL GRID — faint lines within the radar
    ============================================================ */
 function drawInternalGrid(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.04)"
+  ctx.strokeStyle = tokenRgba("signal", 0.04)
   ctx.lineWidth = 0.5
   const step = SIZE / 8
   for (let i = 1; i < 8; i++) {
@@ -168,10 +169,10 @@ function drawRangeRings(ctx: CanvasRenderingContext2D) {
   ctx.setLineDash([3, 6])
   ctx.lineWidth = 0.7
 
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.1)"
+  ctx.strokeStyle = tokenRgba("signal", 0.1)
   ctx.beginPath(); ctx.arc(CENTER, CENTER, RADIUS * 0.33, 0, TAU); ctx.stroke()
 
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.12)"
+  ctx.strokeStyle = tokenRgba("signal", 0.12)
   ctx.beginPath(); ctx.arc(CENTER, CENTER, RADIUS * 0.66, 0, TAU); ctx.stroke()
 
   ctx.setLineDash([])
@@ -185,10 +186,10 @@ function drawSweepCone(ctx: CanvasRenderingContext2D, angle: number) {
   const grad = ctx.createConicGradient(angle - coneAngle, CENTER, CENTER)
 
   // the cone fades in over the sweep angle
-  grad.addColorStop(0, "rgba(93, 164, 209, 0)")
-  grad.addColorStop(coneAngle / TAU, "rgba(93, 164, 209, 0.08)")
-  grad.addColorStop((coneAngle * 1.01) / TAU, "rgba(93, 164, 209, 0)")
-  grad.addColorStop(1, "rgba(93, 164, 209, 0)")
+  grad.addColorStop(0, tokenRgba("signal", 0))
+  grad.addColorStop(coneAngle / TAU, tokenRgba("signal", 0.08))
+  grad.addColorStop((coneAngle * 1.01) / TAU, tokenRgba("signal", 0))
+  grad.addColorStop(1, tokenRgba("signal", 0))
 
   ctx.fillStyle = grad
   ctx.beginPath()
@@ -199,9 +200,9 @@ function drawSweepCone(ctx: CanvasRenderingContext2D, angle: number) {
   const lx = CENTER + Math.cos(angle) * RADIUS
   const ly = CENTER + Math.sin(angle) * RADIUS
   const lineGrad = ctx.createLinearGradient(CENTER, CENTER, lx, ly)
-  lineGrad.addColorStop(0, "rgba(93, 164, 209, 0)")
-  lineGrad.addColorStop(0.3, "rgba(93, 164, 209, 0.25)")
-  lineGrad.addColorStop(1, "rgba(93, 164, 209, 0.06)")
+  lineGrad.addColorStop(0, tokenRgba("signal", 0))
+  lineGrad.addColorStop(0.3, tokenRgba("signal", 0.25))
+  lineGrad.addColorStop(1, tokenRgba("signal", 0.06))
   ctx.strokeStyle = lineGrad
   ctx.lineWidth = 1
   ctx.beginPath()
@@ -214,7 +215,7 @@ function drawSweepCone(ctx: CanvasRenderingContext2D, angle: number) {
    CROSSHAIR — subtle centered cross
    ============================================================ */
 function drawCrosshair(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.12)"
+  ctx.strokeStyle = tokenRgba("signal", 0.12)
   ctx.lineWidth = 0.5
   // horizontal
   ctx.beginPath()
@@ -229,7 +230,7 @@ function drawCrosshair(ctx: CanvasRenderingContext2D) {
 
   // center diamond marker
   const cs = 3
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.2)"
+  ctx.strokeStyle = tokenRgba("signal", 0.2)
   ctx.lineWidth = 0.8
   ctx.beginPath()
   ctx.moveTo(CENTER, CENTER - cs)
@@ -245,14 +246,14 @@ function drawCrosshair(ctx: CanvasRenderingContext2D) {
    ============================================================ */
 function drawOuterRings(ctx: CanvasRenderingContext2D) {
   // outer glow ring
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.12)"
+  ctx.strokeStyle = tokenRgba("signal", 0.12)
   ctx.lineWidth = 1
   ctx.beginPath()
   ctx.arc(CENTER, CENTER, RADIUS + 2, 0, TAU)
   ctx.stroke()
 
   // main border
-  ctx.strokeStyle = "rgba(140, 195, 255, 0.4)"
+  ctx.strokeStyle = tokenRgba("line", 0.4)
   ctx.lineWidth = 1.5
   ctx.beginPath()
   ctx.arc(CENTER, CENTER, RADIUS, 0, TAU)
@@ -275,15 +276,15 @@ function drawCompassTicks(ctx: CanvasRenderingContext2D, _sweepAngle: number) {
     const y2 = CENTER + Math.sin(angle) * outerR
 
     if (isCardinal) {
-      ctx.strokeStyle = "rgba(140, 195, 255, 0.5)"
+      ctx.strokeStyle = tokenRgba("line", 0.5)
       ctx.lineWidth = 1.5
     } else if (i % 9 === 0) {
       // every 45 deg gets a medium tick
-      ctx.strokeStyle = "rgba(140, 195, 255, 0.25)"
+      ctx.strokeStyle = tokenRgba("line", 0.25)
       ctx.lineWidth = 1
     } else if (i % 3 === 0) {
       // every 15 deg gets a small tick
-      ctx.strokeStyle = "rgba(93, 164, 209, 0.15)"
+      ctx.strokeStyle = tokenRgba("signal", 0.15)
       ctx.lineWidth = 0.7
     } else {
       continue // skip non-notable ticks
@@ -317,23 +318,23 @@ function drawVisionCircle(
   const pulse = 0.72 + 0.28 * Math.sin(timeMs * 0.002)
   // ミニマップ上の視界は硬い円ではなく、探査範囲の薄い波として読ませる。
   const halo = ctx.createRadialGradient(x, y, radius * 0.72, x, y, radius * 1.1)
-  halo.addColorStop(0, "rgba(93, 164, 209, 0)")
-  halo.addColorStop(0.64, `rgba(140, 220, 255, ${restricted ? "0.045" : "0.03"})`)
-  halo.addColorStop(1, "rgba(93, 164, 209, 0)")
+  halo.addColorStop(0, tokenRgba("signal", 0))
+  halo.addColorStop(0.64, tokenRgba("line", restricted ? 0.045 : 0.03))
+  halo.addColorStop(1, tokenRgba("signal", 0))
   ctx.fillStyle = halo
   ctx.beginPath()
   ctx.arc(x, y, radius * 1.1, 0, TAU)
   ctx.fill()
 
   ctx.strokeStyle = restricted
-    ? `rgba(140, 220, 255, ${(0.24 + pulse * 0.08).toFixed(3)})`
-    : `rgba(140, 220, 255, ${(0.15 + pulse * 0.06).toFixed(3)})`
+    ? tokenRgba("line", 0.24 + pulse * 0.08)
+    : tokenRgba("line", 0.15 + pulse * 0.06)
   ctx.lineWidth = 0.9
   ctx.beginPath()
   ctx.arc(x, y, radius, 0, TAU)
   ctx.stroke()
 
-  ctx.strokeStyle = `rgba(93, 164, 209, ${(0.055 * pulse).toFixed(3)})`
+  ctx.strokeStyle = tokenRgba("signal", 0.055 * pulse)
   ctx.lineWidth = 0.7
   ctx.beginPath()
   ctx.arc(x, y, radius * 0.78, 0, TAU)
@@ -344,9 +345,9 @@ function drawVisionCircle(
 function drawPlayerGlow(ctx: CanvasRenderingContext2D, cx: number, cy: number, timeMs: number) {
   const pulse = 0.72 + 0.28 * Math.sin(timeMs * 0.004)
   const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 20)
-  glowGrad.addColorStop(0, `rgba(180, 235, 255, ${(0.22 * pulse).toFixed(3)})`)
-  glowGrad.addColorStop(0.42, `rgba(93, 164, 209, ${(0.1 * pulse).toFixed(3)})`)
-  glowGrad.addColorStop(1, "rgba(93, 164, 209, 0)")
+  glowGrad.addColorStop(0, tokenRgba("signalBright", 0.22 * pulse))
+  glowGrad.addColorStop(0.42, tokenRgba("signal", 0.1 * pulse))
+  glowGrad.addColorStop(1, tokenRgba("signal", 0))
   ctx.fillStyle = glowGrad
   ctx.beginPath()
   ctx.arc(cx, cy, 20, 0, TAU)
@@ -360,9 +361,9 @@ function drawMiniPlayer(ctx: CanvasRenderingContext2D, cx: number, cy: number, a
   ctx.save()
   ctx.translate(cx, cy)
   ctx.rotate(angle)
-  ctx.shadowColor = "rgba(170, 230, 255, 0.7)"
+  ctx.shadowColor = tokenRgba("signalBright", 0.7)
   ctx.shadowBlur = 5 + corePulse * 3
-  ctx.fillStyle = "#ffffff"
+  ctx.fillStyle = tokenRgba("text", 1)
   ctx.beginPath()
   ctx.moveTo(0, -h * 0.6)
   ctx.lineTo(-w / 2, h * 0.4)

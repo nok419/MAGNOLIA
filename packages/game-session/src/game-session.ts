@@ -24,9 +24,7 @@ import type {
   ExploreFrameInput,
   ExploreFrameResult,
   ExploreScanPulseViewModel,
-  ExploreSignalHintViewModel,
   ExploreSnapshot,
-  FeatureAccessState,
   GameCommand,
   MissionId,
   MissionResult,
@@ -35,6 +33,7 @@ import type {
   OpenEquipmentCommand,
   OpenMapCommand,
   OpenSettingsCommand,
+  PresentationRequest,
   ProfileAggregate,
   ProfileId,
   ProfileRow,
@@ -96,7 +95,6 @@ import {
   computeRangesDuration,
   computeRestorationRate,
   hasVisibleArchiveContent,
-  isTransmissionSignalIdentified,
   mergeTranscriptSpans,
   readTransmissionCompletionState,
   subtractTimeRanges,
@@ -156,6 +154,18 @@ import {
   createExploreSnapshotForProfile,
   createMapSnapshotFromExplore,
 } from "./session-snapshots"
+import { createMapViewModel, type MapViewModel } from "./map-view-model"
+import {
+  findInitialOsEquipmentId,
+  resolveTutorialReleaseRule,
+  shouldReleaseTutorialOnPanelClose,
+} from "./progression-rules"
+import {
+  EXPLORE_SCAN_HINT_DISMISSED_FLAG,
+  buildExploreInteractionTargets,
+  buildExploreSignalHints,
+  updateExploreSignalRuntime,
+} from "./explore-signal-runtime"
 import { toRecord } from "./record-utils"
 import type {
   BattlePickupRenderState,
@@ -171,14 +181,11 @@ import type {
 } from "./runtime-types"
 
 const DEFAULT_EXPLORE_VISION_RADIUS = 150
-const EXPLORE_SCAN_RADIUS = 860
-const EXPLORE_SCAN_COOLDOWN_MS = 2400
-const EXPLORE_SCAN_DURATION_MS = 1250
-const EXPLORE_SIGNAL_HINT_DURATION_MS = 3600
-const EXPLORE_SCAN_RESPONSE_WIDTH = 140
-const EXPLORE_PASSIVE_SIGNAL_RADIUS = 520
-const EXPLORE_PASSIVE_CONFIDENCE_RADIUS = 300
-const EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE = 1
+const MELEE_SWEEP_BLADE_LENGTH_RATIO = 1.28
+const MELEE_SWEEP_BLADE_START_RATIO = 0.13
+const MELEE_SWEEP_BLADE_WIDTH_RATIO = 0.105
+const MELEE_SWEEP_SWING_START_RATIO = 0.08
+const MELEE_SWEEP_SWING_ACTIVE_RATIO = 0.74
 /**
  * 新規ゲーム開始時にターミナルへ流れるブートログ。
  * 「不調箇所や不完全な初期設定はあるが、かろうじて再起動できた」
@@ -204,34 +211,6 @@ const BOOT_LINES = [
   "",
   "> residual carrier acquired",
 ]
-
-function computeExploreScanConfidenceDelta(distance: number): number {
-  // scan 範囲を広げても遠距離ノードが一度で識別済みにならないよう、距離減衰を強めます。
-  const distanceStrength = clamp01(1 - distance / EXPLORE_SCAN_RADIUS)
-  return Math.pow(distanceStrength, 1.8) * 0.64
-}
-
-function computeExploreScanHintStrength(distance: number, elapsedMs: number): number {
-  const distanceStrength = clamp01(1 - distance / EXPLORE_SCAN_RADIUS)
-  if (distanceStrength <= 0) {
-    return 0
-  }
-
-  // pulse の波面が届いた後にだけ反応を出し、遠距離ほど遅れて弱く見えるようにします。
-  const pulseProgress = easeOutCubic(clamp01(elapsedMs / EXPLORE_SCAN_DURATION_MS))
-  const reachedRadius = EXPLORE_SCAN_RADIUS * pulseProgress
-  if (distance > reachedRadius) {
-    return 0
-  }
-
-  const responseStrength = 0.24 + clamp01((reachedRadius - distance) / EXPLORE_SCAN_RESPONSE_WIDTH) * 0.76
-  return Math.pow(distanceStrength, 1.25) * responseStrength
-}
-
-function easeOutCubic(value: number): number {
-  const inverse = 1 - clamp01(value)
-  return 1 - inverse * inverse * inverse
-}
 
 type SlotSelectMode = "new" | "continue"
 
@@ -353,6 +332,49 @@ export class MagnoliaGameSession {
       mapLogic,
       featureAccess,
     })
+    const visibleTransmissions: ExploreNodeRenderState[] = mapLogic.transmissionNodes
+      .filter((node) => mapState.visibleTransmissionNodeIds.includes(node.nodeId))
+      .map((node) => ({
+        nodeId: node.nodeId,
+        x: node.x,
+        y: node.y,
+        label: this.content.transmissions[node.transmissionId]?.title,
+        interactionRadius: node.interactionRadius,
+        state: readTransmissionCompletionState(
+          this.activeProfile?.transmissionProgress.find(
+            (progress) => progress.transmissionId === node.transmissionId,
+          ),
+        ),
+      }))
+    const visibleWarps: ExploreNodeRenderState[] = mapLogic.warpNodes
+      .filter((node) => mapState.visibleWarpNodeIds.includes(node.nodeId))
+      .map((node) => ({
+        nodeId: node.nodeId,
+        x: node.x,
+        y: node.y,
+        label: this.content.areas[node.warpTargetAreaId]?.name,
+        interactionRadius: node.interactionRadius,
+      }))
+    const visibleCollectibles: ExploreNodeRenderState[] = mapLogic.collectibleNodes
+      .filter((node) => mapState.visibleCollectibleNodeIds.includes(node.nodeId))
+      .map((node) => ({
+        nodeId: node.nodeId,
+        x: node.x,
+        y: node.y,
+        interactionRadius: node.interactionRadius,
+        markerKind:
+          node.collectibleKind === "hiddenEquipment" ? "equipment" : "resource",
+        label:
+          node.collectibleKind === "hiddenEquipment"
+            ? "???"
+            : "自己修復ポイント",
+      }))
+    const interactionTargets = buildExploreInteractionTargets({
+      playerPosition: this.activeProfile.profile.playerPosition,
+      visionRadius: this.exploreVisionRadius,
+      visibleTransmissions,
+      visibleCollectibles,
+    })
 
     return {
       worldBounds,
@@ -363,56 +385,53 @@ export class MagnoliaGameSession {
       playerFacing: this.lastExploreFacing ?? { x: 0, y: -1 },
       visionRadius: this.exploreVisionRadius,
       areaBounds: currentAreaBounds,
-      visibleTransmissions: mapLogic.transmissionNodes
-        .filter((node) => mapState.visibleTransmissionNodeIds.includes(node.nodeId))
-        .map((node) => ({
-          nodeId: node.nodeId,
-          x: node.x,
-          y: node.y,
-          label: this.content.transmissions[node.transmissionId]?.title,
-          interactionRadius: node.interactionRadius,
-          state: readTransmissionCompletionState(
-            this.activeProfile?.transmissionProgress.find(
-              (progress) => progress.transmissionId === node.transmissionId,
-            ),
-          ),
-        })),
-      visibleWarps: mapLogic.warpNodes
-        .filter((node) => mapState.visibleWarpNodeIds.includes(node.nodeId))
-        .map((node) => ({
-          nodeId: node.nodeId,
-          x: node.x,
-          y: node.y,
-          label: this.content.areas[node.warpTargetAreaId]?.name,
-          interactionRadius: node.interactionRadius,
-        })),
-      visibleCollectibles: mapLogic.collectibleNodes
-        .filter((node) => mapState.visibleCollectibleNodeIds.includes(node.nodeId))
-        .map((node) => ({
-          nodeId: node.nodeId,
-          x: node.x,
-          y: node.y,
-          interactionRadius: node.interactionRadius,
-          markerKind:
-            node.collectibleKind === "hiddenEquipment" ? "equipment" : "resource",
-          label:
-            node.collectibleKind === "hiddenEquipment"
-              ? "???"
-              : "自己修復ポイント",
-        })),
+      visibleTransmissions,
+      visibleWarps,
+      visibleCollectibles,
+      interactionTargets,
       nearestTransmissionStrength,
       nearestAnyTransmissionStrength,
       elapsedMs: this.exploreElapsedMs,
-      signalHints: this.buildExploreSignalHints({
+      signalHints: buildExploreSignalHints({
+        content: this.content,
+        profileAggregate: this.activeProfile,
         mapLogic,
         featureAccess,
         playerPosition: this.activeProfile.profile.playerPosition,
+        elapsedMs: this.exploreElapsedMs,
+        lastScanAtMs: this.lastExploreScanAtMs,
       }),
       scanPulses: this.exploreScanPulses.filter(
         (pulse) => this.exploreElapsedMs - pulse.startedAtMs <= pulse.durationMs,
       ),
+      shouldShowScanHint: shouldShowExploreScanHint({
+        clearedMissionIds: this.activeProfile.profile.clearedMissionIds,
+        unlockedFlags: this.activeProfile.profile.unlockedFlags,
+        lastScanAtMs: this.lastExploreScanAtMs,
+      }),
       tutorialRestricted: !featureAccess.mapVisionUnlocked,
     }
+  }
+
+  getMapViewModel(displayOptions: {
+    canvasPixelRatio: number
+    reduceMotion: boolean
+  }): MapViewModel | null {
+    if (!this.activeProfile) {
+      return null
+    }
+    const snapshot = this.createExploreSnapshot()
+    const renderState = this.getExploreRenderState()
+    if (!renderState) {
+      return null
+    }
+    return createMapViewModel({
+      content: this.content,
+      profile: this.activeProfile,
+      snapshot,
+      renderState,
+      displayOptions,
+    })
   }
 
   getBattleRenderState(): BattleRenderState | null {
@@ -423,6 +442,11 @@ export class MagnoliaGameSession {
 
     return {
       missionId: battle.mission.missionId,
+      visualProfileId: battle.mission.visualProfileId,
+      missionVisualProfile: battle.mission.visualProfileId
+        ? this.content.missionVisualProfiles[battle.mission.visualProfileId]
+        : undefined,
+      bulletVisualRoles: this.content.bulletVisualRoles,
       missionDurationMs: battle.mission.durationMs,
       elapsedMs: battle.elapsedMs,
       player: {
@@ -457,6 +481,7 @@ export class MagnoliaGameSession {
         .map<ProjectileRenderState>((projectile) => ({
           projectileInstanceId: projectile.projectileInstanceId,
           projectileId: projectile.projectileId,
+          visualRole: projectile.visualRole,
           side: projectile.side,
           position: projectile.position,
           velocity: projectile.velocity,
@@ -465,6 +490,11 @@ export class MagnoliaGameSession {
             projectile.initialLifetimeMs && projectile.initialLifetimeMs > 0
               ? clamp01((projectile.ageMs ?? 0) / projectile.initialLifetimeMs)
               : undefined,
+          meleeSweep: projectile.meleeSweep
+            ? {
+                arcDeg: projectile.meleeSweep.arcDeg,
+              }
+            : undefined,
           inversePhaseVisual: projectile.inversePhaseVisual,
         })),
       supportFields: battle.supportFields.map<SupportFieldRenderState>((field) => ({
@@ -488,8 +518,11 @@ export class MagnoliaGameSession {
         chunkId: fragment.chunkId,
         startRatio: fragment.startRatio,
         endRatio: fragment.endRatio,
+        originX: fragment.origin.x,
+        originY: fragment.origin.y,
         x: fragment.position.x,
         y: fragment.position.y,
+        spawnedAtMs: fragment.spawnedAtMs,
         expiresAtMs: fragment.expiresAtMs,
         strength: fragment.strength,
       })),
@@ -504,6 +537,16 @@ export class MagnoliaGameSession {
       })),
       activeSubtitle: this.getActiveSubtitle(),
       pendingResult: battle.activeResult,
+      grantedEquipment: (battle.activeResult?.grantedEquipmentIds ?? []).flatMap((equipmentId) => {
+        const equipment = this.content.equipment[equipmentId]
+        return equipment
+          ? [{
+              equipmentId: equipment.equipmentId,
+              name: equipment.name,
+              slot: equipment.slot,
+            }]
+          : []
+      }),
       resultTranscriptPreview: battle.activeResult
         ? buildTranscriptViewChunks(battle.transcript, battle.activeResult.transcriptSpans)
         : undefined,
@@ -543,21 +586,20 @@ export class MagnoliaGameSession {
         break
       case "closePanel":
         if (this.activeProfile) {
-          // MAGNOLIA を装備した直後は、装備画面を閉じる瞬間に境界解除の演出と機能開放をまとめて発火します。
-          if (
-            this.screen === "equipment" &&
-            this.activeProfile.profile.equipped.os === "eq_os_magnolia" &&
-            !this.activeProfile.profile.unlockedFlags.includes("tutorial.released")
-          ) {
+          const tutorialReleaseRule = resolveTutorialReleaseRule(this.content)
+          if (shouldReleaseTutorialOnPanelClose({
+            screen: this.screen,
+            profile: this.activeProfile.profile,
+            rule: tutorialReleaseRule,
+          })) {
             this.activeProfile.profile.unlockedFlags = uniqueIds([
               ...this.activeProfile.profile.unlockedFlags,
-              "tutorial.released",
-              "ui.map.enabled",
+              ...tutorialReleaseRule.unlockedFlags,
             ])
             this.presentationQueue.push(
               ...createTutorialReleasePresentation({
                 worldPosition: this.activeProfile.profile.playerPosition,
-                releasedActions: ["map", "full explore"],
+                releasedActions: tutorialReleaseRule.releasedActions,
                 blocking: true,
               }),
             )
@@ -602,11 +644,18 @@ export class MagnoliaGameSession {
         this.handleCollectItem(command)
         break
       case "interactExploreNode":
-        this.handleExploreNodeInteraction(command.nodeId)
+        this.presentationQueue.push(...this.handleExploreNodeInteraction(command.nodeId).presentationRequests)
         break
     }
 
     return this.getSnapshot()
+  }
+
+  interactExploreNode(nodeId: WorldMapNodeId): {
+    events: DomainEvent[]
+    presentationRequests: PresentationRequest[]
+  } {
+    return this.handleExploreNodeInteraction(nodeId)
   }
 
   stepExplore(input: ExploreFrameInput): ExploreFrameResult {
@@ -650,13 +699,25 @@ export class MagnoliaGameSession {
       this.activeProfile.profile.currentAreaId,
     )
     const discoveredEvents = this.revealCurrentArea(nextPosition, mapLogic)
-    this.updateExploreSignalConfidence({
+    const signalRuntime = updateExploreSignalRuntime({
+      content: this.content,
+      profileAggregate: this.activeProfile,
       mapLogic,
       featureAccess,
       playerPosition: nextPosition,
       dtMs: input.dtMs,
       scanPressed: input.scanPressed,
+      runtime: {
+        elapsedMs: this.exploreElapsedMs,
+        lastScanAtMs: this.lastExploreScanAtMs,
+        scanPulses: this.exploreScanPulses,
+      },
+      nextPulseId: () => this.nextInstanceId("explore_scan"),
+      getOrCreateTransmissionProgress: (transmissionId, areaId) =>
+        this.getOrCreateTransmissionProgress(transmissionId, areaId),
     })
+    this.lastExploreScanAtMs = signalRuntime.lastScanAtMs
+    this.exploreScanPulses = signalRuntime.scanPulses
     const interactionEvents = this.handleExploreInteraction(mapLogic, nextPosition, input.interactPressed)
     const presentationRequests = flattenPresentationRequests([
       createExploreTrailPresentation({
@@ -942,16 +1003,23 @@ export class MagnoliaGameSession {
     const seed = hashString(`${activeChunk.chunkId}:${Math.floor(battle.elapsedMs / 250)}:${battle.fragments.length}`)
     const angle = -Math.PI * 0.5 + (pseudoRandomUnit(seed) - 0.5) * Math.PI * 1.25
     const distance = 72 + pseudoRandomUnit(seed + 17) * 112
+    const origin = {
+      x: battle.playerPosition.x,
+      y: battle.playerPosition.y,
+    }
+    const position = {
+      x: Math.max(24, Math.min(BATTLE_WIDTH - 24, origin.x + Math.cos(angle) * distance)),
+      y: Math.max(52, Math.min(BATTLE_HEIGHT - 36, origin.y + Math.sin(angle) * distance)),
+    }
     const fragment: InternalBattleFragmentState = {
       fragmentId: this.nextInstanceId("frag_signal"),
       chunkId: span.chunkId,
       startRatio: span.startRatio,
       endRatio: span.endRatio,
-      position: {
-        x: Math.max(24, Math.min(BATTLE_WIDTH - 24, battle.playerPosition.x + Math.cos(angle) * distance)),
-        y: Math.max(52, Math.min(BATTLE_HEIGHT - 36, battle.playerPosition.y + Math.sin(angle) * distance)),
-      },
+      origin,
+      position,
       radius: 13,
+      spawnedAtMs: battle.elapsedMs,
       expiresAtMs: battle.elapsedMs + (this.settings.difficulty === "terminal" ? 2800 : 3800),
       strength: clamp01(input.strength),
     }
@@ -1459,9 +1527,7 @@ export class MagnoliaGameSession {
   }
 
   private normalizeInitialOs(profile: ProfileRow): void {
-    const initialOsId = Object.values(this.content.equipment).find(
-      (equipment) => equipment.slot === "os" && equipment.unlockSource.kind === "initial",
-    )?.equipmentId
+    const initialOsId = findInitialOsEquipmentId(this.content.equipment)
 
     if (!initialOsId) {
       return
@@ -1517,139 +1583,6 @@ export class MagnoliaGameSession {
       activeProfile: this.activeProfile,
       fallbackMissionId: Object.keys(this.content.missions)[0] ?? "mission_missing",
     })
-  }
-
-  private updateExploreSignalConfidence(input: {
-    mapLogic: WorldMapLogic
-    featureAccess: FeatureAccessState
-    playerPosition: Vector2
-    dtMs: number
-    scanPressed: boolean
-  }): void {
-    if (!this.activeProfile) {
-      return
-    }
-    const canStartScan =
-      input.scanPressed &&
-      this.exploreElapsedMs - this.lastExploreScanAtMs >= EXPLORE_SCAN_COOLDOWN_MS
-
-    if (canStartScan) {
-      this.lastExploreScanAtMs = this.exploreElapsedMs
-      this.exploreScanPulses.push({
-        pulseId: this.nextInstanceId("explore_scan"),
-        startedAtMs: this.exploreElapsedMs,
-        radius: EXPLORE_SCAN_RADIUS,
-        durationMs: EXPLORE_SCAN_DURATION_MS,
-      })
-    }
-    this.exploreScanPulses = this.exploreScanPulses.filter(
-      (pulse) => this.exploreElapsedMs - pulse.startedAtMs <= pulse.durationMs,
-    )
-
-    for (const node of input.mapLogic.transmissionNodes) {
-      if (!input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId)) {
-        continue
-      }
-      const existing = this.activeProfile.transmissionProgress.find(
-        (progress) => progress.transmissionId === node.transmissionId,
-      )
-      if (isTransmissionSignalIdentified(existing)) {
-        continue
-      }
-
-      const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-      const passiveStrength = clamp01(1 - distance / EXPLORE_PASSIVE_CONFIDENCE_RADIUS)
-      const scanConfidenceDelta = canStartScan
-        ? computeExploreScanConfidenceDelta(distance)
-        : 0
-      const confidenceDelta =
-        passiveStrength * (input.dtMs / 1000) * 0.16 +
-        scanConfidenceDelta
-
-      if (confidenceDelta <= 0) {
-        continue
-      }
-
-      const progress = this.getOrCreateTransmissionProgress(
-        node.transmissionId,
-        this.content.transmissions[node.transmissionId]?.areaId ?? node.areaId,
-      )
-      progress.signalConfidence = Math.min(
-        EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE,
-        (progress.signalConfidence ?? 0) + confidenceDelta,
-      )
-      if (progress.signalConfidence >= EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE && !progress.signalDiscoveredAt) {
-        progress.signalDiscoveredAt = new Date().toISOString()
-      }
-    }
-  }
-
-  private buildExploreSignalHints(input: {
-    mapLogic: WorldMapLogic
-    featureAccess: FeatureAccessState
-    playerPosition: Vector2
-  }): ExploreSignalHintViewModel[] {
-    if (!this.activeProfile) {
-      return []
-    }
-    const transmissionProgress = toRecord(this.activeProfile.transmissionProgress, "transmissionId")
-    const scanElapsedMs = this.exploreElapsedMs - this.lastExploreScanAtMs
-    const scanHintActive = scanElapsedMs <= EXPLORE_SIGNAL_HINT_DURATION_MS
-
-    const transmissionHints = input.mapLogic.transmissionNodes
-      .filter((node) => input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId))
-      .filter((node) => !isTransmissionSignalIdentified(transmissionProgress[node.transmissionId]))
-      .flatMap<ExploreSignalHintViewModel>((node) => {
-        const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-        const passiveStrength = clamp01(1 - distance / EXPLORE_PASSIVE_SIGNAL_RADIUS)
-        const scanStrength = scanHintActive
-          ? computeExploreScanHintStrength(distance, scanElapsedMs)
-          : 0
-        const strength = Math.max(passiveStrength, scanStrength * 0.9)
-        if (strength <= 0.04) {
-          return []
-        }
-        const transmission = this.content.transmissions[node.transmissionId]
-        return [{
-          nodeId: node.nodeId,
-          kind: "transmission",
-          category: transmission?.category,
-          bearingRad: Math.atan2(node.y - input.playerPosition.y, node.x - input.playerPosition.x),
-          distanceBand: readDistanceBand(distance),
-          strength,
-          confidence: transmissionProgress[node.transmissionId]?.signalConfidence ?? 0,
-          expiresAtMs: scanStrength > 0 ? this.lastExploreScanAtMs + EXPLORE_SIGNAL_HINT_DURATION_MS : undefined,
-        }]
-      })
-
-    const collectibleHints = input.mapLogic.collectibleNodes
-      .filter((node) => !this.activeProfile?.profile.collectedNodeIds.includes(node.nodeId))
-      .filter((node) => input.featureAccess.visibleAreaIds.includes(node.areaId))
-      .flatMap<ExploreSignalHintViewModel>((node) => {
-        const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-        const passiveStrength = clamp01(1 - distance / (EXPLORE_PASSIVE_SIGNAL_RADIUS * 0.72))
-        const scanStrength = scanHintActive
-          ? computeExploreScanHintStrength(distance, scanElapsedMs)
-          : 0
-        const strength = Math.max(passiveStrength, scanStrength * 0.85)
-        if (strength <= 0.06) {
-          return []
-        }
-        return [{
-          nodeId: node.nodeId,
-          kind: node.collectibleKind === "hiddenEquipment" ? "equipment" : "repair",
-          category: "maintenance",
-          bearingRad: Math.atan2(node.y - input.playerPosition.y, node.x - input.playerPosition.x),
-          distanceBand: readDistanceBand(distance),
-          strength,
-          confidence: strength,
-          expiresAtMs: scanStrength > 0 ? this.lastExploreScanAtMs + EXPLORE_SIGNAL_HINT_DURATION_MS : undefined,
-        }]
-      })
-
-    return [...transmissionHints, ...collectibleHints]
-      .sort((left, right) => right.strength - left.strength)
-      .slice(0, 6)
   }
 
   private createArchiveSnapshot() {
@@ -1816,9 +1749,12 @@ export class MagnoliaGameSession {
     return { events: [], presentationRequests: [] }
   }
 
-  private handleExploreNodeInteraction(nodeId: WorldMapNodeId): void {
+  private handleExploreNodeInteraction(nodeId: WorldMapNodeId): {
+    events: DomainEvent[]
+    presentationRequests: PresentationRequest[]
+  } {
     if (!this.activeProfile || this.screen !== "explore") {
-      return
+      return { events: [], presentationRequests: [] }
     }
 
     const mapLogic = this.content.mapLogic[this.content.areas[this.activeProfile.profile.currentAreaId].mapId]
@@ -1830,7 +1766,16 @@ export class MagnoliaGameSession {
       isWithinRadius(playerPosition, { x: collectible.x, y: collectible.y }, collectible.interactionRadius)
     ) {
       this.handleCollectItem({ type: "collectItem", nodeId: collectible.nodeId })
-      return
+      return {
+        events: [
+          {
+            type: "collectibleCollected",
+            nodeId: collectible.nodeId,
+            collectibleKind: collectible.collectibleKind,
+          },
+        ],
+        presentationRequests: [],
+      }
     }
 
     const warp = mapLogic.warpNodes.find((node) => node.nodeId === nodeId)
@@ -1842,14 +1787,14 @@ export class MagnoliaGameSession {
       this.activeProfile.profile.playerPosition = {
         ...this.content.areas[warp.warpTargetAreaId].worldPosition,
       }
-      this.presentationQueue.push(
-        ...createWarpTransitionPresentation({
+      return {
+        events: [],
+        presentationRequests: createWarpTransitionPresentation({
           worldPosition: playerPosition,
           areaId: warp.areaId,
           destination: "explore",
         }),
-      )
-      return
+      }
     }
 
     const transmission = mapLogic.transmissionNodes.find((node) => node.nodeId === nodeId)
@@ -1861,8 +1806,20 @@ export class MagnoliaGameSession {
         transmission.interactionRadius,
       )
     ) {
-      this.startMission(this.content.transmissions[transmission.transmissionId].missionId)
+      const missionId = this.content.transmissions[transmission.transmissionId].missionId
+      this.startMission(missionId)
+      return {
+        events: [
+          {
+            type: "missionStarted",
+            missionId,
+          },
+        ],
+        presentationRequests: [],
+      }
     }
+
+    return { events: [], presentationRequests: [] }
   }
 
   private revealCurrentArea(playerPosition: Vector2, mapLogic: WorldMapLogic): {
@@ -2143,6 +2100,12 @@ export class MagnoliaGameSession {
         continue
       }
 
+      if (projectile.meleeSweep) {
+        this.applyMeleeSweepProjectileDamage(battle, projectile)
+        remainingProjectiles.push(projectile)
+        continue
+      }
+
       if (projectile.nonColliding) {
         remainingProjectiles.push(projectile)
         continue
@@ -2229,6 +2192,37 @@ export class MagnoliaGameSession {
       events,
       presentationRequests,
       effectRequests,
+    }
+  }
+
+  private applyMeleeSweepProjectileDamage(
+    battle: InternalBattleState,
+    projectile: InternalProjectileState,
+  ): void {
+    const sweep = projectile.meleeSweep
+    if (!sweep) {
+      return
+    }
+
+    const blade = resolveMeleeSweepBlade(projectile)
+    if (!blade) {
+      return
+    }
+
+    for (const enemy of battle.enemies) {
+      if (sweep.hitEnemyInstanceIds.includes(enemy.enemyInstanceId)) {
+        continue
+      }
+      if (!doesCircleIntersectSegment(enemy.position, enemy.radius, blade.start, blade.tip, blade.width)) {
+        continue
+      }
+
+      enemy.hp -= sweep.damage
+      sweep.hitEnemyInstanceIds.push(enemy.enemyInstanceId)
+      if (sweep.burnDamagePerSec && sweep.burnDurationMs) {
+        enemy.burnDamagePerSec = sweep.burnDamagePerSec
+        enemy.burnUntilMs = battle.elapsedMs + sweep.burnDurationMs
+      }
     }
   }
 
@@ -2526,6 +2520,7 @@ export class MagnoliaGameSession {
         battle.projectiles.push({
           projectileInstanceId: this.nextInstanceId(pattern.projectileId),
           projectileId: pattern.projectileId,
+          visualRole: pattern.visualRole,
           side: "enemy",
           position: { ...enemy.position },
           velocity: {
@@ -2557,6 +2552,7 @@ export class MagnoliaGameSession {
         battle.projectiles.push({
           projectileInstanceId: this.nextInstanceId(pattern.projectileId),
           projectileId: pattern.projectileId,
+          visualRole: pattern.visualRole,
           side: "enemy",
           position: { ...enemy.position },
           velocity: {
@@ -2675,14 +2671,110 @@ function uniqueIds<T>(values: T[]): T[] {
   return Array.from(new Set(values))
 }
 
-function readDistanceBand(distance: number): ExploreSignalHintViewModel["distanceBand"] {
-  if (distance <= 180) {
-    return "near"
+function resolveMeleeSweepBlade(projectile: InternalProjectileState): {
+  start: Vector2
+  tip: Vector2
+  width: number
+} | null {
+  if (!projectile.meleeSweep || !projectile.initialLifetimeMs || projectile.initialLifetimeMs <= 0) {
+    return null
   }
-  if (distance <= 360) {
-    return "mid"
+
+  const rawProgress = clamp01((projectile.ageMs ?? 0) / projectile.initialLifetimeMs)
+  const swingPhase = clamp01(
+    (rawProgress - MELEE_SWEEP_SWING_START_RATIO) / MELEE_SWEEP_SWING_ACTIVE_RATIO,
+  )
+  const fadeIn = clamp01(rawProgress / 0.12)
+  const fadeOut = clamp01((1 - rawProgress) / 0.26)
+  if (Math.min(fadeIn, fadeOut) <= 0.01) {
+    return null
   }
-  return "far"
+
+  // 描画側の剣と同じ係数で現在の刃だけを作り、扇形全体に当たらないようにします。
+  const direction = normalizeBattleDirection(projectile.velocity)
+  const baseAngle = Math.atan2(direction.y, direction.x)
+  const sweepSpan = (Math.max(1, projectile.meleeSweep.arcDeg) * Math.PI) / 180
+  const bladeAngle = baseAngle - sweepSpan * 0.5 + sweepSpan * easeInOutCubic(swingPhase)
+  const bladeDirection = {
+    x: Math.cos(bladeAngle),
+    y: Math.sin(bladeAngle),
+  }
+  const bladeStart = Math.max(12, projectile.radius * MELEE_SWEEP_BLADE_START_RATIO)
+  const bladeLength = projectile.radius * MELEE_SWEEP_BLADE_LENGTH_RATIO
+  const impactPulse = Math.sin(Math.PI * swingPhase)
+  const bladeWidth =
+    Math.max(7.4, projectile.radius * MELEE_SWEEP_BLADE_WIDTH_RATIO) *
+    (1 + impactPulse * 0.22)
+
+  return {
+    start: {
+      x: projectile.position.x + bladeDirection.x * bladeStart,
+      y: projectile.position.y + bladeDirection.y * bladeStart,
+    },
+    tip: {
+      x: projectile.position.x + bladeDirection.x * bladeLength,
+      y: projectile.position.y + bladeDirection.y * bladeLength,
+    },
+    width: bladeWidth,
+  }
+}
+
+function normalizeBattleDirection(vector: Vector2): Vector2 {
+  const normalized = normalizeVector(vector)
+  if (Math.hypot(normalized.x, normalized.y) <= 0.001) {
+    return { x: 0, y: -1 }
+  }
+  return normalized
+}
+
+function doesCircleIntersectSegment(
+  circlePosition: Vector2,
+  circleRadius: number,
+  start: Vector2,
+  end: Vector2,
+  segmentRadius: number,
+): boolean {
+  const hitRadius = circleRadius + segmentRadius
+  return squaredDistanceToSegment(circlePosition, start, end) <= hitRadius * hitRadius
+}
+
+function squaredDistanceToSegment(point: Vector2, start: Vector2, end: Vector2): number {
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  const lengthSq = dx * dx + dy * dy
+  if (lengthSq <= 0.0001) {
+    const px = point.x - start.x
+    const py = point.y - start.y
+    return px * px + py * py
+  }
+  const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSq))
+  const nearest = {
+    x: start.x + dx * t,
+    y: start.y + dy * t,
+  }
+  const px = point.x - nearest.x
+  const py = point.y - nearest.y
+  return px * px + py * py
+}
+
+function easeInOutCubic(value: number): number {
+  const clamped = clamp01(value)
+  return clamped < 0.5
+    ? 4 * clamped * clamped * clamped
+    : 1 - (-2 * clamped + 2) ** 3 / 2
+}
+
+function shouldShowExploreScanHint(input: {
+  clearedMissionIds: MissionId[]
+  unlockedFlags: string[]
+  lastScanAtMs: number
+}): boolean {
+  // scan 誘導は操作の導入だけが目的です。ミッション完了または scan 実行後は再表示しません。
+  return (
+    input.clearedMissionIds.length === 0 &&
+    !input.unlockedFlags.includes(EXPLORE_SCAN_HINT_DISMISSED_FLAG) &&
+    !Number.isFinite(input.lastScanAtMs)
+  )
 }
 
 function hashString(input: string): number {

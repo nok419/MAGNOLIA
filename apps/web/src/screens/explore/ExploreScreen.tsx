@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { CSSProperties, MouseEvent } from "react"
 import type { ExploreSnapshot, ShipVariant, WorldMapNodeId } from "@magnolia/contracts"
-import type { ExploreNodeRenderState, ExploreRenderState } from "@magnolia/game-session"
+import type { ExploreRenderState } from "@magnolia/game-session"
 import {
   REBOOT_SETTLE_BLACKOUT_RATIO,
   type ExplorePresentationState,
 } from "@/app/explore-presentation"
 import type { DisplayOptions } from "@/app/display-options"
-import { ExploreCanvas, type ExploreOverlayFrame } from "@/components/ExploreCanvas"
+import { ExploreCanvas, type ExploreOverlayFrame } from "@/render/explore/ExploreCanvasImpl"
 import {
   InteractionPromptCallout,
   type InteractionPromptPlacement,
@@ -74,7 +74,6 @@ export function ExploreScreen({
       : undefined
   const [waveformFrame, setWaveformFrame] = useState(0)
   const [overlayFrame, setOverlayFrame] = useState<ExploreOverlayFrame | null>(null)
-  const [hasSeenFirstScan, setHasSeenFirstScan] = useState(false)
 
   const handleOverlayFrame = useCallback((nextFrame: ExploreOverlayFrame) => {
     setOverlayFrame((currentFrame) =>
@@ -94,13 +93,6 @@ export function ExploreScreen({
     return () => window.clearInterval(timerId)
   }, [canShowStrengthMeter, presentation.hidesHud])
 
-  useEffect(() => {
-    // 初回だけ scan の実行を促し、scan pulse が生成されたら誘導を閉じます。
-    if (renderState.scanPulses.length > 0) {
-      setHasSeenFirstScan(true)
-    }
-  }, [renderState.scanPulses.length])
-
   // Background Music（BGM）同期前の仮プロファイルです。低速の包絡線と短いピークを分け、
   // 実波形へ差し替える際も User Interface（UI）側の距離スケールを変えずに済むようにします。
   const waveformBars = useMemo(() => {
@@ -116,7 +108,8 @@ export function ExploreScreen({
   }
   const activeStrengthSegments = Math.round(clampedStrength * STRENGTH_SEGMENT_COUNT)
   const canShowPrompts = presentation.kind === "none"
-  const shouldShowScanHint = canShowPrompts && overlayFrame !== null && !hasSeenFirstScan
+  const shouldShowScanHint =
+    canShowPrompts && overlayFrame !== null && renderState.shouldShowScanHint
   const shipPromptPlacement = overlayFrame
     ? resolveInteractionPromptPlacement(overlayFrame.playerPoint, overlayFrame.width, overlayFrame.height)
     : "right-up"
@@ -354,41 +347,18 @@ function readClickableExploreNodeId(
   overlayFrame: ExploreOverlayFrame,
   clickPoint: { x: number; y: number },
 ): WorldMapNodeId | null {
-  const candidates: ExploreClickTarget[] = []
-
-  for (const node of renderState.visibleCollectibles) {
-    if (!isNodeInsideInteractionRange(renderState, node)) {
-      continue
-    }
-    const anchor = worldToOverlayPoint(overlayFrame, node.x, node.y)
-    if (!isOverlayPointVisible(anchor, overlayFrame) || !isNodeInsideVision(renderState, node)) {
-      continue
-    }
-    candidates.push({
-      nodeId: node.nodeId,
-      x: anchor.x,
-      y: anchor.y,
-      radius: node.markerKind === "resource" ? 17 : 20,
-      distanceToPlayer: worldDistance(renderState.playerPosition, node),
+  const candidates = renderState.interactionTargets
+    .map((target): ExploreClickTarget => {
+      const anchor = worldToOverlayPoint(overlayFrame, target.x, target.y)
+      return {
+        nodeId: target.nodeId,
+        x: anchor.x,
+        y: anchor.y,
+        radius: target.radius,
+        distanceToPlayer: target.distanceToPlayer,
+      }
     })
-  }
-
-  for (const node of renderState.visibleTransmissions) {
-    if (node.state === "complete" || !isNodeInsideInteractionRange(renderState, node)) {
-      continue
-    }
-    const anchor = worldToOverlayPoint(overlayFrame, node.x, node.y)
-    if (!isOverlayPointVisible(anchor, overlayFrame) || !isNodeInsideVision(renderState, node)) {
-      continue
-    }
-    candidates.push({
-      nodeId: node.nodeId,
-      x: anchor.x,
-      y: anchor.y,
-      radius: 24,
-      distanceToPlayer: worldDistance(renderState.playerPosition, node),
-    })
-  }
+    .filter((target) => isOverlayPointVisible(target, overlayFrame))
 
   const clicked = candidates.filter((candidate) => {
     return Math.hypot(clickPoint.x - candidate.x, clickPoint.y - candidate.y) <= candidate.radius
@@ -450,27 +420,6 @@ function isOverlayPointVisible(
     point.y >= overlayFrame.padding - margin &&
     point.y <= overlayFrame.height - overlayFrame.padding + margin
   )
-}
-
-function isNodeInsideVision(
-  renderState: ExploreRenderState,
-  node: ExploreNodeRenderState,
-) {
-  return worldDistance(renderState.playerPosition, node) <= renderState.visionRadius
-}
-
-function isNodeInsideInteractionRange(
-  renderState: ExploreRenderState,
-  node: ExploreNodeRenderState,
-) {
-  return worldDistance(renderState.playerPosition, node) <= (node.interactionRadius ?? 0)
-}
-
-function worldDistance(
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-) {
-  return Math.hypot(a.x - b.x, a.y - b.y)
 }
 
 function EquipSlotRow({ label, value }: { label: string; value: string }) {

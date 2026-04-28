@@ -1,17 +1,23 @@
 import { useEffect, useRef } from "react"
 import type { DisplayOptions } from "@/app/display-options"
+import { shouldDrawVisualFrame } from "@/app/display-options"
+import {
+  drawCarrierLineField,
+  drawPeripheralVignette,
+  drawSignalParticleField,
+  drawVoidGradient,
+} from "@/app/effect-primitives"
+import { hashString } from "@/app/visual-seed"
 
-type MenuParticle = {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  a: number
-  r: number
-  phase: number
-}
+type MenuTab = "equipment" | "archive" | "settings"
 
-export function MenuBackdropCanvas({ displayOptions }: { displayOptions: DisplayOptions }) {
+export function MenuBackdropCanvas({
+  activeTab,
+  displayOptions,
+}: {
+  activeTab: MenuTab
+  displayOptions: DisplayOptions
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -19,69 +25,99 @@ export function MenuBackdropCanvas({ displayOptions }: { displayOptions: Display
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    let animId: number
+    const canvasElement: HTMLCanvasElement = canvas
+    const context: CanvasRenderingContext2D = ctx
+
+    let animId = 0
     const dpr = displayOptions.canvasPixelRatio
     let lastDrawAt = 0
+    const size = { width: 1, height: 1 }
+    const seed = hashString(`menu:${activeTab}`)
 
     function resize() {
-      if (!canvas) return
-      canvas.width = window.innerWidth * dpr
-      canvas.height = window.innerHeight * dpr
+      size.width = Math.max(1, window.innerWidth)
+      size.height = Math.max(1, window.innerHeight)
+      canvasElement.width = size.width * dpr
+      canvasElement.height = size.height * dpr
+      canvasElement.style.width = `${size.width}px`
+      canvasElement.style.height = `${size.height}px`
     }
     resize()
-
-    // 背景粒子は menu 全体の装飾であり、装備や archive の state とは独立させます。
-    const particles: MenuParticle[] = Array.from({ length: 40 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      vx: (Math.random() - 0.5) * 0.15,
-      vy: -0.05 - Math.random() * 0.15,
-      a: 0.05 + Math.random() * 0.15,
-      r: 0.5 + Math.random() * 1.5,
-      phase: Math.random() * Math.PI * 2,
-    }))
+    window.addEventListener("resize", resize)
 
     function step(t: number) {
-      if (!ctx || !canvas) return
-      if (
-        displayOptions.lowFrameRateMode &&
-        t - lastDrawAt < displayOptions.targetFrameIntervalMs
-      ) {
+      if (!shouldDrawVisualFrame({ now: t, lastDrawAt, options: displayOptions })) {
         animId = requestAnimationFrame(step)
         return
       }
       lastDrawAt = t
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
+      context.setTransform(dpr, 0, 0, dpr, 0, 0)
+      context.clearRect(0, 0, size.width, size.height)
 
-      const grad = ctx.createLinearGradient(0, window.innerHeight, 0, 0)
-      grad.addColorStop(0, "rgba(93, 164, 209, 0.04)")
-      grad.addColorStop(1, "transparent")
-      ctx.fillStyle = grad
-      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
+      drawVoidGradient(context, size.width, size.height)
+      drawCarrierLineField(context, {
+        seed: seed + 17,
+        width: size.width,
+        height: size.height,
+        timeMs: t,
+        orientation: "horizontal",
+        density: 10,
+        curvature: 0.05,
+        alpha: 0.07,
+        focus: readMenuFocus(activeTab, size.width, size.height),
+        centerQuietRatio: 0.28,
+      })
+      drawCarrierLineField(context, {
+        seed: seed + 29,
+        width: size.width,
+        height: size.height,
+        timeMs: t,
+        orientation: "diagonal",
+        density: 5,
+        curvature: 0.04,
+        alpha: 0.04,
+      })
+      drawSignalParticleField(context, {
+        seed: seed + 41,
+        width: size.width,
+        height: size.height,
+        timeMs: t,
+        density: "normal",
+        depth: "far",
+        drift: "current",
+        colorRole: "line",
+        reduceMotion: displayOptions.lowFrameRateMode,
+        alpha: 0.92,
+      })
+      drawSignalParticleField(context, {
+        seed: seed + 53,
+        width: size.width,
+        height: size.height,
+        timeMs: t,
+        density: "sparse",
+        depth: "far",
+        drift: "toward-focus",
+        colorRole: activeTab === "archive" ? "memory" : "signal",
+        reduceMotion: true,
+        alpha: activeTab === "archive" ? 0.22 : 0.12,
+        focus: readMenuFocus(activeTab, size.width, size.height),
+      })
+      drawPeripheralVignette(context, { width: size.width, height: size.height, strength: 0.84 })
 
-      for (const particle of particles) {
-        particle.x += particle.vx
-        particle.y += particle.vy
-        if (particle.y < -10) {
-          particle.y = window.innerHeight + 10
-          particle.x = Math.random() * window.innerWidth
-        }
-        if (particle.x < -10) particle.x = window.innerWidth + 10
-        if (particle.x > window.innerWidth + 10) particle.x = -10
-
-        const flicker = 0.6 + 0.4 * Math.sin(t * 0.001 + particle.phase)
-        ctx.fillStyle = `rgba(140, 200, 255, ${particle.a * flicker})`
-        ctx.beginPath()
-        ctx.arc(particle.x, particle.y, particle.r, 0, Math.PI * 2)
-        ctx.fill()
-      }
       animId = requestAnimationFrame(step)
     }
 
     animId = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(animId)
-  }, [displayOptions])
+    return () => {
+      window.removeEventListener("resize", resize)
+      cancelAnimationFrame(animId)
+    }
+  }, [activeTab, displayOptions])
 
   return <canvas ref={canvasRef} className="menu-screen__bg" />
+}
+
+function readMenuFocus(activeTab: MenuTab, width: number, height: number) {
+  const xRatio = activeTab === "equipment" ? 0.32 : activeTab === "archive" ? 0.54 : 0.72
+  return { x: width * xRatio, y: height * 0.48 }
 }
