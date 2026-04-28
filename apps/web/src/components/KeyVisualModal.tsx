@@ -3,17 +3,19 @@ import type { BattleRenderState } from "@magnolia/game-session"
 import { BattleCanvas } from "@/components/BattleCanvas"
 import { MagnoliaLogo } from "@/components/title/MagnoliaLogo"
 import { SignalBackdropCanvas } from "@/components/title/SignalBackdropCanvas"
+import type { DisplayOptions } from "@/app/display-options"
 
 type KeyVisualModalProps = {
   variant: "fullscreen" | "windowed"
   onClose: () => void
+  displayOptions: DisplayOptions
 }
 
 /* 黄金角 (137.508°) — フィボナッチ弾幕用 */
 const TAU = Math.PI * 2
 const GOLDEN_ANGLE = TAU * (1 - 1 / 1.618033988749895) // ≈ 2.3999…
 
-export function KeyVisualModal({ variant, onClose }: KeyVisualModalProps) {
+export function KeyVisualModal({ variant, onClose, displayOptions }: KeyVisualModalProps) {
   const [elapsedMs, setElapsedMs] = useState(0)
 
   useEffect(() => {
@@ -30,13 +32,22 @@ export function KeyVisualModal({ variant, onClose }: KeyVisualModalProps) {
   useEffect(() => {
     let animationFrameId = 0
     const startedAt = performance.now()
+    let lastDrawAt = 0
     function step(now: number) {
+      if (
+        displayOptions.lowFrameRateMode &&
+        now - lastDrawAt < displayOptions.targetFrameIntervalMs
+      ) {
+        animationFrameId = window.requestAnimationFrame(step)
+        return
+      }
+      lastDrawAt = now
       setElapsedMs(now - startedAt)
       animationFrameId = window.requestAnimationFrame(step)
     }
     animationFrameId = window.requestAnimationFrame(step)
     return () => window.cancelAnimationFrame(animationFrameId)
-  }, [])
+  }, [displayOptions])
 
   const renderState = useMemo(() => buildKeyVisualRenderState(elapsedMs, variant), [elapsedMs, variant])
 
@@ -252,12 +263,17 @@ export function KeyVisualModal({ variant, onClose }: KeyVisualModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Layer 1 — タイトル画面背景 (Signal/Particle backdrop) */}
-        <SignalBackdropCanvas className="key-visual-modal__particles" />
+        <SignalBackdropCanvas className="key-visual-modal__particles" displayOptions={displayOptions} />
 
         {/* Layer 3 — ゲーム描画 (透過背景で下レイヤーを活かす) */}
         <div className="key-visual-modal__battle-frame">
           {/* 主題の美観を最大化したいので、ユーザ設定に関わらず art バリアントで固定表示する。 */}
-          <BattleCanvas renderState={renderState} transparentBg shipVariant="art" />
+          <BattleCanvas
+            renderState={renderState}
+            transparentBg
+            shipVariant="art"
+            displayOptions={displayOptions}
+          />
         </div>
 
         {/* Layer 4 — ロゴオーバーレイ (グリッチ+グロー付き MAGNOLIA) */}

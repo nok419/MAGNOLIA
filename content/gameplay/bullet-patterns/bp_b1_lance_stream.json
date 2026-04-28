@@ -1,0 +1,13 @@
+{
+  "bulletPatternId": "bp_b1_lance_stream",
+  "patternKind": "radial",
+  "projectileId": "proj_enemy_lance",
+  "cadenceMs": 360,
+  "burstCount": 3,
+  "params": {
+    "aimAtPlayer": false,
+    "baseAngleDeg": 0,
+    "rotationDegPerSec": 34,
+    "phaseOffsetDeg": 0
+  }
+}

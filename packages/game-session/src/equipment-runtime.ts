@@ -261,7 +261,11 @@ export function fireDefaultMainShot(input: {
       spreadDeg: readNumericParam(mainShotEffect, "spreadDeg", 0),
       damage: readNumericParam(mainShotEffect, "damage", 10),
       params: {
+        foldSideProjectiles: Boolean(mainShotEffect?.params?.foldSideProjectiles),
+        foldBendAfterMs: readNumericParam(mainShotEffect, "foldBendAfterMs", 140),
+        foldBendDurationMs: readNumericParam(mainShotEffect, "foldBendDurationMs", 70),
         meleeEnabled: Boolean(mainShotEffect?.params?.meleeEnabled),
+        meleeStyle: String(mainShotEffect?.params?.meleeStyle ?? "burst"),
         meleeRange: readNumericParam(mainShotEffect, "meleeRange", 80),
         meleeProjectileId: String(
           mainShotEffect?.params?.meleeProjectileId ?? "proj_player_pulse_melee",
@@ -270,6 +274,8 @@ export function fireDefaultMainShot(input: {
         meleeSpreadDeg: readNumericParam(mainShotEffect, "meleeSpreadDeg", 120),
         meleeShotCount: readNumericParam(mainShotEffect, "meleeShotCount", 5),
         meleeSequentialDelayMs: readNumericParam(mainShotEffect, "meleeSequentialDelayMs", 30),
+        meleeSweepDurationMs: readNumericParam(mainShotEffect, "meleeSweepDurationMs", 560),
+        meleeCooldownMs: readNumericParam(mainShotEffect, "meleeCooldownMs", 760),
       },
     },
   ]
@@ -607,10 +613,17 @@ export const defaultEquipmentRuntimeRegistry: EquipmentRuntimeRegistry = {
           count: Math.max(1, readNumericParam(mainShotEffect, "shotCount", 1)),
           spreadDeg: readNumericParam(mainShotEffect, "spreadDeg", 0),
           damage: readNumericParam(mainShotEffect, "damage", 15),
+          lifetimeMs: readNumericParam(mainShotEffect, "lifetimeMs", 1800),
           params: {
+            // キャリアは本体を消さず、進路上へ周期的な爆発を残す主兵装として扱います。
+            piercing: true,
             trailExplosion: Boolean(mainShotEffect?.params?.trailExplosion),
             explosionRadius: readNumericParam(mainShotEffect, "explosionRadius", 30),
-            explosionDelayMs: readNumericParam(mainShotEffect, "explosionDelayMs", 200),
+            trailExplosionIntervalMs: readNumericParam(
+              mainShotEffect,
+              "trailExplosionIntervalMs",
+              180,
+            ),
             explosionDamageMultiplier: readNumericParam(
               mainShotEffect,
               "explosionDamageMultiplier",
@@ -769,6 +782,7 @@ export const defaultEquipmentRuntimeRegistry: EquipmentRuntimeRegistry = {
       },
       visibilityModifiers: {
         burnEnabled: Boolean(effect.params?.addBurnOnHit),
+        inversePhaseVisual: true,
       },
     }),
   },

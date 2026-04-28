@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import type { DisplayOptions } from "@/app/display-options"
 
 type MenuParticle = {
   x: number
@@ -10,7 +11,7 @@ type MenuParticle = {
   phase: number
 }
 
-export function MenuBackdropCanvas() {
+export function MenuBackdropCanvas({ displayOptions }: { displayOptions: DisplayOptions }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -19,7 +20,8 @@ export function MenuBackdropCanvas() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
     let animId: number
-    const dpr = window.devicePixelRatio || 1
+    const dpr = displayOptions.canvasPixelRatio
+    let lastDrawAt = 0
 
     function resize() {
       if (!canvas) return
@@ -41,6 +43,14 @@ export function MenuBackdropCanvas() {
 
     function step(t: number) {
       if (!ctx || !canvas) return
+      if (
+        displayOptions.lowFrameRateMode &&
+        t - lastDrawAt < displayOptions.targetFrameIntervalMs
+      ) {
+        animId = requestAnimationFrame(step)
+        return
+      }
+      lastDrawAt = t
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
 
@@ -71,7 +81,7 @@ export function MenuBackdropCanvas() {
 
     animId = requestAnimationFrame(step)
     return () => cancelAnimationFrame(animId)
-  }, [])
+  }, [displayOptions])
 
   return <canvas ref={canvasRef} className="menu-screen__bg" />
 }

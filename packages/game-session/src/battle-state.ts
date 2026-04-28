@@ -35,11 +35,22 @@ export type InternalProjectileState = {
   side: "player" | "enemy"
   position: Vector2
   velocity: Vector2
+  ageMs?: number
+  initialLifetimeMs?: number
   radius: number
   remainingMs: number
   spawnDelayMs: number
   damage: number
   noiseDamage: number
+  preBendVelocity?: Vector2
+  postBendVelocity?: Vector2
+  bendAfterMs?: number
+  bendDurationMs?: number
+  trailExplosionIntervalMs?: number
+  trailExplosionTimerMs?: number
+  trailExplosionRadius?: number
+  trailExplosionDamageMultiplier?: number
+  trailExplosionVisualProjectileId?: string
   explosiveRadius?: number
   burnDamagePerSec?: number
   burnDurationMs?: number
@@ -47,6 +58,8 @@ export type InternalProjectileState = {
   explosionDamageMultiplier?: number
   explosionVisualProjectileId?: string
   nonColliding?: boolean
+  anchorToPlayer?: boolean
+  inversePhaseVisual?: boolean
 }
 
 export type InternalBarrierState = {
@@ -103,6 +116,7 @@ export type InternalBattleState = {
   spawnedWaveIndexes: Set<number>
   playerPosition: Vector2
   mainCooldownMs: number
+  mainMeleeCooldownMs: number
   subCooldownMs: number
   barrier?: InternalBarrierState
   supportFields: InternalSupportFieldState[]

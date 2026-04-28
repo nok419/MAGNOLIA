@@ -5,10 +5,12 @@ import {
   drawCollectibleMarker,
   drawTransmissionMarker,
 } from "@/app/canvas-markers"
+import type { DisplayOptions } from "@/app/display-options"
 
 type MiniMapProps = {
   snapshot: ExploreSnapshot
   renderState: ExploreRenderState
+  displayOptions: DisplayOptions
 }
 
 const SIZE = 180
@@ -19,7 +21,7 @@ const TAU = Math.PI * 2
 const TICK_COUNT = 72 // every 5 degrees
 const CARDINAL_TICKS = [0, 18, 36, 54] // N, E, S, W indices
 
-export function MiniMap({ snapshot, renderState }: MiniMapProps) {
+export function MiniMap({ snapshot, renderState, displayOptions }: MiniMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const sweepAngleRef = useRef(0)
   const animRef = useRef(0)
@@ -30,7 +32,7 @@ export function MiniMap({ snapshot, renderState }: MiniMapProps) {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const dpr = window.devicePixelRatio || 1
+    const dpr = displayOptions.canvasPixelRatio
     canvas.width = SIZE * dpr
     canvas.height = SIZE * dpr
     canvas.style.width = `${SIZE}px`
@@ -101,15 +103,9 @@ export function MiniMap({ snapshot, renderState }: MiniMapProps) {
       const visionRadiusPx =
         (renderState.visionRadius / Math.max(1, renderState.worldBounds.width)) * SIZE
 
-      // player glow
-      const glowGrad = ctx.createRadialGradient(pp.x, pp.y, 0, pp.x, pp.y, 18)
-      glowGrad.addColorStop(0, "rgba(140, 220, 255, 0.2)")
-      glowGrad.addColorStop(1, "rgba(140, 220, 255, 0)")
-      ctx.fillStyle = glowGrad
-      ctx.fillRect(pp.x - 18, pp.y - 18, 36, 36)
-
-      drawVisionCircle(ctx, pp.x, pp.y, visionRadiusPx, renderState.tutorialRestricted)
-      drawMiniPlayer(ctx, pp.x, pp.y, angle)
+      drawPlayerGlow(ctx, pp.x, pp.y, timeMs)
+      drawVisionCircle(ctx, pp.x, pp.y, visionRadiusPx, renderState.tutorialRestricted, timeMs)
+      drawMiniPlayer(ctx, pp.x, pp.y, angle, timeMs)
 
       ctx.restore() // end clip
 
@@ -131,7 +127,7 @@ export function MiniMap({ snapshot, renderState }: MiniMapProps) {
       running = false
       cancelAnimationFrame(animRef.current)
     }
-  }, [snapshot.map.fogBitmap, renderState])
+  }, [displayOptions, snapshot.map.fogBitmap, renderState])
 
   return <canvas ref={canvasRef} className="mini-map-canvas" />
 }
@@ -315,26 +311,57 @@ function drawVisionCircle(
   y: number,
   radius: number,
   restricted: boolean,
+  timeMs: number,
 ) {
   ctx.save()
+  const pulse = 0.72 + 0.28 * Math.sin(timeMs * 0.002)
+  // ミニマップ上の視界は硬い円ではなく、探査範囲の薄い波として読ませる。
+  const halo = ctx.createRadialGradient(x, y, radius * 0.72, x, y, radius * 1.1)
+  halo.addColorStop(0, "rgba(93, 164, 209, 0)")
+  halo.addColorStop(0.64, `rgba(140, 220, 255, ${restricted ? "0.045" : "0.03"})`)
+  halo.addColorStop(1, "rgba(93, 164, 209, 0)")
+  ctx.fillStyle = halo
+  ctx.beginPath()
+  ctx.arc(x, y, radius * 1.1, 0, TAU)
+  ctx.fill()
+
   ctx.strokeStyle = restricted
-    ? "rgba(140, 220, 255, 0.32)"
-    : "rgba(140, 220, 255, 0.22)"
-  ctx.lineWidth = 1
+    ? `rgba(140, 220, 255, ${(0.24 + pulse * 0.08).toFixed(3)})`
+    : `rgba(140, 220, 255, ${(0.15 + pulse * 0.06).toFixed(3)})`
+  ctx.lineWidth = 0.9
   ctx.beginPath()
   ctx.arc(x, y, radius, 0, TAU)
+  ctx.stroke()
+
+  ctx.strokeStyle = `rgba(93, 164, 209, ${(0.055 * pulse).toFixed(3)})`
+  ctx.lineWidth = 0.7
+  ctx.beginPath()
+  ctx.arc(x, y, radius * 0.78, 0, TAU)
   ctx.stroke()
   ctx.restore()
 }
 
-function drawMiniPlayer(ctx: CanvasRenderingContext2D, cx: number, cy: number, angle: number) {
+function drawPlayerGlow(ctx: CanvasRenderingContext2D, cx: number, cy: number, timeMs: number) {
+  const pulse = 0.72 + 0.28 * Math.sin(timeMs * 0.004)
+  const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 20)
+  glowGrad.addColorStop(0, `rgba(180, 235, 255, ${(0.22 * pulse).toFixed(3)})`)
+  glowGrad.addColorStop(0.42, `rgba(93, 164, 209, ${(0.1 * pulse).toFixed(3)})`)
+  glowGrad.addColorStop(1, "rgba(93, 164, 209, 0)")
+  ctx.fillStyle = glowGrad
+  ctx.beginPath()
+  ctx.arc(cx, cy, 20, 0, TAU)
+  ctx.fill()
+}
+
+function drawMiniPlayer(ctx: CanvasRenderingContext2D, cx: number, cy: number, angle: number, timeMs: number) {
   const h = 10
   const w = 6.5
+  const corePulse = 0.75 + 0.25 * Math.sin(timeMs * 0.004)
   ctx.save()
   ctx.translate(cx, cy)
   ctx.rotate(angle)
-  ctx.shadowColor = "rgba(255, 255, 255, 0.7)"
-  ctx.shadowBlur = 6
+  ctx.shadowColor = "rgba(170, 230, 255, 0.7)"
+  ctx.shadowBlur = 5 + corePulse * 3
   ctx.fillStyle = "#ffffff"
   ctx.beginPath()
   ctx.moveTo(0, -h * 0.6)

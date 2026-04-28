@@ -4,6 +4,7 @@ import { MagnoliaLogo } from "@/components/title/MagnoliaLogo"
 import { SignalBackdropCanvas } from "@/components/title/SignalBackdropCanvas"
 import { useMenuNavigation } from "@/hooks/useMenuNavigation"
 import type { SaveSlotSummary, SlotSelectMode } from "@/app/app-types"
+import type { DisplayOptions } from "@/app/display-options"
 
 type TitleScreenProps = {
   slots: SaveSlotSummary[]
@@ -12,6 +13,7 @@ type TitleScreenProps = {
   onCloseSlotSelect: () => void
   onConfirmSlot: (slotId: 1 | 2 | 3) => void
   onOpenSettings: () => void
+  displayOptions: DisplayOptions
 }
 
 type MenuEntry = {
@@ -28,6 +30,7 @@ export function TitleScreen({
   onCloseSlotSelect,
   onConfirmSlot,
   onOpenSettings,
+  displayOptions,
 }: TitleScreenProps) {
   const hasUsedSlot = slots.some((slot) => !slot.isEmpty)
   const [departing, setDeparting] = useState(false)
@@ -90,7 +93,7 @@ export function TitleScreen({
 
   return (
     <main className={`title-screen ${departing ? "title-screen--departing" : ""}`}>
-      <SignalBackdropCanvas />
+      <SignalBackdropCanvas displayOptions={displayOptions} />
       <div className="title-screen__backdrop" />
 
       <section className="title-screen__panel">

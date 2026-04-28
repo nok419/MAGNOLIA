@@ -24,6 +24,10 @@ export function useMagnoliaInput() {
     left: false,
     right: false,
   })
+  const previousMouseButtonsRef = useRef<MouseButtons>({
+    left: false,
+    right: false,
+  })
   const previousButtonsRef = useRef<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -46,6 +50,8 @@ export function useMagnoliaInput() {
       keyStateRef.current.clear()
       mouseButtonsRef.current.left = false
       mouseButtonsRef.current.right = false
+      previousMouseButtonsRef.current.left = false
+      previousMouseButtonsRef.current.right = false
       previousButtonsRef.current = {}
     }
 
@@ -138,8 +144,16 @@ export function useMagnoliaInput() {
         previousButtonsRef.current,
       )
     },
+    isPrimaryMouseJustPressed(): boolean {
+      const currentlyPressed = mouseButtonsRef.current.left
+      const wasPressed = previousMouseButtonsRef.current.left
+      previousMouseButtonsRef.current.left = currentlyPressed
+      return currentlyPressed && !wasPressed
+    },
     syncButtonEdges(settings: SettingsRow): void {
       syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
+      previousMouseButtonsRef.current.left = mouseButtonsRef.current.left
+      previousMouseButtonsRef.current.right = mouseButtonsRef.current.right
     },
   }
 }

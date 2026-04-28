@@ -221,3 +221,26 @@ button, input, select, textarea { font: inherit; }
   display: grid;
   gap: 4px;
 }
+
+.magnolia-app {
+  min-height: 100vh;
+}
+
+.magnolia-app--reduce-flashing .title-screen__logo--glitch-r,
+.magnolia-app--reduce-flashing .title-screen__logo--glitch-c,
+.magnolia-app--reduce-flashing .boot-console__ambient-noise,
+.magnolia-app--reduce-flashing .boot-console__ambient-scan,
+.magnolia-app--reduce-flashing .interaction-prompt__wave,
+.magnolia-app--reduce-flashing .interaction-prompt__key::before {
+  opacity: 0.45;
+}
+
+.magnolia-app--reduce-flashing .ehud__scanline,
+.magnolia-app--reduce-flashing .ehud-signal__waveform-cursor,
+.magnolia-app--reduce-flashing .boot-console__cursor {
+  animation-duration: 2.4s;
+}
+
+.magnolia-app--low-frame-rate canvas {
+  image-rendering: auto;
+}

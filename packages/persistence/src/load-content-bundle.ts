@@ -26,11 +26,19 @@ import type {
 import { type PresentationCueId } from "@magnolia/contracts"
 import areaBroadcastFacilityJson from "../../../content/gameplay/areas/area_broadcast_facility.json"
 import areaCentralTowerJson from "../../../content/gameplay/areas/area_central_tower.json"
+import bpA2LanceSpreadJson from "../../../content/gameplay/bullet-patterns/bp_a2_lance_spread.json"
+import bpB1CoreBurstJson from "../../../content/gameplay/bullet-patterns/bp_b1_core_burst.json"
+import bpB1LanceStreamJson from "../../../content/gameplay/bullet-patterns/bp_b1_lance_stream.json"
+import bpC1PressureRingJson from "../../../content/gameplay/bullet-patterns/bp_c1_pressure_ring.json"
 import bpHeavyBurstJson from "../../../content/gameplay/bullet-patterns/bp_heavy_burst.json"
 import bpRadialBurstJson from "../../../content/gameplay/bullet-patterns/bp_radial_burst.json"
 import bpScoutSingleJson from "../../../content/gameplay/bullet-patterns/bp_scout_single.json"
 import bpSpiralStreamJson from "../../../content/gameplay/bullet-patterns/bp_spiral_stream.json"
 import bpStandardSpreadJson from "../../../content/gameplay/bullet-patterns/bp_standard_spread.json"
+import enemyA1Json from "../../../content/gameplay/enemies/a1.json"
+import enemyA2Json from "../../../content/gameplay/enemies/a2.json"
+import enemyB1Json from "../../../content/gameplay/enemies/b1.json"
+import enemyC1Json from "../../../content/gameplay/enemies/c1.json"
 import enemyHeavyJson from "../../../content/gameplay/enemies/enemy_heavy.json"
 import enemyScoutJson from "../../../content/gameplay/enemies/enemy_scout.json"
 import enemyStandardJson from "../../../content/gameplay/enemies/enemy_standard.json"
@@ -62,7 +70,9 @@ import missionEvacuationJson from "../../../content/gameplay/missions/mission_ev
 import condAlwaysJson from "../../../content/gameplay/progression/conditions/cond_always.json"
 import condMissionGoodMorningClearedJson from "../../../content/gameplay/progression/conditions/cond_mission_good_morning_cleared.json"
 import projEnemyBasicJson from "../../../content/gameplay/projectiles/proj_enemy_basic.json"
+import projEnemyCoreJson from "../../../content/gameplay/projectiles/proj_enemy_core.json"
 import projEnemyGeoJson from "../../../content/gameplay/projectiles/proj_enemy_geo.json"
+import projEnemyLanceJson from "../../../content/gameplay/projectiles/proj_enemy_lance.json"
 import projEnemyPetalJson from "../../../content/gameplay/projectiles/proj_enemy_petal.json"
 import projPlayerCarrierJson from "../../../content/gameplay/projectiles/proj_player_carrier.json"
 import projPlayerCarrierBlastJson from "../../../content/gameplay/projectiles/proj_player_carrier_blast.json"
@@ -113,8 +123,20 @@ export function loadContentBundle(): ContentBundle {
     ...(txEvacuationChunksJson as TranscriptChunk[]),
   ]
   const mapLogic = [worldMapDemoJson as WorldMapLogic]
-  const enemies = [enemyHeavyJson, enemyScoutJson, enemyStandardJson] as EnemyArchetype[]
+  const enemies = [
+    enemyA1Json,
+    enemyA2Json,
+    enemyC1Json,
+    enemyB1Json,
+    enemyHeavyJson,
+    enemyScoutJson,
+    enemyStandardJson,
+  ] as EnemyArchetype[]
   const bulletPatterns = [
+    bpA2LanceSpreadJson,
+    bpC1PressureRingJson,
+    bpB1CoreBurstJson,
+    bpB1LanceStreamJson,
     bpHeavyBurstJson,
     bpRadialBurstJson,
     bpScoutSingleJson,
@@ -123,7 +145,9 @@ export function loadContentBundle(): ContentBundle {
   ] as BulletPattern[]
   const projectiles = [
     projEnemyBasicJson,
+    projEnemyCoreJson,
     projEnemyGeoJson,
+    projEnemyLanceJson,
     projEnemyPetalJson,
     projPlayerCarrierJson,
     projPlayerCarrierBlastJson,
@@ -178,6 +202,8 @@ export function loadContentBundle(): ContentBundle {
     themes: createDefaultThemes(areas.map((area) => area.themeId)),
     presentationCues: filterPresentationCues([
       "system.boot.message",
+      "system.reboot.sequence",
+      "system.reboot.settle",
       "tutorial.restriction.enter",
       "tutorial.restriction.release",
       "explore.player.trail",

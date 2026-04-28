@@ -27,6 +27,7 @@ export type ExploreNodeRenderState = {
   x: number
   y: number
   label?: string
+  interactionRadius?: number
   state?: "locked" | "available" | "partial" | "complete"
   markerKind?: "equipment" | "resource" | "investigation"
 }
@@ -44,6 +45,8 @@ export type ExploreRenderState = {
   visibleWarps: ExploreNodeRenderState[]
   visibleCollectibles: ExploreNodeRenderState[]
   nearestTransmissionStrength: number
+  /** 全通信（クリア済み含む）に対する近接度。波形表示用。 */
+  nearestAnyTransmissionStrength: number
   tutorialRestricted: boolean
 }
 
@@ -79,6 +82,8 @@ export type ProjectileRenderState = {
   position: Vector2
   velocity: Vector2
   radius: number
+  progress?: number
+  inversePhaseVisual?: boolean
 }
 
 export type SupportFieldRenderState = {

@@ -1,0 +1,10 @@
+{
+  "projectileId": "proj_enemy_core",
+  "side": "enemy",
+  "damage": 0,
+  "noiseDamage": 0.12,
+  "speed": 54,
+  "lifetimeMs": 13000,
+  "visualPresetId": "vis_bullet_enemy_core",
+  "hitboxPresetId": "hitbox_bullet_medium"
+}

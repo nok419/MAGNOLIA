@@ -1,0 +1,16 @@
+{
+  "enemyId": "a2",
+  "hp": 62,
+  "collisionDamage": 8,
+  "analysisValue": 10,
+  "behaviorKind": "straightDown",
+  "behaviorParams": {
+    "speed": 28
+  },
+  "bulletPatternIds": [
+    "bp_a2_lance_spread"
+  ],
+  "visualPresetId": "vis_enemy_a2",
+  "hitboxPresetId": "hitbox_enemy_medium",
+  "dropSelfRepairPoints": 10
+}

@@ -53,6 +53,7 @@ import type {
   Vector2,
   WarpMapNode,
   WorldMapLogic,
+  WorldMapNodeId,
 } from "@magnolia/contracts"
 import {
   applyEquippedPassives,
@@ -112,6 +113,7 @@ import {
   computeAreaBounds,
   computeCompassTargetAreaId,
   computeNearestTransmissionStrength,
+  computeNearestAnyTransmissionStrength,
   computeRevealCompletionRate,
   computeWorldBounds,
   createExploreRevealViewport,
@@ -169,18 +171,20 @@ const DEFAULT_EXPLORE_VISION_RADIUS = 150
  */
 const BOOT_LINES = [
   "[ MAGNOLIA ] kernel 7.2.4 · signal core",
-  "> bootstrap recovery routines",
+  "> initialize residual uplink console",
   "",
+  "verb 37 / noun 41 ........ recovery program accepted",
   "memory integrity .......... 41% recovered",
-  "neural lattice ............ partial (2/8 masked)",
+  "neural lattice ............ partial / 2 of 8 masked",
   "archive bus ............... offline",
-  "network uplink ............ no carrier",
+  "network uplink ............ carrier absent",
   "self-repair module ........ cold",
   "",
-  "> loading fallback profile ....... ok",
-  "> applying minimal equipment (2/6)",
+  "> load fallback profile ....... ok",
+  "> mount minimal equipment .... 2 of 6",
+  "> attitude reference .......... reconstructed",
   "",
-  "> signal acquired",
+  "> residual carrier acquired",
 ]
 
 type SlotSelectMode = "new" | "continue"
@@ -295,6 +299,11 @@ export class MagnoliaGameSession {
       featureAccess,
       transmissionProgress: toRecord(this.activeProfile.transmissionProgress, "transmissionId"),
     })
+    const nearestAnyTransmissionStrength = computeNearestAnyTransmissionStrength({
+      playerPosition: this.activeProfile.profile.playerPosition,
+      mapLogic,
+      featureAccess,
+    })
 
     return {
       worldBounds,
@@ -312,6 +321,7 @@ export class MagnoliaGameSession {
           x: node.x,
           y: node.y,
           label: this.content.transmissions[node.transmissionId]?.title,
+          interactionRadius: node.interactionRadius,
           state: readTransmissionCompletionState(
             this.activeProfile?.transmissionProgress.find(
               (progress) => progress.transmissionId === node.transmissionId,
@@ -325,6 +335,7 @@ export class MagnoliaGameSession {
           x: node.x,
           y: node.y,
           label: this.content.areas[node.warpTargetAreaId]?.name,
+          interactionRadius: node.interactionRadius,
         })),
       visibleCollectibles: mapLogic.collectibleNodes
         .filter((node) => mapState.visibleCollectibleNodeIds.includes(node.nodeId))
@@ -332,6 +343,7 @@ export class MagnoliaGameSession {
           nodeId: node.nodeId,
           x: node.x,
           y: node.y,
+          interactionRadius: node.interactionRadius,
           markerKind:
             node.collectibleKind === "hiddenEquipment" ? "equipment" : "resource",
           label:
@@ -340,6 +352,7 @@ export class MagnoliaGameSession {
               : "自己修復ポイント",
         })),
       nearestTransmissionStrength,
+      nearestAnyTransmissionStrength,
       tutorialRestricted: !featureAccess.mapVisionUnlocked,
     }
   }
@@ -390,6 +403,11 @@ export class MagnoliaGameSession {
           position: projectile.position,
           velocity: projectile.velocity,
           radius: projectile.radius,
+          progress:
+            projectile.initialLifetimeMs && projectile.initialLifetimeMs > 0
+              ? clamp01((projectile.ageMs ?? 0) / projectile.initialLifetimeMs)
+              : undefined,
+          inversePhaseVisual: projectile.inversePhaseVisual,
         })),
       supportFields: battle.supportFields.map<SupportFieldRenderState>((field) => ({
         fieldInstanceId: field.fieldInstanceId,
@@ -512,6 +530,9 @@ export class MagnoliaGameSession {
       case "collectItem":
         this.handleCollectItem(command)
         break
+      case "interactExploreNode":
+        this.handleExploreNodeInteraction(command.nodeId)
+        break
     }
 
     return this.getSnapshot()
@@ -596,6 +617,7 @@ export class MagnoliaGameSession {
     }
     battle.elapsedMs += input.dtMs
     battle.mainCooldownMs = Math.max(0, battle.mainCooldownMs - input.dtMs)
+    battle.mainMeleeCooldownMs = Math.max(0, (battle.mainMeleeCooldownMs ?? 0) - input.dtMs)
     battle.subCooldownMs = Math.max(0, battle.subCooldownMs - input.dtMs)
 
     const battlePassives = applyEquippedPassives({
@@ -712,12 +734,16 @@ export class MagnoliaGameSession {
         isCircleInsideCircle(battle.playerPosition, 8, field.position, field.radius),
     )
 
+    const difficultyModifiers = this.resolveDifficultyModifiers()
     battle.noiseState.noiseLevel = clamp01(
       battle.noiseState.noiseLevel -
-        this.content.playerShipSpec.noiseDecayRate * dtSeconds * (this.resolveDifficultyModifiers().noiseDecayRateMultiplier ?? 1),
+        this.content.playerShipSpec.noiseDecayRate *
+          dtSeconds *
+          (difficultyModifiers.noiseDecayRateMultiplier ?? 1),
     )
 
-    let inflictedNoise = collisionEvents.playerNoiseDamage
+    let inflictedNoise =
+      collisionEvents.playerNoiseDamage * (difficultyModifiers.enemyNoiseDamageMultiplier ?? 1)
     if (!fieldProtectsFromMagneticDisaster) {
       inflictedNoise += hazardResult.playerNoiseDamage
     }
@@ -959,6 +985,7 @@ export class MagnoliaGameSession {
       loadout,
       registry: this.getRuntimeRegistry(),
     })
+    const difficultyModifiers = this.resolveDifficultyModifiers()
 
     const initialMissionState = seedMissionStateWithReplayProgress({
       missionState: {
@@ -971,7 +998,7 @@ export class MagnoliaGameSession {
           decayRate: this.content.playerShipSpec.noiseDecayRate,
           hearingThreshold: clamp01(
             (mission.hearingThresholdOverride ?? this.content.playerShipSpec.hearingThreshold) +
-              (this.resolveDifficultyModifiers().hearingThresholdOffset ?? 0),
+              (difficultyModifiers.hearingThresholdOffset ?? 0),
           ),
           invincibleUntilMs: 0,
         },
@@ -1012,6 +1039,7 @@ export class MagnoliaGameSession {
       spawnedWaveIndexes: new Set<number>(),
       playerPosition: { x: BATTLE_WIDTH / 2, y: BATTLE_HEIGHT - 64 },
       mainCooldownMs: 0,
+      mainMeleeCooldownMs: 0,
       subCooldownMs: 0,
       supportFields: [],
       pickups: [],
@@ -1448,6 +1476,55 @@ export class MagnoliaGameSession {
     return { events: [], presentationRequests: [] }
   }
 
+  private handleExploreNodeInteraction(nodeId: WorldMapNodeId): void {
+    if (!this.activeProfile || this.screen !== "explore") {
+      return
+    }
+
+    const mapLogic = this.content.mapLogic[this.content.areas[this.activeProfile.profile.currentAreaId].mapId]
+    const playerPosition = this.activeProfile.profile.playerPosition
+    const collectible = mapLogic.collectibleNodes.find((node) => node.nodeId === nodeId)
+    if (
+      collectible &&
+      !this.activeProfile.profile.collectedNodeIds.includes(collectible.nodeId) &&
+      isWithinRadius(playerPosition, { x: collectible.x, y: collectible.y }, collectible.interactionRadius)
+    ) {
+      this.handleCollectItem({ type: "collectItem", nodeId: collectible.nodeId })
+      return
+    }
+
+    const warp = mapLogic.warpNodes.find((node) => node.nodeId === nodeId)
+    if (
+      warp &&
+      isWithinRadius(playerPosition, { x: warp.x, y: warp.y }, warp.interactionRadius)
+    ) {
+      this.activeProfile.profile.currentAreaId = warp.warpTargetAreaId
+      this.activeProfile.profile.playerPosition = {
+        ...this.content.areas[warp.warpTargetAreaId].worldPosition,
+      }
+      this.presentationQueue.push(
+        ...createWarpTransitionPresentation({
+          worldPosition: playerPosition,
+          areaId: warp.areaId,
+          destination: "explore",
+        }),
+      )
+      return
+    }
+
+    const transmission = mapLogic.transmissionNodes.find((node) => node.nodeId === nodeId)
+    if (
+      transmission &&
+      isWithinRadius(
+        playerPosition,
+        { x: transmission.x, y: transmission.y },
+        transmission.interactionRadius,
+      )
+    ) {
+      this.startMission(this.content.transmissions[transmission.transmissionId].missionId)
+    }
+  }
+
   private revealCurrentArea(playerPosition: Vector2, mapLogic: WorldMapLogic): {
     events: DomainEvent[]
     presentationRequests: ReturnType<typeof flattenPresentationRequests>
@@ -1877,12 +1954,16 @@ export class MagnoliaGameSession {
       (equipmentId) => !this.activeProfile?.profile.ownedEquipmentIds.includes(equipmentId),
     )
 
-    const selfRepairPointsEarned =
+    const difficultyModifiers = this.resolveDifficultyModifiers()
+    const rawSelfRepairPointsEarned =
       battle.selfRepairPointsEarned +
       (isFirstClear
         ? battle.mission.baseSelfRepairPoints
         : Math.round(battle.mission.baseSelfRepairPoints * battle.mission.repeatDecayRate)) +
       Math.round(newHeardRangeMs / 1000)
+    const selfRepairPointsEarned = Math.round(
+      rawSelfRepairPointsEarned * (difficultyModifiers.selfRepairPointMultiplier ?? 1),
+    )
 
     this.activeProfile.profile.selfRepairPoints += selfRepairPointsEarned
     this.grantEquipment(rewardEquipmentIds)
@@ -1899,7 +1980,10 @@ export class MagnoliaGameSession {
       heardRanges: recoverableRunHeardRanges,
       damageRanges: battle.damageRanges,
       destroyedAnalysisValue: battle.destroyedAnalysisValue,
-      score: Math.round(analysisRate * 10000 + restorationRate * 10000),
+      score: Math.round(
+        (analysisRate * 10000 + restorationRate * 10000) *
+          (difficultyModifiers.scoreMultiplier ?? 1),
+      ),
       selfRepairPointsEarned,
       cleared: true,
     }
@@ -2032,13 +2116,14 @@ export class MagnoliaGameSession {
       for (const entry of wave.entries) {
         const enemy = this.content.enemies[entry.enemyId]
         const spawnPosition = resolveSpawnPoint(entry.spawnPointId)
+        const maxHp = Math.max(1, Math.round(enemy.hp * (this.resolveDifficultyModifiers().enemyHpMultiplier ?? 1)))
         battle.enemies.push({
           enemyInstanceId: this.nextInstanceId(entry.enemyId),
           enemyId: entry.enemyId,
           spawnPosition,
           position: { ...spawnPosition },
-          hp: enemy.hp,
-          maxHp: enemy.hp,
+          hp: maxHp,
+          maxHp,
           enteredAtMs: battle.elapsedMs,
           patternLastFiredAtMs: {},
           burnDamagePerSec: 0,
@@ -2052,10 +2137,14 @@ export class MagnoliaGameSession {
 
   private fireEnemyPatterns(battle: InternalBattleState, enemy: InternalEnemyState): void {
     const enemyDefinition = this.content.enemies[enemy.enemyId]
+    const difficultyModifiers = this.resolveDifficultyModifiers()
+    const cadenceMultiplier = difficultyModifiers.enemyCadenceMultiplier ?? 1
+    const noiseDamageMultiplier = difficultyModifiers.enemyNoiseDamageMultiplier ?? 1
     for (const patternId of enemyDefinition.bulletPatternIds) {
       const pattern = this.content.bulletPatterns[patternId]
-      const lastFiredAtMs = enemy.patternLastFiredAtMs[patternId] ?? -pattern.cadenceMs
-      if (battle.elapsedMs - lastFiredAtMs < pattern.cadenceMs) {
+      const cadenceMs = Math.max(80, pattern.cadenceMs * cadenceMultiplier)
+      const lastFiredAtMs = enemy.patternLastFiredAtMs[patternId] ?? -cadenceMs
+      if (battle.elapsedMs - lastFiredAtMs < cadenceMs) {
         continue
       }
       enemy.patternLastFiredAtMs[patternId] = battle.elapsedMs
@@ -2096,7 +2185,7 @@ export class MagnoliaGameSession {
           remainingMs: projectile.lifetimeMs,
           spawnDelayMs: 0,
           damage: projectile.damage,
-          noiseDamage: projectile.noiseDamage,
+          noiseDamage: projectile.noiseDamage * noiseDamageMultiplier,
         })
         enemy.patternLastFiredAtMs[countKey] = fireCount + 1
         continue
@@ -2127,7 +2216,7 @@ export class MagnoliaGameSession {
           remainingMs: projectile.lifetimeMs,
           spawnDelayMs: 0,
           damage: projectile.damage,
-          noiseDamage: projectile.noiseDamage,
+          noiseDamage: projectile.noiseDamage * noiseDamageMultiplier,
         })
       }
     }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react"
 import type { ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
+import type { DisplayOptions } from "@/app/display-options"
 import { BATTLE_CANVAS_HEIGHT, BATTLE_CANVAS_WIDTH, drawBattleFrame } from "@/components/battle-renderer"
 
 type BattleCanvasProps = {
@@ -9,9 +10,10 @@ type BattleCanvasProps = {
   transparentBg?: boolean
   /** 自機見た目バリアント。詳細は ship-renderer を参照。 */
   shipVariant: ShipVariant
+  displayOptions: DisplayOptions
 }
 
-export function BattleCanvas({ renderState, transparentBg, shipVariant }: BattleCanvasProps) {
+export function BattleCanvas({ renderState, transparentBg, shipVariant, displayOptions }: BattleCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export function BattleCanvas({ renderState, transparentBg, shipVariant }: Battle
     const context = canvas.getContext("2d")
     if (!context) return
 
-    const dpr = window.devicePixelRatio || 1
+    const dpr = displayOptions.canvasPixelRatio
     canvas.width = BATTLE_CANVAS_WIDTH * dpr
     canvas.height = BATTLE_CANVAS_HEIGHT * dpr
     // 表示サイズは CSS 側で親レイアウトに追従させ、ここでは描画座標系だけを固定します。
@@ -32,8 +34,9 @@ export function BattleCanvas({ renderState, transparentBg, shipVariant }: Battle
       renderState,
       transparentBg,
       shipVariant,
+      reduceFlashing: displayOptions.reduceFlashing,
     })
-  }, [renderState, shipVariant])
+  }, [displayOptions, renderState, shipVariant])
 
   return <canvas ref={canvasRef} className="play-canvas play-canvas--battle" />
 }

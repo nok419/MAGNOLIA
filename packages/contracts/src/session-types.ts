@@ -408,6 +408,11 @@ export type CollectItemCommand = {
   nodeId: WorldMapNodeId
 }
 
+export type InteractExploreNodeCommand = {
+  type: "interactExploreNode"
+  nodeId: WorldMapNodeId
+}
+
 export type GameCommand =
   | StartNewGameAtSlotCommand
   | ResumeSaveSlotCommand
@@ -428,6 +433,7 @@ export type GameCommand =
   | UpgradeEquipmentCommand
   | PurchaseEquipmentCommand
   | CollectItemCommand
+  | InteractExploreNodeCommand
 
 export type ContentBundle = {
   playerShipSpec: import("./game-types").PlayerShipSpec

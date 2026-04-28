@@ -1,0 +1,19 @@
+{
+  "enemyId": "b1",
+  "hp": 760,
+  "collisionDamage": 22,
+  "analysisValue": 80,
+  "behaviorKind": "slowDescent",
+  "behaviorParams": {
+    "speed": 12,
+    "pauseMs": 7600,
+    "pauseAtY": 112
+  },
+  "bulletPatternIds": [
+    "bp_b1_core_burst",
+    "bp_b1_lance_stream"
+  ],
+  "visualPresetId": "vis_enemy_b1",
+  "hitboxPresetId": "hitbox_enemy_large",
+  "dropSelfRepairPoints": 50
+}

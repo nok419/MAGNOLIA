@@ -1,6 +1,7 @@
 @import "./base.css";
 @import "./title.css";
 @import "./common-ui.css";
+@import "./interaction-prompt.css";
 @import "./explore.css";
 @import "./battle.css";
 @import "./archive-settings.css";

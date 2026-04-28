@@ -3,7 +3,7 @@
   "effectKind": "mainShot",
   "runtimeHandlerId": "subsystem.shot.modifier.homing",
   "params": {
-    "homingStrength": 0.3,
-    "homingRange": 150
+    "homingStrength": 1.35,
+    "homingRange": 230
   }
 }
