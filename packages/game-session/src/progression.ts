@@ -3,6 +3,7 @@ import type {
   MetadataUnlocked,
   TimeRange,
   TranscriptChunk,
+  TranscriptSpan,
   TransmissionId,
   TransmissionMaster,
   TransmissionProgressRow,
@@ -83,7 +84,9 @@ export function hasVisibleArchiveContent(
     return false
   }
 
-  return progress.heardRanges.length > 0 || hasUnlockedTransmissionMetadata(progress)
+  return progress.heardRanges.length > 0 ||
+    progress.transcriptSpans.length > 0 ||
+    hasUnlockedTransmissionMetadata(progress)
 }
 
 export function isTransmissionIncomplete(
@@ -96,6 +99,20 @@ export function isTransmissionIncomplete(
   return (
     progress.archiveRestorationRate < 1 ||
     computeMetadataCompletionRate(progress.metadataUnlocked) < 1
+  )
+}
+
+export function isTransmissionSignalIdentified(
+  progress: TransmissionProgressRow | undefined,
+): boolean {
+  if (!progress) {
+    return false
+  }
+  return Boolean(
+    progress.firstConnectedAt ||
+      progress.heardRanges.length > 0 ||
+      progress.transcriptSpans.length > 0 ||
+      (progress.signalConfidence ?? 0) >= 1,
   )
 }
 
@@ -184,6 +201,105 @@ export function mergeRanges(ranges: TimeRange[]): TimeRange[] {
     last.endMs = Math.max(last.endMs, range.endMs)
   }
   return merged
+}
+
+export function mergeTranscriptSpans(spans: TranscriptSpan[]): TranscriptSpan[] {
+  const byChunk = new Map<string, TranscriptSpan[]>()
+  for (const span of spans) {
+    const normalized = normalizeTranscriptSpan(span)
+    if (normalized.endRatio <= normalized.startRatio) {
+      continue
+    }
+    byChunk.set(normalized.chunkId, [...(byChunk.get(normalized.chunkId) ?? []), normalized])
+  }
+
+  return Array.from(byChunk.entries()).flatMap(([chunkId, chunkSpans]) => {
+    const sorted = chunkSpans.sort((left, right) => left.startRatio - right.startRatio)
+    const merged: TranscriptSpan[] = []
+    for (const span of sorted) {
+      const last = merged[merged.length - 1]
+      if (!last || span.startRatio > last.endRatio) {
+        merged.push({ ...span, chunkId })
+        continue
+      }
+      last.endRatio = Math.max(last.endRatio, span.endRatio)
+    }
+    return merged
+  })
+}
+
+export function normalizeTranscriptSpan(span: TranscriptSpan): TranscriptSpan {
+  const startRatio = clampRate(Math.min(span.startRatio, span.endRatio))
+  const endRatio = clampRate(Math.max(span.startRatio, span.endRatio))
+  return {
+    chunkId: span.chunkId,
+    startRatio,
+    endRatio,
+  }
+}
+
+export function transcriptSpansFromTimeRanges(
+  chunks: TranscriptChunk[],
+  ranges: TimeRange[],
+): TranscriptSpan[] {
+  const spans: TranscriptSpan[] = []
+  for (const chunk of chunks) {
+    const durationMs = Math.max(1, chunk.endMs - chunk.startMs)
+    for (const range of mergeRanges(ranges)) {
+      const overlapStart = Math.max(chunk.startMs, range.startMs)
+      const overlapEnd = Math.min(chunk.endMs, range.endMs)
+      if (overlapEnd <= overlapStart) {
+        continue
+      }
+      spans.push({
+        chunkId: chunk.chunkId,
+        startRatio: (overlapStart - chunk.startMs) / durationMs,
+        endRatio: (overlapEnd - chunk.startMs) / durationMs,
+      })
+    }
+  }
+  return mergeTranscriptSpans(spans)
+}
+
+export function timeRangesFromTranscriptSpans(
+  chunks: TranscriptChunk[],
+  spans: TranscriptSpan[],
+): TimeRange[] {
+  const chunksById = new Map(chunks.map((chunk) => [chunk.chunkId, chunk]))
+  return mergeRanges(
+    mergeTranscriptSpans(spans).flatMap((span) => {
+      const chunk = chunksById.get(span.chunkId)
+      if (!chunk) {
+        return []
+      }
+      const durationMs = Math.max(1, chunk.endMs - chunk.startMs)
+      return [{
+        startMs: chunk.startMs + durationMs * span.startRatio,
+        endMs: chunk.startMs + durationMs * span.endRatio,
+      }]
+    }),
+  )
+}
+
+export function transcriptSpanForTimeRange(
+  chunk: TranscriptChunk,
+  range: TimeRange,
+): TranscriptSpan {
+  const durationMs = Math.max(1, chunk.endMs - chunk.startMs)
+  return normalizeTranscriptSpan({
+    chunkId: chunk.chunkId,
+    startRatio: (range.startMs - chunk.startMs) / durationMs,
+    endRatio: (range.endMs - chunk.startMs) / durationMs,
+  })
+}
+
+export function readTranscriptChunkRestorationRatio(
+  chunk: TranscriptChunk,
+  spans: TranscriptSpan[],
+): number {
+  const restored = mergeTranscriptSpans(spans.filter((span) => span.chunkId === chunk.chunkId))
+    .reduce((total, span) => total + Math.max(0, span.endRatio - span.startRatio), 0)
+  return clampRate(restored)
 }
 
 export function computeRestorationRate(

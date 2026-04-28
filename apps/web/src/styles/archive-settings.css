@@ -41,6 +41,9 @@
   font-size: 15px;
   color: var(--mg-text);
 }
+.archive-log__text--damaged {
+  color: rgba(216, 231, 246, 0.72);
+}
 
 /* =========================================================
    EXPLORE FULLSCREEN

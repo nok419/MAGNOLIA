@@ -47,6 +47,7 @@ export function ExploreScreen({
   const strength = renderState.nearestTransmissionStrength
   const clampedStrength = Math.max(0, Math.min(1, strength))
   const waveStrength = Math.max(0, Math.min(1, renderState.nearestAnyTransmissionStrength))
+  const strongestSignalHint = renderState.signalHints[0]
   const completionPct = Math.round(snapshot.hud.currentAreaCompletionRate * 100)
   // featureAccess に応じた "本来見せるべき" パネルの条件。
   // リブート中はこれらに `ehud--booting` クラスを付けて CSS transition で
@@ -73,6 +74,7 @@ export function ExploreScreen({
       : undefined
   const [waveformFrame, setWaveformFrame] = useState(0)
   const [overlayFrame, setOverlayFrame] = useState<ExploreOverlayFrame | null>(null)
+  const [hasSeenFirstScan, setHasSeenFirstScan] = useState(false)
 
   const handleOverlayFrame = useCallback((nextFrame: ExploreOverlayFrame) => {
     setOverlayFrame((currentFrame) =>
@@ -92,6 +94,13 @@ export function ExploreScreen({
     return () => window.clearInterval(timerId)
   }, [canShowStrengthMeter, presentation.hidesHud])
 
+  useEffect(() => {
+    // 初回だけ scan の実行を促し、scan pulse が生成されたら誘導を閉じます。
+    if (renderState.scanPulses.length > 0) {
+      setHasSeenFirstScan(true)
+    }
+  }, [renderState.scanPulses.length])
+
   // Background Music（BGM）同期前の仮プロファイルです。低速の包絡線と短いピークを分け、
   // 実波形へ差し替える際も User Interface（UI）側の距離スケールを変えずに済むようにします。
   const waveformBars = useMemo(() => {
@@ -107,6 +116,7 @@ export function ExploreScreen({
   }
   const activeStrengthSegments = Math.round(clampedStrength * STRENGTH_SEGMENT_COUNT)
   const canShowPrompts = presentation.kind === "none"
+  const shouldShowScanHint = canShowPrompts && overlayFrame !== null && !hasSeenFirstScan
   const shipPromptPlacement = overlayFrame
     ? resolveInteractionPromptPlacement(overlayFrame.playerPoint, overlayFrame.width, overlayFrame.height)
     : "right-up"
@@ -237,7 +247,7 @@ export function ExploreScreen({
 
             <div className="ehud-signal__strength" aria-hidden="true">
               <div className="ehud-signal__strength-readout">
-                <span>UNFOUND</span>
+                <span>{strongestSignalHint ? readSignalHintLabel(strongestSignalHint) : "UNFOUND"}</span>
               </div>
               <div className="ehud-signal__meter">
                 <span className="ehud-signal__meter-fill" />
@@ -277,11 +287,23 @@ export function ExploreScreen({
       ) : null}
 
       <section className={`ehud ehud--help${hudTransitionClass}`} style={hudTransitionStyle}>
-        <p>move — wasd</p>
+        <p>move — wasd / arrows</p>
         <p>connect — enter / click</p>
+        <p>scan — r / click 2</p>
         <p>equipment — e</p>
         <p>map — m</p>
       </section>
+
+      {shouldShowScanHint ? (
+        <InteractionPromptCallout
+          anchor={overlayFrame.playerPoint}
+          placement="left-down"
+          keyLabel="R / click 2"
+          label="scan"
+          tone="cyan"
+          ariaLabel="R または click 2 でスキャンを出します"
+        />
+      ) : null}
 
       {showEquipmentHint && canShowPrompts && overlayFrame ? (
         <InteractionPromptCallout
@@ -306,6 +328,17 @@ export function ExploreScreen({
       ) : null}
     </main>
   )
+}
+
+function readSignalHintLabel(hint: ExploreRenderState["signalHints"][number]): string {
+  const band = hint.distanceBand.toUpperCase()
+  if (hint.kind === "equipment") {
+    return `EQUIP ${band}`
+  }
+  if (hint.kind === "repair") {
+    return `REPAIR ${band}`
+  }
+  return `${(hint.category ?? "SIGNAL").toUpperCase()} ${band}`
 }
 
 type ExploreClickTarget = {

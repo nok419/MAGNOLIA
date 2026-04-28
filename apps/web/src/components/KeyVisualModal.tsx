@@ -433,6 +433,7 @@ function buildKeyVisualRenderState(
     // バリアは barrierState.active で描画される (drawBarrierGauge)。
     supportFields: [],
     pickups: [],
+    fragments: [],
     hazards: [
       {
         // 磁気災害 — 左端から画面の7割幅、上部から下方まで広がる

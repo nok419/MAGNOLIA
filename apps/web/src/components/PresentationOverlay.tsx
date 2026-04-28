@@ -181,18 +181,6 @@ export function PresentationOverlay(props: PresentationOverlayProps) {
     }
   }, [canDismiss, presentation.blocking, presentation.cueId])
 
-  useEffect(() => {
-    if (
-      presentation.cueId !== "system.boot.message" ||
-      !presentation.blocking ||
-      !canDismiss
-    ) {
-      return
-    }
-    const timeoutId = window.setTimeout(() => onDismissRef.current(), 320)
-    return () => window.clearTimeout(timeoutId)
-  }, [canDismiss, presentation.blocking, presentation.cueId])
-
   switch (presentation.cueId) {
     case "system.boot.message": {
       // 連続的な進捗: rAF で増える elapsedMs / readyMs を直接比率化。
