@@ -14,6 +14,22 @@ type KeyVisualModalProps = {
 /* 黄金角 (137.508°) — フィボナッチ弾幕用 */
 const TAU = Math.PI * 2
 const GOLDEN_ANGLE = TAU * (1 - 1 / 1.618033988749895) // ≈ 2.3999…
+const PROJECTILE_VISUAL_PRESET_BY_ID: Record<string, string> = {
+  proj_enemy_basic: "vis_bullet_enemy_basic",
+  proj_enemy_core: "vis_bullet_enemy_core",
+  proj_enemy_geo: "vis_bullet_enemy_geo",
+  proj_enemy_lance: "vis_bullet_enemy_lance",
+  proj_enemy_petal: "vis_bullet_enemy_petal",
+  proj_player_carrier: "vis_bullet_player_carrier",
+  proj_player_carrier_blast: "vis_bullet_player_carrier_blast",
+  proj_player_pulse: "vis_bullet_player_pulse",
+  proj_player_pulse_melee: "vis_bullet_player_melee",
+}
+
+function readKeyVisualProjectilePresetId(projectileId: string): string {
+  // Key Visual は runtime の content loader を通らないため、ここだけ明示対応で preset 契約を満たします。
+  return PROJECTILE_VISUAL_PRESET_BY_ID[projectileId] ?? projectileId
+}
 
 export function KeyVisualModal({ variant, onClose, displayOptions }: KeyVisualModalProps) {
   const [elapsedMs, setElapsedMs] = useState(0)
@@ -335,17 +351,20 @@ function buildKeyVisualRenderState(
     // 重装型 (ボス) — 大型、弾幕の焦点
     {
       enemyInstanceId: "kv_heavy", enemyId: "enemy_heavy",
+      visualPresetId: "vis_enemy_heavy",
       position: { x: cx, y: bossY },
       radius: 34, hp: 999, maxHp: 999, burning: false,
     },
     // 通常型 ×2 — 左右の端寄り
     {
       enemyInstanceId: "kv_std_l", enemyId: "enemy_standard",
+      visualPresetId: "vis_enemy_standard",
       position: { x: stdLX, y: stdY },
       radius: 20, hp: 50, maxHp: 56, burning: false,
     },
     {
       enemyInstanceId: "kv_std_r", enemyId: "enemy_standard",
+      visualPresetId: "vis_enemy_standard",
       position: { x: stdRX, y: stdY },
       radius: 20, hp: 50, maxHp: 56, burning: false,
     },
@@ -439,6 +458,7 @@ function buildKeyVisualRenderState(
         // 「画面外から襲いくる広範囲の災害」を表現: 左端に接し、右端には届かない
         // phaseProgress を高く維持し、強烈な描画にする
         hazardId: "hazard_key_visual_top",
+        visualPresetId: "hazard_magnetic_disaster_standard",
         phase: "active",
         phaseProgress: 0.7 + 0.2 * Math.sin(elapsedMs * 0.0006),
         position: { x: -16, y: -10 },
@@ -461,6 +481,7 @@ function kvShotColumn(
   return Array.from({ length: 5 }, (_, i) => ({
     projectileInstanceId: `kv_ps_${baseX}_${i}`,
     projectileId: "proj_player_pulse",
+    visualPresetId: readKeyVisualProjectilePresetId("proj_player_pulse"),
     side: "player" as const,
     position: { x: baseX, y: baseY - i * 42 + (t * 0.12) % 42 },
     velocity: { x: 0, y: -400 },
@@ -488,6 +509,7 @@ function kvGoldenSpiral(
     return {
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
+      visualPresetId: readKeyVisualProjectilePresetId(projId),
       side: "enemy" as const,
       position: {
         x: cx + Math.cos(angle) * r,
@@ -519,6 +541,7 @@ function kvRing(
     return {
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
+      visualPresetId: readKeyVisualProjectilePresetId(projId),
       side: "enemy" as const,
       position: {
         x: cx + Math.cos(angle) * radius,
@@ -552,6 +575,7 @@ function kvFan(
     return {
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
+      visualPresetId: readKeyVisualProjectilePresetId(projId),
       side: "enemy" as const,
       position: {
         x: cx + Math.cos(angle) * radius,
@@ -589,6 +613,7 @@ function kvArcStream(
     return {
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
+      visualPresetId: readKeyVisualProjectilePresetId(projId),
       side: "enemy" as const,
       position: {
         x: cx + Math.cos(angle) * r,
@@ -622,6 +647,7 @@ function kvNoiseScatter(
     return {
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
+      visualPresetId: readKeyVisualProjectilePresetId(projId),
       side: "enemy" as const,
       position: { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r },
       velocity: { x: Math.cos(angle) * 12, y: Math.sin(angle) * 12 },

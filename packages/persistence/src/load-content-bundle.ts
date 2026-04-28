@@ -242,6 +242,9 @@ function collectVisualPresetIds(
 
   for (const projectile of projectiles) {
     ids.add(projectile.visualPresetId)
+    if (projectile.trailPresetId) {
+      ids.add(projectile.trailPresetId)
+    }
   }
 
   return [...ids]
@@ -399,6 +402,12 @@ function validateBundle(bundle: ContentBundle): void {
   for (const mission of Object.values(bundle.missions)) {
     assertConditionExists(bundle, mission.visibilityConditionId, `mission ${mission.missionId}`)
     assertConditionExists(bundle, mission.startConditionId, `mission ${mission.missionId}`)
+    assertVisualPresetKind(
+      bundle,
+      mission.backgroundPresetId,
+      "background",
+      `mission ${mission.missionId}`,
+    )
     if (!bundle.transmissions[mission.transmissionId]) {
       throw new Error(
         `Missing transmission ${mission.transmissionId} for mission ${mission.missionId}.`,
@@ -435,6 +444,12 @@ function validateBundle(bundle: ContentBundle): void {
 
     for (const hazard of mission.hazards) {
       assertConditionExists(bundle, hazard.visibilityConditionId, `hazard ${hazard.hazardId}`)
+      assertVisualPresetKind(
+        bundle,
+        hazard.visualPresetId,
+        "hazard",
+        `hazard ${hazard.hazardId}`,
+      )
       if (hazard.area.width <= 0 || hazard.area.height <= 0) {
         throw new Error(`Hazard ${hazard.hazardId} in mission ${mission.missionId} has invalid area.`)
       }
@@ -451,6 +466,8 @@ function validateBundle(bundle: ContentBundle): void {
     if (!SUPPORTED_ENEMY_BEHAVIOR_KINDS.has(enemy.behaviorKind)) {
       throw new Error(`Unsupported behavior ${enemy.behaviorKind} for enemy ${enemy.enemyId}.`)
     }
+    assertVisualPresetKind(bundle, enemy.visualPresetId, "enemy", `enemy ${enemy.enemyId}`)
+    assertHitboxExists(bundle, enemy.hitboxPresetId, `enemy ${enemy.enemyId}`)
     for (const bulletPatternId of enemy.bulletPatternIds) {
       if (!bundle.bulletPatterns[bulletPatternId]) {
         throw new Error(
@@ -471,6 +488,24 @@ function validateBundle(bundle: ContentBundle): void {
         `Missing projectile ${bulletPattern.projectileId} for pattern ${bulletPattern.bulletPatternId}.`,
       )
     }
+  }
+
+  for (const projectile of Object.values(bundle.projectiles)) {
+    assertVisualPresetKind(
+      bundle,
+      projectile.visualPresetId,
+      "projectile",
+      `projectile ${projectile.projectileId}`,
+    )
+    if (projectile.trailPresetId) {
+      assertVisualPresetKind(
+        bundle,
+        projectile.trailPresetId,
+        "projectile",
+        `projectile ${projectile.projectileId} trail`,
+      )
+    }
+    assertHitboxExists(bundle, projectile.hitboxPresetId, `projectile ${projectile.projectileId}`)
   }
 
   for (const equipment of Object.values(bundle.equipment)) {
@@ -507,6 +542,19 @@ function validateBundle(bundle: ContentBundle): void {
       if (!bundle.effects[effectId]) {
         throw new Error(
           `Missing effect ${effectId} for equipment ${equipment.equipmentId}.`,
+        )
+      }
+    }
+  }
+
+  for (const effect of Object.values(bundle.effects)) {
+    for (const [paramName, paramValue] of Object.entries(effect.params ?? {})) {
+      if (!paramName.endsWith("ProjectileId") && paramName !== "projectileId") {
+        continue
+      }
+      if (typeof paramValue !== "string" || !bundle.projectiles[paramValue]) {
+        throw new Error(
+          `Missing projectile ${String(paramValue)} for effect ${effect.effectId} param ${paramName}.`,
         )
       }
     }
@@ -619,6 +667,37 @@ function assertConditionExists(
 
   if (!bundle.conditions[conditionId]) {
     throw new Error(`Missing condition ${conditionId} for ${ownerLabel}.`)
+  }
+}
+
+function assertVisualPresetKind(
+  bundle: ContentBundle,
+  visualPresetId: VisualPresetId,
+  kind: "background" | "enemy" | "projectile" | "hazard",
+  ownerLabel: string,
+): void {
+  if (!bundle.visuals[visualPresetId]) {
+    throw new Error(`Missing visual preset ${visualPresetId} for ${ownerLabel}.`)
+  }
+
+  const isExpectedKind =
+    (kind === "background" && visualPresetId.startsWith("bg_")) ||
+    (kind === "enemy" && visualPresetId.startsWith("vis_enemy_")) ||
+    (kind === "projectile" && visualPresetId.startsWith("vis_bullet_")) ||
+    (kind === "hazard" && visualPresetId.startsWith("hazard_magnetic_disaster_"))
+
+  if (!isExpectedKind) {
+    throw new Error(`Unexpected ${kind} visual preset ${visualPresetId} for ${ownerLabel}.`)
+  }
+}
+
+function assertHitboxExists(
+  bundle: ContentBundle,
+  hitboxPresetId: HitboxPresetId,
+  ownerLabel: string,
+): void {
+  if (!bundle.hitboxes[hitboxPresetId]) {
+    throw new Error(`Missing hitbox preset ${hitboxPresetId} for ${ownerLabel}.`)
   }
 }
 

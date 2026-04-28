@@ -8,6 +8,7 @@ import type {
   ThemeId,
   TransmissionId,
   Vector2,
+  VisualPresetId,
   WorldMapNodeId,
 } from "@magnolia/contracts"
 
@@ -68,6 +69,7 @@ export type PlayerRenderState = {
 export type EnemyRenderState = {
   enemyInstanceId: string
   enemyId: string
+  visualPresetId: VisualPresetId
   position: Vector2
   radius: number
   hp: number
@@ -78,6 +80,8 @@ export type EnemyRenderState = {
 export type ProjectileRenderState = {
   projectileInstanceId: string
   projectileId: string
+  visualPresetId: VisualPresetId
+  trailPresetId?: VisualPresetId
   side: "player" | "enemy"
   position: Vector2
   velocity: Vector2
@@ -115,6 +119,7 @@ export type SubtitleRenderState = {
 
 export type HazardRenderState = {
   hazardId: HazardId
+  visualPresetId: VisualPresetId
   phase: HazardPhase
   phaseProgress: number
   position: Vector2

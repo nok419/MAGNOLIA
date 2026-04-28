@@ -6,6 +6,7 @@ import {
   drawTransmissionMarker,
 } from "@/app/canvas-markers"
 import type { DisplayOptions } from "@/app/display-options"
+import { worldToCanvas } from "@/render/shared/coordinates"
 
 type MiniMapProps = {
   snapshot: ExploreSnapshot
@@ -300,9 +301,7 @@ function drawCompassTicks(ctx: CanvasRenderingContext2D, _sweepAngle: number) {
    MAP PROJECTION
    ============================================================ */
 function project(rs: ExploreRenderState, x: number, y: number) {
-  const rx = (x - rs.worldBounds.x) / Math.max(1, rs.worldBounds.width)
-  const ry = (y - rs.worldBounds.y) / Math.max(1, rs.worldBounds.height)
-  return { x: rx * SIZE, y: ry * SIZE }
+  return worldToCanvas(rs.worldBounds, SIZE, SIZE, 0, x, y)
 }
 
 function drawVisionCircle(

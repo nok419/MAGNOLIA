@@ -12,6 +12,7 @@ import { EquipmentModal } from "@/components/EquipmentModal"
 import { applyAudioSettings } from "@/app/audio-controller"
 import { resolveDisplayOptions } from "@/app/display-options"
 import { useMagnoliaApp } from "@/app/use-magnolia-app"
+import { buildMapViewModel } from "@/view-models/map-view-model"
 
 export function App() {
   const app = useMagnoliaApp()
@@ -83,12 +84,15 @@ export function App() {
         screen = null
         break
       }
+      const mapViewModel = buildMapViewModel({
+        content: app.content,
+        profile: app.profile,
+        snapshot: app.exploreSnapshot,
+        renderState: app.exploreRenderState,
+      })
       screen = (
         <MapScreen
-          content={app.content}
-          profile={app.profile}
-          snapshot={app.exploreSnapshot}
-          renderState={app.exploreRenderState}
+          viewModel={mapViewModel}
           displayOptions={displayOptions}
           onBack={() => void app.runCommand("closePanel")}
           onWarpToArea={(areaId) => void app.warpToArea(areaId)}

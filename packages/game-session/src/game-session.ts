@@ -19,6 +19,7 @@ import type {
   ConditionSpec,
   ContentBundle,
   DomainEvent,
+  EnemyId,
   EquipmentId,
   EquipmentMaster,
   ExploreFrameInput,
@@ -201,6 +202,7 @@ export class MagnoliaGameSession {
   private lastExploreFacing: Vector2 = { x: 0, y: -1 }
   private exploreVisionRadius: number = DEFAULT_EXPLORE_VISION_RADIUS
   private presentationQueue = [] as ReturnType<typeof flattenPresentationRequests>
+  private domainEventQueue: DomainEvent[] = []
   private archiveSelection: { areaId?: AreaId; transmissionId?: TransmissionId } = {}
   private instanceSerial = 0
 
@@ -263,6 +265,12 @@ export class MagnoliaGameSession {
   drainPresentationRequests() {
     const queue = [...this.presentationQueue]
     this.presentationQueue = []
+    return queue
+  }
+
+  drainDomainEvents(): DomainEvent[] {
+    const queue = [...this.domainEventQueue]
+    this.domainEventQueue = []
     return queue
   }
 
@@ -388,6 +396,7 @@ export class MagnoliaGameSession {
       enemies: battle.enemies.map<EnemyRenderState>((enemy) => ({
         enemyInstanceId: enemy.enemyInstanceId,
         enemyId: enemy.enemyId,
+        visualPresetId: readEnemyVisualPresetId(this.content, enemy.enemyId),
         position: enemy.position,
         radius: enemy.radius,
         hp: enemy.hp,
@@ -399,6 +408,8 @@ export class MagnoliaGameSession {
         .map<ProjectileRenderState>((projectile) => ({
           projectileInstanceId: projectile.projectileInstanceId,
           projectileId: projectile.projectileId,
+          visualPresetId: readProjectileSpec(this.content, projectile.projectileId).visualPresetId,
+          trailPresetId: readProjectileSpec(this.content, projectile.projectileId).trailPresetId,
           side: projectile.side,
           position: projectile.position,
           velocity: projectile.velocity,
@@ -429,6 +440,7 @@ export class MagnoliaGameSession {
         hazards: battle.hazards,
       }).map<HazardRenderState>((hazard) => ({
         hazardId: hazard.hazardId,
+        visualPresetId: hazard.visualPresetId,
         phase: hazard.phase,
         phaseProgress: hazard.phaseProgress,
         position: { x: hazard.area.x, y: hazard.area.y },
@@ -528,7 +540,7 @@ export class MagnoliaGameSession {
         await this.repository.saveSettings(this.settings)
         break
       case "collectItem":
-        this.handleCollectItem(command)
+        this.enqueueDomainEvent(this.handleCollectItem(command))
         break
       case "interactExploreNode":
         this.handleExploreNodeInteraction(command.nodeId)
@@ -1123,14 +1135,20 @@ export class MagnoliaGameSession {
     }
   }
 
-  private handleCollectItem(command: CollectItemCommand): void {
+  private enqueueDomainEvent(event: DomainEvent | null): void {
+    if (event) {
+      this.domainEventQueue.push(event)
+    }
+  }
+
+  private handleCollectItem(command: CollectItemCommand): DomainEvent | null {
     if (!this.activeProfile) {
-      return
+      return null
     }
     const mapLogic = this.content.mapLogic[this.content.areas[this.activeProfile.profile.currentAreaId].mapId]
     const node = mapLogic.collectibleNodes.find((candidate) => candidate.nodeId === command.nodeId)
     if (!node || this.activeProfile.profile.collectedNodeIds.includes(node.nodeId)) {
-      return
+      return null
     }
     if (node.collectibleKind === "selfRepairPoints") {
       this.activeProfile.profile.selfRepairPoints += node.selfRepairPointAmount ?? 0
@@ -1139,6 +1157,11 @@ export class MagnoliaGameSession {
       this.grantEquipment([node.equipmentId])
     }
     this.activeProfile.profile.collectedNodeIds.push(node.nodeId)
+    return {
+      type: "collectibleCollected",
+      nodeId: node.nodeId,
+      collectibleKind: node.collectibleKind,
+    }
   }
 
   private grantEquipment(equipmentIds: EquipmentId[]): void {
@@ -1427,18 +1450,12 @@ export class MagnoliaGameSession {
 
     const nearbyCollectible = findNearbyNode(mapLogic.collectibleNodes, playerPosition)
     if (nearbyCollectible && !this.activeProfile.profile.collectedNodeIds.includes(nearbyCollectible.nodeId)) {
-      this.handleCollectItem({
+      const event = this.handleCollectItem({
         type: "collectItem",
         nodeId: nearbyCollectible.nodeId,
       })
       return {
-        events: [
-          {
-            type: "collectibleCollected",
-            nodeId: nearbyCollectible.nodeId,
-            collectibleKind: nearbyCollectible.collectibleKind,
-          },
-        ],
+        events: event ? [event] : [],
         presentationRequests: [],
       }
     }
@@ -1489,7 +1506,7 @@ export class MagnoliaGameSession {
       !this.activeProfile.profile.collectedNodeIds.includes(collectible.nodeId) &&
       isWithinRadius(playerPosition, { x: collectible.x, y: collectible.y }, collectible.interactionRadius)
     ) {
-      this.handleCollectItem({ type: "collectItem", nodeId: collectible.nodeId })
+      this.enqueueDomainEvent(this.handleCollectItem({ type: "collectItem", nodeId: collectible.nodeId }))
       return
     }
 
@@ -1521,7 +1538,12 @@ export class MagnoliaGameSession {
         transmission.interactionRadius,
       )
     ) {
-      this.startMission(this.content.transmissions[transmission.transmissionId].missionId)
+      const missionId = this.content.transmissions[transmission.transmissionId].missionId
+      this.startMission(missionId)
+      this.enqueueDomainEvent({
+        type: "missionStarted",
+        missionId,
+      })
     }
   }
 
@@ -2315,6 +2337,22 @@ export class MagnoliaGameSession {
     this.instanceSerial += 1
     return `${prefix}:${this.instanceSerial}`
   }
+}
+
+function readEnemyVisualPresetId(content: ContentBundle, enemyId: EnemyId): string {
+  const enemy = content.enemies[enemyId]
+  if (!enemy) {
+    throw new Error(`Missing enemy ${enemyId} while building battle render state.`)
+  }
+  return enemy.visualPresetId
+}
+
+function readProjectileSpec(content: ContentBundle, projectileId: string) {
+  const projectile = content.projectiles[projectileId]
+  if (!projectile) {
+    throw new Error(`Missing projectile ${projectileId} while building battle render state.`)
+  }
+  return projectile
 }
 
 function uniqueIds<T>(values: T[]): T[] {

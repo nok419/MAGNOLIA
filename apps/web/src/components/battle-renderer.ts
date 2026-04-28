@@ -1,6 +1,13 @@
 import type { ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
 import { drawShip } from "@/app/ship-renderer"
+import {
+  clamp01,
+  easeInOutCubic,
+  easeOutCubicFinite as easeOutCubic,
+  hashString,
+  seededRandom,
+} from "@/render/shared/canvas-math"
 
 export const BATTLE_CANVAS_WIDTH = 480
 export const BATTLE_CANVAS_HEIGHT = 520
@@ -28,6 +35,13 @@ type ProjectileRendererInput = {
   renderState: BattleRenderState
 }
 
+type HazardRendererInput = {
+  hazard: BattleRenderState["hazards"][number]
+  timeMs: number
+  renderState: BattleRenderState
+  reduceFlashing: boolean
+}
+
 type BattleFrameDrawInput = {
   renderState: BattleRenderState
   transparentBg?: boolean
@@ -49,6 +63,13 @@ const BATTLE_ENEMY_RENDERERS: Record<
   string,
   (ctx: CanvasRenderingContext2D, input: EnemyRendererInput) => void
 > = {
+  vis_enemy_a1: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
+  vis_enemy_a2: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
+  vis_enemy_b1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.b1),
+  vis_enemy_c1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.c1),
+  vis_enemy_scout: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
+  vis_enemy_standard: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
+  vis_enemy_heavy: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.heavy),
   a1: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
   a2: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
   c1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.c1),
@@ -63,6 +84,9 @@ const BATTLE_PLAYER_PROJECTILE_RENDERERS: Record<
   string,
   (ctx: CanvasRenderingContext2D, input: ProjectileRendererInput) => void
 > = {
+  vis_bullet_player_carrier: (ctx, input) => drawCarrierProjectile(ctx, input.projectile),
+  vis_bullet_player_carrier_blast: (ctx, input) => drawCarrierBlast(ctx, input.projectile, input.timeMs),
+  vis_bullet_player_melee: (ctx, input) => drawPulseMelee(ctx, input.projectile, input.timeMs),
   proj_player_carrier: (ctx, input) => drawCarrierProjectile(ctx, input.projectile),
   proj_player_carrier_blast: (ctx, input) => drawCarrierBlast(ctx, input.projectile, input.timeMs),
   proj_player_pulse_melee: (ctx, input) => drawPulseMelee(ctx, input.projectile, input.timeMs),
@@ -73,12 +97,28 @@ const BATTLE_ENEMY_PROJECTILE_RENDERERS: Record<
   string,
   (ctx: CanvasRenderingContext2D, input: ProjectileRendererInput) => void
 > = {
+  vis_bullet_enemy_geo: (ctx, input) => drawGeoDiamondProjectile(ctx, input.projectile, input.timeMs),
+  vis_bullet_enemy_lance: (ctx, input) => drawEnemyLanceProjectile(ctx, input.projectile, input.timeMs),
+  vis_bullet_enemy_core: (ctx, input) => drawBossCoreProjectile(ctx, input.projectile, input.timeMs),
+  vis_bullet_enemy_petal: (ctx, input) => drawSignalShardProjectile(ctx, input.projectile, input.timeMs),
   proj_enemy_geo: (ctx, input) => drawGeoDiamondProjectile(ctx, input.projectile, input.timeMs),
   proj_enemy_lance: (ctx, input) => drawEnemyLanceProjectile(ctx, input.projectile, input.timeMs),
   proj_enemy_core: (ctx, input) => drawBossCoreProjectile(ctx, input.projectile, input.timeMs),
   // 廃止した花弁表現の content id は残しつつ、描画だけ非花形の信号片へ差し替えます。
   proj_enemy_petal: (ctx, input) => drawSignalShardProjectile(ctx, input.projectile, input.timeMs),
   default: (ctx, input) => drawNoiseOrbProjectile(ctx, input.projectile, input.timeMs),
+}
+
+const BATTLE_HAZARD_RENDERERS: Record<
+  string,
+  (ctx: CanvasRenderingContext2D, input: HazardRendererInput) => void
+> = {
+  hazard_magnetic_disaster_gentle: (ctx, input) =>
+    drawMagneticDisasterHazard(ctx, input.hazard, input.timeMs, input.reduceFlashing),
+  hazard_magnetic_disaster_standard: (ctx, input) =>
+    drawMagneticDisasterHazard(ctx, input.hazard, input.timeMs, input.reduceFlashing),
+  default: (ctx, input) =>
+    drawMagneticDisasterHazard(ctx, input.hazard, input.timeMs, input.reduceFlashing),
 }
 
 
@@ -101,7 +141,7 @@ export function drawBattleFrame(
   // 戦闘 Canvas は renderState の描画に専念し、当たり判定や字幕選択は session 側で完結させます。
   // UI 側で命中判定を持ち始めると、演出変更がルール破壊に直結するためです。
   for (const hazard of renderState.hazards) {
-    drawHazard(ctx, hazard, renderState.elapsedMs, input.reduceFlashing ?? false)
+    drawHazard(ctx, hazard, renderState.elapsedMs, renderState, input.reduceFlashing ?? false)
   }
 
   for (const field of renderState.supportFields) {
@@ -141,8 +181,16 @@ function resolveBattleRenderer<T>(registry: Record<string, T>, candidates: Array
   return registry.default
 }
 
-function buildEntityRendererKeys(entityId: string, missionId: string) {
-  return [`mission:${missionId}:${entityId}`, entityId, `mission:${missionId}`, "default"]
+function buildEntityRendererKeys(visualPresetId: string, entityId: string, missionId: string) {
+  // 描画 preset を第一候補にし、古い content id registry は互換用の fallback として残します。
+  return [
+    `mission:${missionId}:visual:${visualPresetId}`,
+    visualPresetId,
+    `mission:${missionId}:${entityId}`,
+    entityId,
+    `mission:${missionId}`,
+    "default",
+  ]
 }
 
 function buildShipRendererKeys(renderState: BattleRenderState) {
@@ -424,7 +472,7 @@ function drawEnemy(
 ) {
   const renderer = resolveBattleRenderer(
     BATTLE_ENEMY_RENDERERS,
-    buildEntityRendererKeys(enemy.enemyId, renderState.missionId),
+    buildEntityRendererKeys(enemy.visualPresetId, enemy.enemyId, renderState.missionId),
   )
   renderer(ctx, { enemy, timeMs: t, renderState })
 }
@@ -622,7 +670,7 @@ function drawPlayerProjectile(
 ) {
   const renderer = resolveBattleRenderer(
     BATTLE_PLAYER_PROJECTILE_RENDERERS,
-    buildEntityRendererKeys(p.projectileId, renderState.missionId),
+    buildEntityRendererKeys(p.visualPresetId, p.projectileId, renderState.missionId),
   )
   if (p.inversePhaseVisual && p.projectileId !== "proj_player_pulse_melee") {
     drawInversePhaseProjectileAura(ctx, p, t)
@@ -1047,9 +1095,23 @@ function drawEnemyProjectile(
 ) {
   const renderer = resolveBattleRenderer(
     BATTLE_ENEMY_PROJECTILE_RENDERERS,
-    buildEntityRendererKeys(p.projectileId, renderState.missionId),
+    buildEntityRendererKeys(p.visualPresetId, p.projectileId, renderState.missionId),
   )
   renderer(ctx, { projectile: p, timeMs: t, renderState })
+}
+
+function drawHazard(
+  ctx: CanvasRenderingContext2D,
+  hazard: BattleRenderState["hazards"][number],
+  t: number,
+  renderState: BattleRenderState,
+  reduceFlashing: boolean,
+) {
+  const renderer = resolveBattleRenderer(
+    BATTLE_HAZARD_RENDERERS,
+    buildEntityRendererKeys(hazard.visualPresetId, hazard.hazardId, renderState.missionId),
+  )
+  renderer(ctx, { hazard, timeMs: t, renderState, reduceFlashing })
 }
 
 /* ── Variant 1: ノイズ・オーブ (軌道リング + 周回粒子 + 十字スパークル) ──
@@ -1699,9 +1761,11 @@ function normalizeCanvasVector(x: number, y: number) {
    HAZARD — 磁気干渉ノイズゾーン
    グリッチ・色収差・不規則乱流・ストロボを重ねた不安定な表現。
    ============================================================ */
-function drawHazard(
+function drawMagneticDisasterHazard(
   ctx: CanvasRenderingContext2D,
   hazard: {
+    hazardId: string
+    visualPresetId: string
     phase: string
     phaseProgress: number
     position: { x: number; y: number }
@@ -2124,39 +2188,4 @@ function drawMagneticWarningRim(
   ctx.shadowBlur = 18
   ctx.strokeRect(input.x, input.y, input.width, input.height)
   ctx.restore()
-}
-
-function easeOutCubic(value: number): number {
-  const clamped = clamp01(value)
-  return 1 - (1 - clamped) ** 3
-}
-
-function easeInOutCubic(value: number): number {
-  const clamped = clamp01(value)
-  return clamped < 0.5
-    ? 4 * clamped * clamped * clamped
-    : 1 - (-2 * clamped + 2) ** 3 / 2
-}
-
-function clamp01(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0
-  }
-  return Math.max(0, Math.min(1, value))
-}
-
-/* ============================================================
-   UTILITIES
-   ============================================================ */
-function seededRandom(seed: number): number {
-  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453
-  return x - Math.floor(x)
-}
-
-function hashString(str: string): number {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0
-  }
-  return Math.abs(hash)
 }

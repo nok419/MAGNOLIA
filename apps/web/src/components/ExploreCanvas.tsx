@@ -15,6 +15,15 @@ import {
   type CollectibleMarkerKind,
 } from "@/app/canvas-markers"
 import { computeHullMetrics, drawShip } from "@/app/ship-renderer"
+import {
+  clampScalar,
+  easeInOutSine,
+  easeOutCubic,
+  lerpPoint,
+  lerpScalar,
+  seededUnit,
+} from "@/render/shared/canvas-math"
+import { worldToCanvas } from "@/render/shared/coordinates"
 
 type ExploreCanvasProps = {
   snapshot: ExploreSnapshot
@@ -287,15 +296,6 @@ export function ExploreCanvas({
   ])
 
   return <canvas ref={canvasRef} className="explore-canvas-full" />
-}
-
-/* ============================================================
-   COORDINATE TRANSFORM
-   ============================================================ */
-function worldToCanvas(bounds: Rect, W: number, H: number, pad: number, wx: number, wy: number) {
-  const rx = (wx - bounds.x) / Math.max(1, bounds.width)
-  const ry = (wy - bounds.y) / Math.max(1, bounds.height)
-  return { x: pad + rx * (W - pad * 2), y: pad + ry * (H - pad * 2) }
 }
 
 function isCanvasPointVisible(
@@ -2160,40 +2160,6 @@ function readBoundaryFocus(
       }
     }
   }
-}
-
-function lerpPoint(
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  amount: number,
-) {
-  return {
-    x: lerpScalar(from.x, to.x, amount),
-    y: lerpScalar(from.y, to.y, amount),
-  }
-}
-
-function lerpScalar(from: number, to: number, amount: number) {
-  return from + (to - from) * amount
-}
-
-function clampScalar(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value))
-}
-
-function seededUnit(seed: number): number {
-  const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453
-  return value - Math.floor(value)
-}
-
-function easeInOutSine(value: number): number {
-  const clamped = Math.max(0, Math.min(1, value))
-  return -(Math.cos(Math.PI * clamped) - 1) / 2
-}
-
-function easeOutCubic(value: number): number {
-  const clamped = Math.max(0, Math.min(1, value))
-  return 1 - (1 - clamped) ** 3
 }
 
 /* ============================================================
