@@ -12,4 +12,3 @@
 `lowFrameRateMode` では particle 数、trail 数、scanline の移動量を下げます。duration は短縮しません。短縮すると出来事の順序が読みにくくなります。
 
 presentation cue は `content/gameplay/presentation-cues.json` に `reduceFlashingVariant` を持ち、validator が channel、duration、点滅上限を確認します。
-
