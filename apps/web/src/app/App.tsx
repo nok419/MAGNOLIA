@@ -101,7 +101,6 @@ export function App() {
       }
       screen = (
         <BattleScreen
-          content={app.content}
           renderState={app.battleRenderState}
           battleEvents={app.battleEvents}
           shipVariant={app.settings.shipVariant}

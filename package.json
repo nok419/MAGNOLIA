@@ -2,9 +2,14 @@
   "name": "magnolia",
   "private": true,
   "scripts": {
+    "archive:source": "node tools/create-source-archive.mjs",
     "build": "tsc -b && npm run build --workspace @magnolia/web",
     "check": "tsc -b",
-    "content:validate": "tsc -p tools/content-validator/tsconfig.json && node tools/content-validator/dist/validate-content.js"
+    "content:validate": "tsc -p tools/content-validator/tsconfig.json && node tools/content-validator/dist/validate-content.js",
+    "lint": "tsc -b --pretty false",
+    "test": "tsc -p tools/content-validator/tsconfig.json && node --test tests/*.test.mjs",
+    "typecheck": "tsc -b",
+    "validate:content": "npm run content:validate"
   },
   "devDependencies": {
     "typescript": "^5.8.2"

@@ -21,6 +21,7 @@ import type {
 } from "@magnolia/contracts"
 import {
   MagnoliaGameSession,
+  selectEquipmentHint,
   type BattleRenderState,
   type ExploreRenderState,
   type WorldMapViewModel,
@@ -37,7 +38,7 @@ import {
   formatPlayTime,
   formatTimestamp,
 } from "@/app/display-helpers"
-import { readTargetFrameIntervalMs } from "@/app/frame-loop/frame-timing"
+import { useMagnoliaFrameLoop } from "@/app/frame-loop/use-magnolia-frame-loop"
 import {
   buildCollectiblePopups,
   createExplorePopup,
@@ -67,7 +68,7 @@ import {
 } from "@/app/storage/seen-equipment-store"
 import { useMagnoliaInput } from "@/app/use-magnolia-input"
 
-type MagnoliaAppState = {
+export type MagnoliaAppState = {
   ready: boolean
   errorMessage?: string
   snapshot: RootSnapshot | null
@@ -100,9 +101,6 @@ type ExploreInteractionContext = {
   worldPosition: { x: number; y: number }
   sourceFrame: ExploreTransitionSourceFrame
 }
-
-const ZERO_VECTOR = { x: 0, y: 0 }
-const MISSION_GOOD_MORNING_ID = "mission_good_morning"
 
 export function useMagnoliaApp() {
   const input = useMagnoliaInput()
@@ -260,145 +258,15 @@ export function useMagnoliaApp() {
     return false
   }
 
-  useEffect(() => {
-    function stepFrame(now: number) {
-      frameHandleRef.current = window.requestAnimationFrame(stepFrame)
-
-      const session = sessionRef.current
-      const appState = stateRef.current
-      const snapshot = appState.snapshot
-
-      if (!session || !snapshot || appState.slotSelectMode) {
-        lastFrameAtRef.current = now
-        return
-      }
-
-      const settings = session.getSettings()
-      const targetFrameIntervalMs = readTargetFrameIntervalMs(settings)
-      if (
-        lastFrameAtRef.current !== null &&
-        now - lastFrameAtRef.current < targetFrameIntervalMs
-      ) {
-        return
-      }
-      const previousFrameAt = lastFrameAtRef.current ?? now
-      lastFrameAtRef.current = now
-      const dtMs = Math.max(8, Math.min(34, now - previousFrameAt || readTargetFrameIntervalMs(settings)))
-      const explorePresentation = readExplorePresentationState(
-        appState.presentation.activeOverlay,
-        appState.content,
-      )
-      const hasActiveTransition = appState.presentation.transitionEvents.some(
-        (event) => event.expiresAt > Date.now(),
-      )
-
-      const pausesWorld =
-        hasActiveTransition ||
-        (snapshot.screen === "explore"
-          ? explorePresentation.pausesWorld
-          : Boolean(appState.presentation.activeOverlay?.blocking))
-      if (pausesWorld) {
-        input.syncButtonEdges(settings)
-        return
-      }
-
-      if (
-        (snapshot.screen === "archive" ||
-          snapshot.screen === "equipment" ||
-          snapshot.screen === "settings" ||
-          snapshot.screen === "map") &&
-        input.isClosePanelPressed(snapshot.screen, settings)
-      ) {
-        // 開閉に同じキーを使うため、画面を閉じる瞬間に押下状態を消費して再オープンを防ぎます。
-        input.syncButtonEdges(settings)
-        void session.dispatch({ type: "closePanel" }).then(() => syncFromSession(session))
-        return
-      }
-
-      // equipment modal が出ている間も explore をポーズ
-      if (snapshot.screen === "explore" && stateRef.current.equipmentModalNodeId) {
-        return
-      }
-
-      if (snapshot.screen === "explore") {
-        const mapPressed = input.isMapPressed(settings)
-        const equipmentPressed = input.isEquipmentPressed(settings)
-        // explore 専用の演出 state を正本にし、入力停止の条件をここ 1 か所へ寄せます。
-        const inputsLocked = explorePresentation.blocksInput
-        if (inputsLocked) {
-          // 演出中の click / key edge を通常操作へ持ち越さないよう、この frame で消費します。
-          input.syncButtonEdges(settings)
-        }
-
-        if (mapPressed && !inputsLocked) {
-          if (!tryOpenMap(session)) {
-            input.syncButtonEdges(settings)
-            return
-          }
-          // M 押下をここで消費しないと、map 画面へ入った直後に閉じ判定へ流れます。
-          input.syncButtonEdges(settings)
-          void session.dispatch({ type: "openMap" }).then(() => syncFromSession(session))
-          return
-        }
-
-        if (equipmentPressed && !inputsLocked) {
-          // E 押下を消費し、equipment 画面へ入った直後の即時 close を防ぎます。
-          input.syncButtonEdges(settings)
-          void session.dispatch({ type: "openEquipment" }).then(() => syncFromSession(session))
-          return
-        }
-
-        const result = session.stepExplore({
-          dtMs,
-          move: inputsLocked
-            ? ZERO_VECTOR
-            : input.readMovementVector(settings),
-          dashPressed: inputsLocked
-            ? false
-            : input.isDashPressed(settings),
-          interactPressed: inputsLocked
-            ? false
-            : input.isInteractPressed(settings) || input.isPrimaryMouseJustPressed(),
-          scanPressed: inputsLocked
-            ? false
-            : input.isScanPressed(settings) || input.isSecondaryMouseJustPressed(),
-        })
-        syncFromSession(session, result.presentationRequests, result.events)
-        return
-      }
-
-      if (snapshot.screen === "map") {
-        input.syncButtonEdges(settings)
-        return
-      }
-
-      if (snapshot.screen === "battle") {
-        const mouseButtons = input.mouseButtons
-        const result = session.stepBattle({
-          dtMs,
-          move: input.readMovementVector(settings),
-          fireMain: mouseButtons.left,
-          fireSub: mouseButtons.right,
-          focus: input.isDashPressed(settings),
-          pausePressed: false,
-        })
-        // 戦闘中の副ボタンは sub 用です。探索へ戻った直後の scan として再利用しません。
-        input.syncButtonEdges(settings)
-        syncFromSession(session, result.presentationRequests, result.events)
-        return
-      }
-
-      input.syncButtonEdges(settings)
-    }
-
-    frameHandleRef.current = window.requestAnimationFrame(stepFrame)
-
-    return () => {
-      if (frameHandleRef.current !== null) {
-        window.cancelAnimationFrame(frameHandleRef.current)
-      }
-    }
-  }, [])
+  useMagnoliaFrameLoop({
+    input,
+    sessionRef,
+    stateRef,
+    lastFrameAtRef,
+    frameHandleRef,
+    tryOpenMap,
+    syncFromSession,
+  })
 
   const effectiveScreen =
     state.slotSelectMode ? "slotSelect" : state.snapshot?.screen ?? "title"
@@ -407,18 +275,14 @@ export function useMagnoliaApp() {
     state.content,
   )
 
-  // 取得済みだがまだ装備画面で確認していない装備。
-  // 探索中の誘導表示とカテゴリタブ NEW バッジの共通ソース。
-  const ownedEquipmentIds = state.profile?.profile.ownedEquipmentIds ?? []
-  const seenEquipmentSet = new Set(state.seenEquipmentIds)
-  const unseenEquipmentIds = ownedEquipmentIds.filter((id) => !seenEquipmentSet.has(id))
-  // mission 01 をクリア済みでまだ未確認装備がある間だけ、探索画面で E キー誘導を出す。
-  // MAGNOLIA OS を装備済みの場合は誘導済みとみなして非表示にする。
-  const hasMagnoliaOs = state.profile?.profile.equipped.os === "eq_os_magnolia"
-  const shouldShowEquipmentHint =
-    (state.profile?.profile.clearedMissionIds.includes(MISSION_GOOD_MORNING_ID) ?? false) &&
-    unseenEquipmentIds.length > 0 &&
-    !hasMagnoliaOs
+  // 探索中の誘導表示とカテゴリタブ NEW バッジは、content の unlockSource を正本にします。
+  const equipmentHint = selectEquipmentHint({
+    content: state.content,
+    profile: state.profile,
+    seenEquipmentIds: state.seenEquipmentIds,
+  })
+  const { unseenEquipmentIds } = equipmentHint
+  const shouldShowEquipmentHint = equipmentHint.shouldShowRewardHint
 
   return {
     ready: state.ready,

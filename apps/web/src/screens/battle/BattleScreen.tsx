@@ -1,7 +1,6 @@
-import type { ContentBundle, ShipVariant } from "@magnolia/contracts"
+import type { ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
 import type { ReactNode } from "react"
-import { readEquipmentSlotLabel } from "@/app/display-helpers"
 import type { DisplayOptions } from "@/app/display-options"
 import type {
   BattlePresentationRequest,
@@ -11,7 +10,6 @@ import { BattleCanvas } from "@/components/BattleCanvas"
 import { ActionButton } from "@/components/ActionButton"
 
 type BattleScreenProps = {
-  content: ContentBundle
   renderState: BattleRenderState
   battleEvents: TimedPresentationRequest<BattlePresentationRequest>[]
   shipVariant: ShipVariant
@@ -19,19 +17,15 @@ type BattleScreenProps = {
   onReturnToExplore: () => void
 }
 
-export function BattleScreen({ content, renderState, battleEvents, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
+export function BattleScreen({ renderState, battleEvents, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
   const progress = renderState.missionDurationMs > 0
     ? Math.max(0, Math.min(1, renderState.elapsedMs / renderState.missionDurationMs))
     : 0
   const progressPercent = Math.round(progress * 100)
   const remainingSeconds = Math.ceil(Math.max(0, renderState.missionDurationMs - renderState.elapsedMs) / 1000)
-  // 暫定: BattleResultViewModel が reward name / slot label / transcript preview を持つまで、
-  // 報酬表示だけ content を参照します。ViewModel 実装後は BattleScreen から ContentBundle を外します。
-  const grantedEquipment = (renderState.pendingResult?.grantedEquipmentIds ?? []).flatMap((equipmentId) => {
-    const equipment = content.equipment[equipmentId]
-    return equipment ? [equipment] : []
-  })
-  const resultTranscriptPreview = selectResultTranscriptPreview(renderState.resultTranscriptPreview)
+  const resultViewModel = renderState.resultViewModel
+  const grantedEquipment = resultViewModel?.grantedEquipment ?? []
+  const resultTranscriptPreview = resultViewModel?.transcriptPreview ?? []
   const subtitleEventTone = readSubtitleEventTone(battleEvents, renderState.elapsedMs)
   const resultRestored = hasActiveBattleEvent(battleEvents, renderState.elapsedMs, "battle.fragment.recovered")
 
@@ -104,7 +98,7 @@ export function BattleScreen({ content, renderState, battleEvents, shipVariant, 
           </div>
         )}
 
-        {renderState.pendingResult ? null : (
+        {resultViewModel ? null : (
           <div className="battle-help-panel">
             <p>move — wasd</p>
             <p>main — left click</p>
@@ -117,7 +111,7 @@ export function BattleScreen({ content, renderState, battleEvents, shipVariant, 
         )}
       </div>
 
-      {renderState.pendingResult ? (
+      {resultViewModel ? (
         <div className="battle-result-overlay">
           <div className="battle-result-overlay__backdrop" />
           <section className="battle-result-overlay__panel">
@@ -137,19 +131,19 @@ export function BattleScreen({ content, renderState, battleEvents, shipVariant, 
             <div className="battle-result-overlay__stats">
               <ResultMetric
                 label="解析率"
-                value={`${Math.round(renderState.pendingResult.analysisRate * 100)}%`}
+                value={`${Math.round(resultViewModel.analysisRate * 100)}%`}
               />
               <ResultMetric
                 label="復元率"
-                value={`${Math.round(renderState.pendingResult.restorationRate * 100)}%`}
+                value={`${Math.round(resultViewModel.restorationRate * 100)}%`}
               />
               <ResultMetric
                 label="自己修復ポイント"
-                value={`+${renderState.pendingResult.selfRepairPointsEarned}`}
+                value={`+${resultViewModel.selfRepairPointsEarned}`}
               />
               <ResultMetric
                 label="新規聴取"
-                value={`+${Math.round(renderState.pendingResult.newHeardRangeMs / 100) / 10}s`}
+                value={`+${Math.round(resultViewModel.newHeardRangeMs / 100) / 10}s`}
               />
             </div>
 
@@ -166,7 +160,7 @@ export function BattleScreen({ content, renderState, battleEvents, shipVariant, 
                       <span className="battle-result-reward__mark" aria-hidden="true">▸</span>
                       <span className="battle-result-reward__name">{equipment.name}</span>
                       <span className="battle-result-reward__slot">
-                        {readEquipmentSlotLabel(equipment.slot, "short")}
+                        {equipment.slotLabel}
                       </span>
                     </li>
                   ))}
@@ -215,13 +209,6 @@ function hasActiveBattleEvent(
   cueId: BattlePresentationRequest["cueId"],
 ): boolean {
   return events.some((event) => event.cueId === cueId && event.expiresAtMs > elapsedMs)
-}
-
-function selectResultTranscriptPreview(
-  chunks: BattleRenderState["resultTranscriptPreview"],
-) {
-  const restored = (chunks ?? []).filter((chunk) => chunk.restorationRatio > 0)
-  return (restored.length > 0 ? restored : chunks ?? []).slice(0, 4)
 }
 
 function renderSubtitleText(input: {

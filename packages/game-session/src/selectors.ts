@@ -8,6 +8,7 @@ import type {
   AreaProgressRow,
   ConditionId,
   ConditionSpec,
+  ContentBundle,
   EffectSpec,
   EquipmentId,
   EquipmentMaster,
@@ -16,6 +17,7 @@ import type {
   MissionMaster,
   MissionReplaySeed,
   MissionState,
+  ProfileAggregate,
   ProfileRow,
   TimeRange,
   TranscriptChunk,
@@ -42,6 +44,59 @@ import {
 const WORLD_CELL_SIZE = 20
 const WORLD_BITMAP_ORIGIN_X = -640
 const WORLD_BITMAP_ORIGIN_Y = -520
+
+export type EquipmentHintSelection = {
+  unseenEquipmentIds: EquipmentId[]
+  shouldShowRewardHint: boolean
+}
+
+export function selectEquipmentHint(input: {
+  content: ContentBundle | null
+  profile: ProfileAggregate | null
+  seenEquipmentIds: readonly string[]
+}): EquipmentHintSelection {
+  const profile = input.profile?.profile
+  if (!profile) {
+    return { unseenEquipmentIds: [], shouldShowRewardHint: false }
+  }
+
+  const seenEquipmentSet = new Set(input.seenEquipmentIds)
+  const unseenEquipmentIds = profile.ownedEquipmentIds.filter(
+    (equipmentId) => !seenEquipmentSet.has(equipmentId),
+  )
+  if (!input.content || unseenEquipmentIds.length === 0) {
+    return { unseenEquipmentIds, shouldShowRewardHint: false }
+  }
+
+  const equippedIds = new Set(
+    [
+      profile.equipped.main,
+      profile.equipped.sub,
+      profile.equipped.os,
+      ...profile.equipped.subsystems,
+    ].filter(isEquipmentId),
+  )
+  const clearedMissionIds = new Set(profile.clearedMissionIds)
+  const shouldShowRewardHint = unseenEquipmentIds.some((equipmentId) => {
+    if (equippedIds.has(equipmentId)) {
+      return false
+    }
+
+    const equipment = input.content?.equipment[equipmentId]
+    if (!equipment || equipment.unlockSource.kind !== "transmissionReward") {
+      return false
+    }
+
+    const transmission = input.content?.transmissions[equipment.unlockSource.transmissionId]
+    return transmission ? clearedMissionIds.has(transmission.missionId) : false
+  })
+
+  return { unseenEquipmentIds, shouldShowRewardHint }
+}
+
+function isEquipmentId(value: EquipmentId | null | undefined): value is EquipmentId {
+  return typeof value === "string" && value.length > 0
+}
 
 export function buildFeatureAccessState(input: {
   profile: ProfileRow

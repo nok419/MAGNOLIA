@@ -35,3 +35,6 @@ Thumbs.db
 tmp/
 temp/
 tmp_video_probe/
+
+# Generated handoff archives
+artifacts/*.zip

@@ -2,6 +2,7 @@ import type {
   AreaId,
   BattleFragmentViewModel,
   EquipmentId,
+  EquipmentSlot,
   ExploreScanPulseViewModel,
   ExploreSignalHintViewModel,
   HazardId,
@@ -255,6 +256,22 @@ export type HazardRenderState = {
   size: { width: number; height: number }
 }
 
+export type BattleResultEquipmentViewModel = {
+  equipmentId: EquipmentId
+  name: string
+  slot: EquipmentSlot
+  slotLabel: string
+}
+
+export type BattleResultViewModel = {
+  analysisRate: number
+  restorationRate: number
+  selfRepairPointsEarned: number
+  newHeardRangeMs: number
+  grantedEquipment: BattleResultEquipmentViewModel[]
+  transcriptPreview: TranscriptViewChunk[]
+}
+
 export type BattleRenderState = {
   missionId: MissionId
   backgroundPresetId?: VisualPresetId
@@ -270,6 +287,7 @@ export type BattleRenderState = {
   activeSubtitle?: SubtitleRenderState
   pendingResult?: MissionResult
   resultTranscriptPreview?: TranscriptViewChunk[]
+  resultViewModel?: BattleResultViewModel
   equippedMainId?: EquipmentId
   equippedSubId?: EquipmentId
 }

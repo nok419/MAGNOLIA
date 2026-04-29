@@ -118,9 +118,11 @@ function groupFiles(files: readonly ContentFile[], gameplayDir: string): Record<
   return groups
 }
 
-function createStore(): ContentStore {
+function createStore(gameplayDirInput?: string): ContentStore {
   const rootDir = process.cwd()
-  const gameplayDir = path.join(rootDir, "content", "gameplay")
+  const gameplayDir = gameplayDirInput
+    ? path.resolve(rootDir, gameplayDirInput)
+    : path.join(rootDir, "content", "gameplay")
   const files = collectJsonFiles(gameplayDir, rootDir, gameplayDir)
   return {
     rootDir,
@@ -131,7 +133,8 @@ function createStore(): ContentStore {
 }
 
 function main(): void {
-  const store = createStore()
+  const options = readCliOptions(process.argv.slice(2))
+  const store = createStore(options.gameplayDir)
   const context: ValidationContext = { store, issues: [] }
 
   validateReferenceRules(context)
@@ -149,6 +152,26 @@ function main(): void {
   }
 
   console.log(`content validation passed (${store.files.length} JSON files)`)
+}
+
+function readCliOptions(args: string[]): { gameplayDir?: string } {
+  const options: { gameplayDir?: string } = {}
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (arg !== "--gameplay-dir") {
+      throw new Error(`Unsupported argument '${arg}'.`)
+    }
+
+    const gameplayDir = args[index + 1]
+    if (!gameplayDir) {
+      throw new Error("--gameplay-dir requires a path.")
+    }
+
+    // fixture を使う検証でも、validator の出力パスは repo root 相対のまま保ちます。
+    options.gameplayDir = gameplayDir
+    index += 1
+  }
+  return options
 }
 
 main()

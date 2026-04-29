@@ -21,6 +21,7 @@ import type {
   DomainEvent,
   EquipmentId,
   EquipmentMaster,
+  EquipmentSlot,
   ExploreFrameInput,
   ExploreFrameResult,
   ExploreScanPulseViewModel,
@@ -51,6 +52,7 @@ import type {
   StartNewGameAtSlotCommand,
   TimeRange,
   TranscriptChunk,
+  TranscriptViewChunk,
   TransmissionId,
   TransmissionProgressRow,
   Vector2,
@@ -162,6 +164,7 @@ import {
 } from "./session-snapshots"
 import { toRecord } from "./record-utils"
 import type {
+  BattleResultViewModel,
   BattlePickupRenderState,
   BattleRenderState,
   EnemyRenderState,
@@ -569,6 +572,9 @@ export class MagnoliaGameSession {
       return null
     }
     const battle = this.battleState
+    const resultTranscriptPreview = battle.activeResult
+      ? buildTranscriptViewChunks(battle.transcript, battle.activeResult.transcriptSpans)
+      : undefined
 
     return {
       missionId: battle.mission.missionId,
@@ -668,9 +674,15 @@ export class MagnoliaGameSession {
       })),
       activeSubtitle: this.getActiveSubtitle(),
       pendingResult: battle.activeResult,
-      resultTranscriptPreview: battle.activeResult
-        ? buildTranscriptViewChunks(battle.transcript, battle.activeResult.transcriptSpans)
-        : undefined,
+      resultTranscriptPreview,
+      resultViewModel:
+        battle.activeResult && resultTranscriptPreview
+          ? buildBattleResultViewModel({
+              result: battle.activeResult,
+              transcriptView: resultTranscriptPreview,
+              content: this.content,
+            })
+          : undefined,
       equippedMainId: this.activeProfile?.profile.equipped.main,
       equippedSubId: this.activeProfile?.profile.equipped.sub,
     }
@@ -2991,6 +3003,51 @@ function readMapCollectibleMarkerKind(
   node: CollectibleMapNode,
 ): WorldMapCollectibleViewModel["markerKind"] {
   return node.collectibleKind === "hiddenEquipment" ? "equipment" : "resource"
+}
+
+function buildBattleResultViewModel(input: {
+  result: MissionResult
+  transcriptView: TranscriptViewChunk[]
+  content: ContentBundle
+}): BattleResultViewModel {
+  return {
+    analysisRate: input.result.analysisRate,
+    restorationRate: input.result.restorationRate,
+    selfRepairPointsEarned: input.result.selfRepairPointsEarned,
+    newHeardRangeMs: input.result.newHeardRangeMs,
+    transcriptPreview: selectBattleResultTranscriptPreview(input.transcriptView),
+    grantedEquipment: input.result.grantedEquipmentIds.flatMap((equipmentId) => {
+      const equipment = input.content.equipment[equipmentId]
+      return equipment
+        ? [
+            {
+              equipmentId: equipment.equipmentId,
+              name: equipment.name,
+              slot: equipment.slot,
+              slotLabel: readEquipmentSlotShortLabel(equipment.slot),
+            },
+          ]
+        : []
+    }),
+  }
+}
+
+function selectBattleResultTranscriptPreview(chunks: TranscriptViewChunk[]): TranscriptViewChunk[] {
+  const restored = chunks.filter((chunk) => chunk.restorationRatio > 0)
+  return (restored.length > 0 ? restored : chunks).slice(0, 4)
+}
+
+function readEquipmentSlotShortLabel(slot: EquipmentSlot): string {
+  switch (slot) {
+    case "main":
+      return "メイン"
+    case "sub":
+      return "サブ"
+    case "os":
+      return "OS"
+    case "subsystem":
+      return "サブシステム"
+  }
 }
 
 function buildProjectileRenderEffects(input: {
