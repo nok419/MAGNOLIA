@@ -1,0 +1,5 @@
+{
+  "hitboxPresetId": "hitbox_bullet_small",
+  "shape": "circle",
+  "radius": 5
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "id": "system.boot.message",
+    "channel": "overlay",
+    "renderer": "react",
+    "blocking": true,
+    "skippable": false,
+    "defaultDurationMs": 1800,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1800
+    }
+  },
+  {
+    "id": "system.reboot.sequence",
+    "channel": "overlay",
+    "renderer": "shared",
+    "blocking": true,
+    "skippable": false,
+    "defaultDurationMs": 5200,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 5800
+    }
+  },
+  {
+    "id": "system.reboot.settle",
+    "channel": "overlay",
+    "renderer": "shared",
+    "blocking": true,
+    "skippable": false,
+    "defaultDurationMs": 2200,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 2400
+    }
+  },
+  {
+    "id": "tutorial.restriction.enter",
+    "channel": "overlay",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 1200,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1200
+    }
+  },
+  {
+    "id": "tutorial.restriction.release",
+    "channel": "overlay",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 6200,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 6800
+    }
+  },
+  {
+    "id": "explore.player.trail",
+    "channel": "explore",
+    "renderer": "phaser",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 300,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 300
+    }
+  },
+  {
+    "id": "transmission.connect.sequence",
+    "channel": "transition",
+    "renderer": "shared",
+    "blocking": true,
+    "skippable": true,
+    "defaultDurationMs": 1400,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1600
+    }
+  },
+  {
+    "id": "warp.transition.sequence",
+    "channel": "transition",
+    "renderer": "shared",
+    "blocking": true,
+    "skippable": true,
+    "defaultDurationMs": 1000,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1200
+    }
+  },
+  {
+    "id": "battle.player.hit",
+    "channel": "battle",
+    "renderer": "phaser",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 250,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 300
+    }
+  },
+  {
+    "id": "battle.noise.peak",
+    "channel": "battle",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 350,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 420
+    }
+  },
+  {
+    "id": "battle.noise.clear",
+    "channel": "battle",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 350,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 350
+    }
+  },
+  {
+    "id": "battle.invincible.start",
+    "channel": "battle",
+    "renderer": "phaser",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 400,
+    "maxFlashHz": 2,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 480
+    }
+  }
+]

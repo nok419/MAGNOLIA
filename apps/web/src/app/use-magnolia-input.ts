@@ -85,6 +85,15 @@ export function useMagnoliaInput() {
       }
     }
 
+    function queueMouseButtonEdge(button: number) {
+      if (button === 0) {
+        queuedMousePressRef.current.left = true
+      }
+      if (button === 2) {
+        queuedMousePressRef.current.right = true
+      }
+    }
+
     function releaseMouseButton(button: number) {
       if (button === 0) {
         mouseButtonsRef.current.left = false
@@ -116,8 +125,11 @@ export function useMagnoliaInput() {
 
     function handleContextMenu(event: MouseEvent) {
       event.preventDefault()
-      queueMouseButtonPress(2)
-      releaseMouseButton(2)
+      // contextmenu は右ボタン押下中にも発火するため、ここで release すると長押し sub が途切れます。
+      queueMouseButtonEdge(2)
+      if ((event.buttons & 2) !== 0) {
+        mouseButtonsRef.current.right = true
+      }
     }
 
     window.addEventListener("pointerdown", handlePointerDown, true)
@@ -215,6 +227,8 @@ export function useMagnoliaInput() {
     },
   }
 }
+
+export type MagnoliaInputController = ReturnType<typeof useMagnoliaInput>
 
 function readMovementVector(
   settings: SettingsRow,

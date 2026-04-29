@@ -13,6 +13,17 @@
   "dangerLevel": 3,
   "baseSelfRepairPoints": 110,
   "repeatDecayRate": 0.2,
+  "fragmentRecovery": {
+    "cooldownMs": 1000,
+    "lifetimeMs": {
+      "calm": 5000,
+      "terminal": 3600
+    },
+    "spawnDistanceMin": 82,
+    "spawnDistanceMax": 210,
+    "minSpanRatio": 0.10,
+    "maxSpanRatio": 0.52
+  },
   "waves": [
     {
       "atMs": 2200,

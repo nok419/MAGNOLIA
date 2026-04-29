@@ -6,6 +6,8 @@ import {
   drawTransmissionMarker,
 } from "@/app/canvas-markers"
 import type { DisplayOptions } from "@/app/display-options"
+import { PHI_INV, TAU } from "@/render/shared/canvas-math"
+import { worldToSquareCanvas } from "@/render/shared/coordinates"
 
 type MiniMapProps = {
   snapshot: ExploreSnapshot
@@ -16,8 +18,6 @@ type MiniMapProps = {
 const SIZE = 180
 const CENTER = SIZE / 2
 const RADIUS = SIZE / 2 - 6
-const PHI_INV = 1 / 1.618033988749895
-const TAU = Math.PI * 2
 const TICK_COUNT = 72 // every 5 degrees
 const CARDINAL_TICKS = [0, 18, 36, 54] // N, E, S, W indices
 
@@ -300,9 +300,7 @@ function drawCompassTicks(ctx: CanvasRenderingContext2D, _sweepAngle: number) {
    MAP PROJECTION
    ============================================================ */
 function project(rs: ExploreRenderState, x: number, y: number) {
-  const rx = (x - rs.worldBounds.x) / Math.max(1, rs.worldBounds.width)
-  const ry = (y - rs.worldBounds.y) / Math.max(1, rs.worldBounds.height)
-  return { x: rx * SIZE, y: ry * SIZE }
+  return worldToSquareCanvas(rs.worldBounds, SIZE, x, y)
 }
 
 function drawVisionCircle(

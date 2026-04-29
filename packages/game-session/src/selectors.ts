@@ -8,14 +8,20 @@ import type {
   AreaProgressRow,
   ConditionId,
   ConditionSpec,
+  ContentBundle,
+  CollectibleMapNode,
   EffectSpec,
   EquipmentId,
   EquipmentMaster,
+  EquipmentSlot,
   FeatureAccessState,
+  ExploreSnapshot,
+  MapId,
   MissionId,
   MissionMaster,
   MissionReplaySeed,
   MissionState,
+  ProfileAggregate,
   ProfileRow,
   TimeRange,
   TranscriptChunk,
@@ -23,6 +29,7 @@ import type {
   TransmissionId,
   TransmissionMaster,
   TransmissionProgressRow,
+  Vector2,
   WorldMapLogic,
   WorldMapNodeId,
   WorldMapVisibilityState,
@@ -30,18 +37,306 @@ import type {
 } from "@magnolia/contracts"
 import { evaluateCondition } from "./conditions"
 import type { ResolvedEquipmentBinding, ResolvedLoadout } from "./equipment-runtime"
+import { computeAreaBounds } from "./explore-world"
 import {
+  computeAreaCompletionRate,
   hasUnlockedTransmissionMetadata,
   isTransmissionSignalIdentified,
   mergeRanges,
   mergeTranscriptSpans,
+  readTransmissionCompletionState,
   readTranscriptChunkRestorationRatio,
   transcriptSpansFromTimeRanges,
 } from "./progression"
+import type { BattleRenderState, ExploreRenderState, Rect } from "./runtime-types"
 
 const WORLD_CELL_SIZE = 20
 const WORLD_BITMAP_ORIGIN_X = -640
 const WORLD_BITMAP_ORIGIN_Y = -520
+
+export type EquipmentHintSelector = {
+  unseenEquipmentIds: EquipmentId[]
+  missionRewardEquipmentIds: EquipmentId[]
+  shouldShowEquipmentHint: boolean
+}
+
+export type WorldMapAreaViewModel = {
+  areaId: AreaId
+  name: string
+  completionRate: number
+  position: Vector2
+  bounds: Rect
+}
+
+export type WorldMapTransmissionViewModel = {
+  nodeId: WorldMapNodeId
+  areaId: AreaId
+  transmissionId: TransmissionId
+  title: string
+  sender: string
+  recipient: string
+  titleUnlocked: boolean
+  senderUnlocked: boolean
+  recipientUnlocked: boolean
+  restorationRate: number
+  state: "locked" | "partial" | "complete"
+  position: Vector2
+}
+
+export type WorldMapCollectibleViewModel = {
+  nodeId: WorldMapNodeId
+  areaId: AreaId
+  collectibleKind: CollectibleMapNode["collectibleKind"]
+  position: Vector2
+}
+
+export type WorldMapViewModel = {
+  mapId: MapId
+  currentAreaId?: AreaId
+  playerPosition: Vector2
+  playerFacing: Vector2
+  visionRadius: number
+  worldBounds: Rect
+  fogBitmap: string
+  visibleAreas: WorldMapAreaViewModel[]
+  visibleTransmissions: WorldMapTransmissionViewModel[]
+  visibleCollectibles: WorldMapCollectibleViewModel[]
+}
+
+export type BattleResultRewardViewModel = {
+  equipmentId: EquipmentId
+  name: string
+  slotLabel: string
+}
+
+export type BattleResultViewModel = {
+  progress: number
+  progressPercent: number
+  remainingSeconds: number
+  transcriptPreview: NonNullable<BattleRenderState["resultTranscriptPreview"]>
+  grantedEquipment: BattleResultRewardViewModel[]
+}
+
+export type ExploreInteractionTargets = {
+  transmissions: ExploreRenderState["visibleTransmissions"]
+  warps: ExploreRenderState["visibleWarps"]
+  collectibles: ExploreRenderState["visibleCollectibles"]
+}
+
+export function selectWorldMapViewModel(input: {
+  content: ContentBundle
+  profileAggregate: ProfileAggregate
+  snapshot: ExploreSnapshot
+  renderState: ExploreRenderState
+  mapLogic: WorldMapLogic
+}): WorldMapViewModel {
+  const transmissionProgressById = toProgressRecord(input.profileAggregate.transmissionProgress)
+  const visibleAreaIdSet = new Set(input.snapshot.featureAccess.visibleAreaIds)
+  const visibleTransmissionNodeIdSet = new Set(input.snapshot.map.visibleTransmissionNodeIds)
+  const visibleCollectibleNodeIdSet = new Set(input.snapshot.map.visibleCollectibleNodeIds)
+
+  const visibleAreas = input.mapLogic.areaNodes
+    .filter((node) => visibleAreaIdSet.has(node.areaId))
+    .map<WorldMapAreaViewModel>((node) => {
+      const area = input.content.areas[node.areaId]
+      return {
+        areaId: node.areaId,
+        name: area?.name ?? node.areaId,
+        completionRate: computeAreaCompletionRate({
+          area,
+          transmissionProgress: transmissionProgressById,
+        }),
+        position: { x: node.x, y: node.y },
+        bounds: computeAreaBounds(input.mapLogic, node.areaId, input.renderState.worldBounds),
+      }
+    })
+    .sort((left, right) => left.name.localeCompare(right.name, "ja"))
+
+  const visibleTransmissions = input.mapLogic.transmissionNodes
+    .filter((node) => visibleTransmissionNodeIdSet.has(node.nodeId))
+    .map<WorldMapTransmissionViewModel>((node) => {
+      const transmission = input.content.transmissions[node.transmissionId]
+      const progress = transmissionProgressById[node.transmissionId]
+      return {
+        nodeId: node.nodeId,
+        areaId: node.areaId,
+        transmissionId: node.transmissionId,
+        title: transmission?.title ?? node.transmissionId,
+        sender: transmission?.sender ?? "???",
+        recipient: transmission?.recipient ?? "???",
+        titleUnlocked: Boolean(progress?.metadataUnlocked.title),
+        senderUnlocked: Boolean(progress?.metadataUnlocked.sender),
+        recipientUnlocked: Boolean(progress?.metadataUnlocked.recipient),
+        restorationRate: progress?.archiveRestorationRate ?? 0,
+        state: readTransmissionCompletionState(progress),
+        position: { x: node.x, y: node.y },
+      }
+    })
+
+  const visibleCollectibles = input.mapLogic.collectibleNodes
+    .filter((node) => visibleCollectibleNodeIdSet.has(node.nodeId))
+    .map<WorldMapCollectibleViewModel>((node) => ({
+      nodeId: node.nodeId,
+      areaId: node.areaId,
+      collectibleKind: node.collectibleKind,
+      position: { x: node.x, y: node.y },
+    }))
+
+  return {
+    mapId: input.mapLogic.mapId,
+    currentAreaId: input.snapshot.hud.currentAreaId,
+    playerPosition: input.snapshot.playerPosition,
+    playerFacing: input.renderState.playerFacing,
+    visionRadius: input.renderState.visionRadius,
+    worldBounds: input.renderState.worldBounds,
+    fogBitmap: input.snapshot.map.fogBitmap,
+    visibleAreas,
+    visibleTransmissions,
+    visibleCollectibles,
+  }
+}
+
+export function selectBattleResultViewModel(input: {
+  content: ContentBundle
+  renderState: BattleRenderState
+}): BattleResultViewModel {
+  const progress = input.renderState.missionDurationMs > 0
+    ? Math.max(0, Math.min(1, input.renderState.elapsedMs / input.renderState.missionDurationMs))
+    : 0
+  const grantedEquipment = (input.renderState.pendingResult?.grantedEquipmentIds ?? [])
+    .flatMap<BattleResultRewardViewModel>((equipmentId) => {
+      const equipment = input.content.equipment[equipmentId]
+      if (!equipment) {
+        return []
+      }
+      return [{
+        equipmentId,
+        name: equipment.name,
+        slotLabel: readEquipmentSlotLabel(equipment.slot),
+      }]
+    })
+
+  return {
+    progress,
+    progressPercent: Math.round(progress * 100),
+    remainingSeconds: Math.ceil(
+      Math.max(0, input.renderState.missionDurationMs - input.renderState.elapsedMs) / 1000,
+    ),
+    transcriptPreview: selectResultTranscriptPreview(input.renderState.resultTranscriptPreview),
+    grantedEquipment,
+  }
+}
+
+export function selectExploreInteractionTargets(
+  renderState: ExploreRenderState | null,
+): ExploreInteractionTargets {
+  return {
+    transmissions: renderState?.visibleTransmissions ?? [],
+    warps: renderState?.visibleWarps ?? [],
+    collectibles: renderState?.visibleCollectibles ?? [],
+  }
+}
+
+function selectResultTranscriptPreview(
+  chunks: BattleRenderState["resultTranscriptPreview"],
+): NonNullable<BattleRenderState["resultTranscriptPreview"]> {
+  const restored = (chunks ?? []).filter((chunk) => chunk.restorationRatio > 0)
+  const source = restored.length > 0 ? restored : chunks ?? []
+  const important = source.filter((chunk) => chunk.importance && chunk.importance !== "normal")
+  const regular = source.filter((chunk) => !important.includes(chunk))
+  return [...important, ...regular].slice(0, 4)
+}
+
+function readEquipmentSlotLabel(slot: EquipmentSlot): string {
+  switch (slot) {
+    case "main":
+      return "メイン"
+    case "sub":
+      return "サブ"
+    case "os":
+      return "OS"
+    case "subsystem":
+      return "サブシステム"
+  }
+}
+
+function toProgressRecord(
+  progressRows: ProfileAggregate["transmissionProgress"],
+): Record<TransmissionId, TransmissionProgressRow> {
+  return Object.fromEntries(
+    progressRows.map((row) => [row.transmissionId, row]),
+  ) as Record<TransmissionId, TransmissionProgressRow>
+}
+
+export function selectEquipmentHint(input: {
+  content: ContentBundle | null
+  profile: ProfileAggregate | null
+  seenEquipmentIds: EquipmentId[]
+}): EquipmentHintSelector {
+  const profile = input.profile?.profile
+  if (!input.content || !profile) {
+    return {
+      unseenEquipmentIds: [],
+      missionRewardEquipmentIds: [],
+      shouldShowEquipmentHint: false,
+    }
+  }
+
+  const seenEquipmentIds = new Set(input.seenEquipmentIds)
+  const unseenEquipmentIds = profile.ownedEquipmentIds.filter((id) => !seenEquipmentIds.has(id))
+  const unseenEquipmentIdSet = new Set(unseenEquipmentIds)
+  const missionRewardEquipmentIds = selectClearedMissionRewardEquipmentIds({
+    content: input.content,
+    profile,
+  })
+  const shouldShowEquipmentHint = missionRewardEquipmentIds.some((equipmentId) => {
+    const equipment = input.content?.equipment[equipmentId]
+    if (!equipment) {
+      return false
+    }
+    return (
+      unseenEquipmentIdSet.has(equipmentId) &&
+      !isEquipmentEquipped(profile, equipmentId, equipment.slot)
+    )
+  })
+
+  return {
+    unseenEquipmentIds,
+    missionRewardEquipmentIds,
+    shouldShowEquipmentHint,
+  }
+}
+
+function selectClearedMissionRewardEquipmentIds(input: {
+  content: ContentBundle
+  profile: ProfileRow
+}): EquipmentId[] {
+  const clearedMissionIds = new Set(input.profile.clearedMissionIds)
+  const ownedEquipmentIds = new Set(input.profile.ownedEquipmentIds)
+  const rewardEquipmentIds = Object.values(input.content.transmissions)
+    .filter((transmission) => clearedMissionIds.has(transmission.missionId))
+    .flatMap((transmission) => transmission.rewardEquipmentIds ?? [])
+    .filter((equipmentId) => ownedEquipmentIds.has(equipmentId))
+
+  return Array.from(new Set(rewardEquipmentIds))
+}
+
+function isEquipmentEquipped(
+  profile: ProfileRow,
+  equipmentId: EquipmentId,
+  slot: EquipmentSlot,
+): boolean {
+  switch (slot) {
+    case "main":
+      return profile.equipped.main === equipmentId
+    case "sub":
+      return profile.equipped.sub === equipmentId
+    case "os":
+      return profile.equipped.os === equipmentId
+    case "subsystem":
+      return profile.equipped.subsystems.includes(equipmentId)
+  }
+}
 
 export function buildFeatureAccessState(input: {
   profile: ProfileRow

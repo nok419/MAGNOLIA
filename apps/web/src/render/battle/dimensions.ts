@@ -1,0 +1,4 @@
+export const BATTLE_CANVAS_WIDTH = 480
+export const BATTLE_CANVAS_HEIGHT = 520
+export const WIDTH = BATTLE_CANVAS_WIDTH
+export const HEIGHT = BATTLE_CANVAS_HEIGHT

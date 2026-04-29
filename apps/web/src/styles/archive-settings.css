@@ -44,6 +44,10 @@
 .archive-log__text--damaged {
   color: rgba(216, 231, 246, 0.72);
 }
+.archive-log__text--important {
+  border-left: 2px solid rgba(93, 164, 209, 0.78);
+  padding-left: 10px;
+}
 
 /* =========================================================
    EXPLORE FULLSCREEN

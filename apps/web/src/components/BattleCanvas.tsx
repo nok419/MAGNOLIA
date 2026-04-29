@@ -1,11 +1,13 @@
 import { useEffect, useRef } from "react"
 import type { ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
+import type { TimedPresentationRequest } from "@/app/app-state"
 import type { DisplayOptions } from "@/app/display-options"
 import { BATTLE_CANVAS_HEIGHT, BATTLE_CANVAS_WIDTH, drawBattleFrame } from "@/components/battle-renderer"
 
 type BattleCanvasProps = {
   renderState: BattleRenderState
+  presentationRequests?: TimedPresentationRequest[]
   /** true にすると背景を描画せず、下レイヤー (SignalBackdropCanvas 等) を透過する */
   transparentBg?: boolean
   /** 自機見た目バリアント。詳細は ship-renderer を参照。 */
@@ -13,7 +15,13 @@ type BattleCanvasProps = {
   displayOptions: DisplayOptions
 }
 
-export function BattleCanvas({ renderState, transparentBg, shipVariant, displayOptions }: BattleCanvasProps) {
+export function BattleCanvas({
+  renderState,
+  presentationRequests = [],
+  transparentBg,
+  shipVariant,
+  displayOptions,
+}: BattleCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -32,11 +40,12 @@ export function BattleCanvas({ renderState, transparentBg, shipVariant, displayO
 
     drawBattleFrame(context, {
       renderState,
+      presentationRequests,
       transparentBg,
       shipVariant,
       reduceFlashing: displayOptions.reduceFlashing,
     })
-  }, [displayOptions, renderState, shipVariant])
+  }, [displayOptions, presentationRequests, renderState, shipVariant])
 
   return <canvas ref={canvasRef} className="play-canvas play-canvas--battle" />
 }

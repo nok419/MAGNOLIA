@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_bullet_enemy_lance",
+  "category": "projectile",
+  "rendererKind": "enemyLance",
+  "paletteRole": "dangerNoise",
+  "accessibilityVariant": "highContrast",
+  "trailRole": "trailC"
+}

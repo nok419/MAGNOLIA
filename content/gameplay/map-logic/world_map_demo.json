@@ -40,7 +40,14 @@
       "interactionRadius": 20,
       "panelKind": "transmission",
       "visibilityConditionId": "cond_always",
-      "accessConditionId": "cond_always"
+      "accessConditionId": "cond_always",
+      "signalProfile": {
+        "passiveRadius": 560,
+        "passiveConfidenceRadius": 360,
+        "scanRadius": 760,
+        "confidenceMultiplier": 1.35,
+        "hintStrengthMultiplier": 1.05
+      }
     },
     {
       "type": "transmission",
@@ -52,7 +59,14 @@
       "interactionRadius": 20,
       "panelKind": "transmission",
       "visibilityConditionId": "cond_mission_good_morning_cleared",
-      "accessConditionId": "cond_mission_good_morning_cleared"
+      "accessConditionId": "cond_mission_good_morning_cleared",
+      "signalProfile": {
+        "passiveRadius": 520,
+        "passiveConfidenceRadius": 300,
+        "scanRadius": 820,
+        "confidenceMultiplier": 1.05,
+        "hintStrengthMultiplier": 0.95
+      }
     },
     {
       "type": "transmission",
@@ -64,7 +78,14 @@
       "interactionRadius": 20,
       "panelKind": "transmission",
       "visibilityConditionId": "cond_mission_good_morning_cleared",
-      "accessConditionId": "cond_mission_good_morning_cleared"
+      "accessConditionId": "cond_mission_good_morning_cleared",
+      "signalProfile": {
+        "passiveRadius": 650,
+        "passiveConfidenceRadius": 340,
+        "scanRadius": 860,
+        "confidenceMultiplier": 0.9,
+        "hintStrengthMultiplier": 1.16
+      }
     }
   ],
   "warpNodes": [],
@@ -79,7 +100,12 @@
       "equipmentId": "eq_sub_silent_wave",
       "interactionRadius": 18,
       "visibilityConditionId": "cond_always",
-      "visualHint": "glow"
+      "visualHint": "glow",
+      "signalProfile": {
+        "passiveRadius": 380,
+        "scanRadius": 700,
+        "hintStrengthMultiplier": 0.88
+      }
     },
     {
       "type": "collectible",
@@ -139,7 +165,12 @@
       "equipmentId": "eq_subsystem_analysis_circuit",
       "interactionRadius": 18,
       "visibilityConditionId": "cond_always",
-      "visualHint": "glow"
+      "visualHint": "glow",
+      "signalProfile": {
+        "passiveRadius": 420,
+        "scanRadius": 760,
+        "hintStrengthMultiplier": 0.94
+      }
     },
     {
       "type": "collectible",

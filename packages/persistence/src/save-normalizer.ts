@@ -201,7 +201,10 @@ function normalizeAreaProgressRows(input: {
 }): AreaProgressRow[] {
   const existing = new Map<string, AreaProgressRow>()
   for (const row of input.rows) {
-    existing.set(row.areaId, row)
+    const areaId = migrateAreaId(input.content, row.areaId)
+    if (areaId) {
+      existing.set(areaId, { ...row, areaId })
+    }
   }
 
   if (!input.content) {
@@ -240,14 +243,21 @@ function normalizeTransmissionProgressRows(input: {
   content?: ContentBundle
   rebindRunIds?: boolean
 }): TransmissionProgressRow[] {
-  const rows = input.rows.filter((row) => {
+  const rows = input.rows.flatMap((row) => {
+    const transmissionId = migrateTransmissionId(input.content, row.transmissionId)
+    const areaId = migrateAreaId(input.content, row.areaId)
+
     if (!input.content) {
-      return typeof row.transmissionId === "string" && row.transmissionId.length > 0
+      return typeof transmissionId === "string" && transmissionId.length > 0
+        ? [{ ...row, transmissionId, areaId: areaId ?? row.areaId }]
+        : []
     }
-    return Boolean(input.content.transmissions[row.transmissionId])
+    return transmissionId && input.content.transmissions[transmissionId]
+      ? [{ ...row, transmissionId, areaId: areaId ?? row.areaId }]
+      : []
   })
 
-  return rows.map((row) => {
+  const normalizedRows = rows.map((row) => {
     const transmission = input.content?.transmissions[row.transmissionId]
     const durationMs = transmission
       ? readTransmissionDurationMs(input.content, transmission.missionId)
@@ -299,6 +309,59 @@ function normalizeTransmissionProgressRows(input: {
           : undefined,
     }
   })
+
+  return mergeTransmissionProgressRows(normalizedRows)
+}
+
+function mergeTransmissionProgressRows(
+  rows: TransmissionProgressRow[],
+): TransmissionProgressRow[] {
+  const merged = new Map<string, TransmissionProgressRow>()
+
+  for (const row of rows) {
+    const previous = merged.get(row.transmissionId)
+    if (!previous) {
+      merged.set(row.transmissionId, row)
+      continue
+    }
+
+    // 旧 ID と現行 ID が同時に import された場合、同じ通信の進行を 1 行へ集約します。
+    // clearCount は重複加算せず最大値を採用し、復元範囲は和集合にします。
+    merged.set(row.transmissionId, {
+      ...previous,
+      firstConnectedAt: earlierTimestamp(previous.firstConnectedAt, row.firstConnectedAt),
+      lastPlayedAt: laterTimestamp(previous.lastPlayedAt, row.lastPlayedAt),
+      clearCount: Math.max(previous.clearCount, row.clearCount),
+      bestAnalysisRate: Math.max(previous.bestAnalysisRate, row.bestAnalysisRate),
+      bestRunRestorationRate: Math.max(
+        previous.bestRunRestorationRate,
+        row.bestRunRestorationRate,
+      ),
+      archiveRestorationRate: Math.max(
+        previous.archiveRestorationRate,
+        row.archiveRestorationRate,
+      ),
+      heardRanges: normalizeTimeRanges([...previous.heardRanges, ...row.heardRanges]),
+      transcriptSpans: normalizeTranscriptSpans(
+        [...previous.transcriptSpans, ...row.transcriptSpans],
+        [],
+      ),
+      signalConfidence: maxOptionalRate(previous.signalConfidence, row.signalConfidence),
+      signalDiscoveredAt: earlierTimestamp(
+        previous.signalDiscoveredAt,
+        row.signalDiscoveredAt,
+      ),
+      metadataUnlocked: {
+        title: previous.metadataUnlocked.title || row.metadataUnlocked.title,
+        sender: previous.metadataUnlocked.sender || row.metadataUnlocked.sender,
+        recipient: previous.metadataUnlocked.recipient || row.metadataUnlocked.recipient,
+        sentAt: previous.metadataUnlocked.sentAt || row.metadataUnlocked.sentAt,
+      },
+      latestRunId: row.latestRunId ?? previous.latestRunId,
+    })
+  }
+
+  return [...merged.values()]
 }
 
 function normalizeMissionRuns(input: {
@@ -309,15 +372,26 @@ function normalizeMissionRuns(input: {
   resetIds?: boolean
 }): MissionRunRow[] {
   return input.rows
-    .filter((row) => {
+    .flatMap((row): MissionRunRow[] => {
+      const missionId = migrateMissionId(input.content, row.missionId)
+      const transmissionId = migrateTransmissionId(input.content, row.transmissionId)
+
       if (!input.content) {
-        return typeof row.missionId === "string" && typeof row.transmissionId === "string"
+        return typeof missionId === "string" && typeof transmissionId === "string"
+          ? [{ ...row, missionId, transmissionId }]
+          : []
       }
-      const mission = input.content.missions[row.missionId]
+      if (!missionId) {
+        return []
+      }
+      const mission = missionId ? input.content.missions[missionId] : undefined
       if (!mission) {
-        return false
+        return []
       }
-      return mission.transmissionId === row.transmissionId
+      const normalizedTransmissionId = transmissionId ?? mission.transmissionId
+      return mission.transmissionId === normalizedTransmissionId
+        ? [{ ...row, missionId, transmissionId: normalizedTransmissionId }]
+        : []
     })
     .map((row) => {
       const durationMs = input.content?.missions[row.missionId]?.durationMs
@@ -386,20 +460,22 @@ function normalizeEquippedItem(
   ownedEquipmentIds: EquipmentId[],
   content?: ContentBundle,
 ): EquipmentId | undefined {
-  if (!equipmentId || !ownedEquipmentIds.includes(equipmentId)) {
+  const normalizedEquipmentId = migrateEquipmentId(content, equipmentId)
+
+  if (!normalizedEquipmentId || !ownedEquipmentIds.includes(normalizedEquipmentId)) {
     return undefined
   }
 
   if (!content) {
-    return equipmentId
+    return normalizedEquipmentId
   }
 
-  const equipment = content.equipment[equipmentId]
+  const equipment = content.equipment[normalizedEquipmentId]
   if (!equipment || equipment.slot !== slot) {
     return undefined
   }
 
-  return equipmentId
+  return normalizedEquipmentId
 }
 
 function normalizeEquipmentLevels(
@@ -408,8 +484,9 @@ function normalizeEquipmentLevels(
   content?: ContentBundle,
 ): ProfileRow["equipmentLevels"] {
   const normalized: ProfileRow["equipmentLevels"] = {}
+  const levelByEquipmentId = normalizeEquipmentLevelMap(levels, content)
   for (const equipmentId of ownedEquipmentIds) {
-    const rawLevel = levels?.[equipmentId]
+    const rawLevel = levelByEquipmentId[equipmentId]
     const maxLevel = content?.equipment[equipmentId]?.maxLevel ?? 1
     normalized[equipmentId] = Math.min(
       maxLevel,
@@ -419,11 +496,38 @@ function normalizeEquipmentLevels(
   return normalized
 }
 
+function normalizeEquipmentLevelMap(
+  levels: ProfileRow["equipmentLevels"] | undefined,
+  content?: ContentBundle,
+): ProfileRow["equipmentLevels"] {
+  const normalized: ProfileRow["equipmentLevels"] = {}
+
+  for (const [equipmentId, level] of Object.entries(levels ?? {})) {
+    const migratedEquipmentId = migrateEquipmentId(content, equipmentId)
+    if (!migratedEquipmentId) {
+      continue
+    }
+    if (content && !content.equipment[migratedEquipmentId]) {
+      continue
+    }
+    normalized[migratedEquipmentId] = Math.max(
+      readNumber(normalized[migratedEquipmentId], 1),
+      readNumber(level, 1),
+    )
+  }
+
+  return normalized
+}
+
 function normalizeEquipmentIds(
   equipmentIds: ProfileRow["ownedEquipmentIds"] | undefined,
   content?: ContentBundle,
 ): EquipmentId[] {
-  const ids = uniqueStrings(readStringArray(equipmentIds))
+  const ids = uniqueStrings(
+    readStringArray(equipmentIds)
+      .map((equipmentId) => migrateEquipmentId(content, equipmentId))
+      .filter((equipmentId): equipmentId is EquipmentId => Boolean(equipmentId)),
+  )
   if (!content) {
     return ids
   }
@@ -434,7 +538,11 @@ function normalizeCollectibleNodeIds(
   nodeIds: ProfileRow["collectedNodeIds"] | undefined,
   content?: ContentBundle,
 ): ProfileRow["collectedNodeIds"] {
-  const ids = uniqueStrings(readStringArray(nodeIds))
+  const ids = uniqueStrings(
+    readStringArray(nodeIds)
+      .map((nodeId) => migrateWorldMapNodeId(content, nodeId))
+      .filter((nodeId): nodeId is string => Boolean(nodeId)),
+  )
   if (!content) {
     return ids
   }
@@ -451,7 +559,11 @@ function normalizeMissionIds(
   missionIds: ProfileRow["clearedMissionIds"] | undefined,
   content?: ContentBundle,
 ): ProfileRow["clearedMissionIds"] {
-  const ids = uniqueStrings(readStringArray(missionIds))
+  const ids = uniqueStrings(
+    readStringArray(missionIds)
+      .map((missionId) => migrateMissionId(content, missionId))
+      .filter((missionId): missionId is string => Boolean(missionId)),
+  )
   if (!content) {
     return ids
   }
@@ -607,8 +719,9 @@ function readInitialAreaId(
     return fallbackAreaId ?? "area_undefined"
   }
 
-  if (fallbackAreaId && content.areas[fallbackAreaId]) {
-    return fallbackAreaId
+  const normalizedFallbackAreaId = migrateAreaId(content, fallbackAreaId)
+  if (normalizedFallbackAreaId && content.areas[normalizedFallbackAreaId]) {
+    return normalizedFallbackAreaId
   }
 
   return (
@@ -625,7 +738,50 @@ function readExistingAreaId(
   if (!content) {
     return areaId ?? fallbackAreaId
   }
-  return areaId && content.areas[areaId] ? areaId : fallbackAreaId
+  const normalizedAreaId = migrateAreaId(content, areaId)
+  return normalizedAreaId && content.areas[normalizedAreaId] ? normalizedAreaId : fallbackAreaId
+}
+
+function migrateAreaId(content: ContentBundle | undefined, areaId: string | undefined): string | undefined {
+  return migrateContentId(content?.migratedIds.areas, areaId)
+}
+
+function migrateTransmissionId(
+  content: ContentBundle | undefined,
+  transmissionId: string | undefined,
+): string | undefined {
+  return migrateContentId(content?.migratedIds.transmissions, transmissionId)
+}
+
+function migrateMissionId(
+  content: ContentBundle | undefined,
+  missionId: string | undefined,
+): string | undefined {
+  return migrateContentId(content?.migratedIds.missions, missionId)
+}
+
+function migrateEquipmentId(
+  content: ContentBundle | undefined,
+  equipmentId: string | null | undefined,
+): EquipmentId | undefined {
+  return migrateContentId(content?.migratedIds.equipment, equipmentId) as EquipmentId | undefined
+}
+
+function migrateWorldMapNodeId(
+  content: ContentBundle | undefined,
+  nodeId: string | undefined,
+): string | undefined {
+  return migrateContentId(content?.migratedIds.worldMapNodes, nodeId)
+}
+
+function migrateContentId(
+  mappings: Record<string, string> | undefined,
+  id: string | null | undefined,
+): string | undefined {
+  if (!id) {
+    return undefined
+  }
+  return mappings?.[id] ?? id
 }
 
 function readProfileId(profileId: unknown, slotId: SaveSlotId): ProfileId {
@@ -665,6 +821,19 @@ function normalizeOptionalRate(value: unknown): number | undefined {
   return clampRate(value)
 }
 
+function maxOptionalRate(
+  left: number | undefined,
+  right: number | undefined,
+): number | undefined {
+  if (left === undefined) {
+    return right
+  }
+  if (right === undefined) {
+    return left
+  }
+  return Math.max(left, right)
+}
+
 function readNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback
 }
@@ -677,6 +846,32 @@ function readTimestamp(value: unknown, fallback?: string): string {
     return fallback
   }
   return new Date().toISOString()
+}
+
+function earlierTimestamp(
+  left: string | undefined,
+  right: string | undefined,
+): string | undefined {
+  if (!left) {
+    return right
+  }
+  if (!right) {
+    return left
+  }
+  return Date.parse(left) <= Date.parse(right) ? left : right
+}
+
+function laterTimestamp(
+  left: string | undefined,
+  right: string | undefined,
+): string | undefined {
+  if (!left) {
+    return right
+  }
+  if (!right) {
+    return left
+  }
+  return Date.parse(left) >= Date.parse(right) ? left : right
 }
 
 function readNonEmptyString(value: unknown, fallback: string): string {

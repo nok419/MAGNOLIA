@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "areas": {
+    "area_demo": "area_central_tower",
+    "area_01": "area_central_tower",
+    "area_02": "area_broadcast_facility"
+  },
+  "transmissions": {
+    "tx_01": "tx_good_morning",
+    "tx_02": "tx_where_are_you",
+    "tx_03": "tx_evacuation"
+  },
+  "missions": {
+    "mission_01": "mission_good_morning",
+    "mission_02": "mission_where_are_you",
+    "mission_03": "mission_evacuation"
+  },
+  "equipment": {
+    "eq_main_default": "eq_main_pulse",
+    "eq_sub_default": "eq_sub_noise_canceller",
+    "eq_os_default": "eq_os_broken"
+  },
+  "worldMapNodes": {
+    "node_start": "node_area_central_tower",
+    "node_tx_01": "node_tx_good_morning",
+    "node_tx_02": "node_tx_where_are_you",
+    "node_tx_03": "node_tx_evacuation"
+  },
+  "enemies": {
+    "a1": "enemy_scout",
+    "a2": "enemy_standard",
+    "b1": "enemy_heavy",
+    "c1": "enemy_heavy"
+  },
+  "bulletPatterns": {
+    "bp_a2_lance_spread": "bp_standard_spread",
+    "bp_b1_core_burst": "bp_heavy_burst",
+    "bp_b1_lance_stream": "bp_spiral_stream",
+    "bp_c1_pressure_ring": "bp_heavy_burst",
+    "bp_radial_burst": "bp_standard_spread"
+  },
+  "projectiles": {
+    "proj_enemy_core": "proj_enemy_geo",
+    "proj_enemy_lance": "proj_enemy_petal"
+  }
+}

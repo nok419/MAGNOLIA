@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_bullet_player_melee",
+  "category": "projectile",
+  "rendererKind": "playerMelee",
+  "paletteRole": "normalSignal",
+  "accessibilityVariant": "highContrast",
+  "trailRole": "none"
+}

@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_bullet_enemy_basic",
+  "category": "projectile",
+  "rendererKind": "noiseOrb",
+  "paletteRole": "dangerNoise",
+  "accessibilityVariant": "highContrast",
+  "trailRole": "trailA"
+}

@@ -3,9 +3,9 @@
   "slot": "subsystem",
   "name": "逆位相",
   "iconId": "icon_eq_subsystem_inverse_phase",
-  "summary": "mainショットに炎上の継続ダメージを加える。",
-  "description": "mainショットが敵に炎上状態（継続ダメージ）を付与するようになる。",
-  "flavorText": "",
+  "summary": "main の波形に継続干渉を加える。",
+  "description": "main の波形がノイズ源へ継続干渉を残すようになる。硬いノイズ源を早めに弱め、長い欠損を防ぎやすくする。",
+  "flavorText": "逆位相の波で、残響を少しずつ削る。",
   "passiveEffectIds": [
     "eff_subsystem_inverse_phase"
   ],

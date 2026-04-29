@@ -286,7 +286,7 @@ export function EquipmentPanel({
               <header className="equip-detail__header">
                 <span className="equip-detail__eyebrow">
                   <span className="equip-detail__diamond">◇</span>
-                  catalog // undocumented
+                  記録 // 未確認
                 </span>
                 <span className="equip-detail__id">0x----</span>
               </header>
@@ -306,14 +306,14 @@ export function EquipmentPanel({
                 </span>
               </div>
               <p className="muted-text equip-detail__desc">詳細不明</p>
-              <p className="equip-detail__footer-note">// ENTRY.SEALED</p>
+              <p className="equip-detail__footer-note">// 記録は封鎖されています</p>
             </div>
           ) : (
             <div className="equip-detail__content fade-in">
               <header className="equip-detail__header">
                 <span className="equip-detail__eyebrow">
                   <span className="equip-detail__diamond">◇</span>
-                  catalog // {selected.slot}-class
+                  装備記録 // {selected.slot}-class
                 </span>
                 <span className="equip-detail__id">0x{equipmentIdFragment(selected.equipmentId)}</span>
               </header>
@@ -423,14 +423,14 @@ export function EquipmentPanel({
                 ) : null}
               </div>
               <p className="equip-detail__footer-note">
-                // ENTRY.0x{equipmentIdFragment(selected.equipmentId)}
+                // 記録.0x{equipmentIdFragment(selected.equipmentId)}
               </p>
             </div>
           )
         ) : (
           <div className="equip-empty-state fade-in">
             <div className="equip-empty-state__circle" />
-            <p className="equip-empty-state__text">// AWAITING SELECTION</p>
+            <p className="equip-empty-state__text">// 装備を選択してください</p>
           </div>
         )}
       </div>

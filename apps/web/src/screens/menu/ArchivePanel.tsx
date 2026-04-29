@@ -30,7 +30,7 @@ export function ArchivePanel({
     <div className="two-column-layout archive-layout">
       <div className="list-stack">
         {unlockedEntries.length === 0 ? (
-          <p className="muted-text">復元済みの通信はまだありません。</p>
+          <p className="muted-text">読める通信はまだありません。戦闘中に言葉を守ると、ここに記録されます。</p>
         ) : (
           unlockedEntries.map(({ progress, transmission, area }) => {
             const isSel = transmission.transmissionId === selectedTransmissionId
@@ -68,18 +68,26 @@ export function ArchivePanel({
                 archiveAccess.transcriptView.map((chunk) => (
                   <div key={chunk.chunkId} className="archive-log__line">
                     {chunk.speakerLabel ? <p className="archive-log__speaker">{chunk.speakerLabel}</p> : null}
-                    <p className={`archive-log__text ${chunk.audible ? "" : "archive-log__text--damaged"}`}>
+                    <p
+                      className={[
+                        "archive-log__text",
+                        chunk.audible ? "" : "archive-log__text--damaged",
+                        chunk.importance && chunk.importance !== "normal"
+                          ? "archive-log__text--important"
+                          : "",
+                      ].filter(Boolean).join(" ")}
+                    >
                       {chunk.text}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="muted-text">この通信の本文はまだ復元されていません。</p>
+                <p className="muted-text">この通信の本文はまだ読めません。もう一度接続して、欠けた言葉を回収してください。</p>
               )}
             </div>
           </>
         ) : (
-          <p className="muted-text">通信を選択してください。</p>
+          <p className="muted-text">記録を選択してください。</p>
         )}
       </div>
     </div>

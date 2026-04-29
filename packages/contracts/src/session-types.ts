@@ -14,6 +14,8 @@ import type {
   CollectibleMapNode,
   ConditionId,
   ConditionSpec,
+  ContentClassification,
+  ContentIdMigrationMap,
   Difficulty,
   DifficultyModifiers,
   EffectId,
@@ -454,6 +456,8 @@ export type ContentBundle = {
   themes: Record<ThemeId, UiThemePreset>
   presentationCues: Record<PresentationCueId, PresentationCueSpec>
   difficultyModifiers: Record<Difficulty, DifficultyModifiers>
+  contentClassification: ContentClassification
+  migratedIds: ContentIdMigrationMap
 }
 
 export type ProfileAggregate = {

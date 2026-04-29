@@ -5,6 +5,8 @@ node_modules/
 dist/
 build/
 .vite/
+.vite-temp/
+artifacts/
 
 # TypeScript cache
 *.tsbuildinfo
@@ -28,6 +30,8 @@ pnpm-debug.log*
 # OS and editor metadata
 .DS_Store
 Thumbs.db
+__MACOSX/
+._*
 
 # Local temporary artifacts
 tmp/

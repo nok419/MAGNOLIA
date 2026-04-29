@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_bullet_player_pulse",
+  "category": "projectile",
+  "rendererKind": "playerPulse",
+  "paletteRole": "normalSignal",
+  "accessibilityVariant": "highContrast",
+  "trailRole": "trailA"
+}

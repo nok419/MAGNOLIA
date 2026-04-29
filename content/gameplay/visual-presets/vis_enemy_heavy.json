@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_enemy_heavy",
+  "category": "enemy",
+  "rendererKind": "orbital",
+  "paletteRole": "dangerNoise",
+  "accessibilityVariant": "highContrast",
+  "coreScale": 1.35
+}

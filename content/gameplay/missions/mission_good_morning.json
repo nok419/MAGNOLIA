@@ -14,6 +14,17 @@
   "hearingThresholdOverride": 0.8,
   "baseSelfRepairPoints": 50,
   "repeatDecayRate": 0.3,
+  "fragmentRecovery": {
+    "cooldownMs": 1500,
+    "lifetimeMs": {
+      "calm": 4200,
+      "terminal": 3200
+    },
+    "spawnDistanceMin": 64,
+    "spawnDistanceMax": 150,
+    "minSpanRatio": 0.10,
+    "maxSpanRatio": 0.34
+  },
   "waves": [
     {
       "atMs": 3000,

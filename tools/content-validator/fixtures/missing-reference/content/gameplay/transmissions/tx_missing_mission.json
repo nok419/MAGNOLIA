@@ -1,0 +1,20 @@
+{
+  "transmissionId": "tx_missing_mission",
+  "areaId": "area_fixture",
+  "missionId": "mission_missing",
+  "category": "private",
+  "title": "Missing Mission",
+  "sender": "fixture",
+  "recipient": "fixture",
+  "sentAt": "2026-04-29T00:00:00.000Z",
+  "subjectTags": ["fixture"],
+  "transcriptChunkIds": ["chunk_fixture_01"],
+  "visibilityConditionId": "cond_always",
+  "accessConditionId": "cond_always",
+  "metadataUnlockThresholds": {
+    "title": 0,
+    "sender": 0,
+    "recipient": 0,
+    "sentAt": 0
+  }
+}

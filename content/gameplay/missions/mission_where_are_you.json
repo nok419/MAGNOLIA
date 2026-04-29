@@ -1,11 +1,11 @@
 {
   "missionId": "mission_where_are_you",
   "transmissionId": "tx_where_are_you",
-  "durationMs": 90000,
+  "durationMs": 68000,
   "scrollSpeed": 150,
   "backgroundPresetId": "bg_broadcast_facility",
   "playerSpawnId": "spawn_player_center",
-  "analysisTotal": 120,
+  "analysisTotal": 105,
   "visibilityConditionId": "cond_mission_good_morning_cleared",
   "startConditionId": "cond_mission_good_morning_cleared",
   "audioStartDelayMs": 1200,
@@ -13,6 +13,17 @@
   "dangerLevel": 2,
   "baseSelfRepairPoints": 80,
   "repeatDecayRate": 0.2,
+  "fragmentRecovery": {
+    "cooldownMs": 1200,
+    "lifetimeMs": {
+      "calm": 4300,
+      "terminal": 3100
+    },
+    "spawnDistanceMin": 76,
+    "spawnDistanceMax": 190,
+    "minSpanRatio": 0.12,
+    "maxSpanRatio": 0.46
+  },
   "waves": [
     {
       "atMs": 3000,
@@ -22,7 +33,7 @@
       ]
     },
     {
-      "atMs": 10000,
+      "atMs": 9000,
       "entries": [
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 3 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 4 },
@@ -30,25 +41,25 @@
       ]
     },
     {
-      "atMs": 18000,
+      "atMs": 15000,
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 6 }
       ]
     },
     {
-      "atMs": 19400,
+      "atMs": 16400,
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 7 }
       ]
     },
     {
-      "atMs": 20800,
+      "atMs": 17800,
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 8 }
       ]
     },
     {
-      "atMs": 26000,
+      "atMs": 21800,
       "entries": [
         {
           "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 9,
@@ -61,7 +72,7 @@
       ]
     },
     {
-      "atMs": 34000,
+      "atMs": 28500,
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 11 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 12 },
@@ -69,13 +80,13 @@
       ]
     },
     {
-      "atMs": 42000,
+      "atMs": 35000,
       "entries": [
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_center", "seed": 15 }
       ]
     },
     {
-      "atMs": 52000,
+      "atMs": 43000,
       "entries": [
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_left", "seed": 16 },
         { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_right", "seed": 17 },
@@ -83,7 +94,7 @@
       ]
     },
     {
-      "atMs": 62000,
+      "atMs": 50000,
       "entries": [
         { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_center", "seed": 19 },
         {
@@ -97,7 +108,7 @@
       ]
     },
     {
-      "atMs": 72000,
+      "atMs": 58000,
       "entries": [
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 22 },
         { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 23 },
@@ -106,7 +117,7 @@
       ]
     },
     {
-      "atMs": 80000,
+      "atMs": 62000,
       "entries": [
         {
           "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 26,
@@ -125,7 +136,7 @@
     {
       "hazardId": "hazard_way_01",
       "kind": "magneticDisaster",
-      "spawnAtMs": 22500,
+      "spawnAtMs": 17200,
       "telegraphMs": 1200,
       "activeMs": 2200,
       "fadeOutMs": 600,
@@ -148,7 +159,7 @@
     {
       "hazardId": "hazard_way_02",
       "kind": "magneticDisaster",
-      "spawnAtMs": 45000,
+      "spawnAtMs": 34400,
       "telegraphMs": 1500,
       "activeMs": 2600,
       "fadeOutMs": 800,
@@ -171,7 +182,7 @@
     {
       "hazardId": "hazard_way_03",
       "kind": "magneticDisaster",
-      "spawnAtMs": 70000,
+      "spawnAtMs": 53600,
       "telegraphMs": 1200,
       "activeMs": 2600,
       "fadeOutMs": 600,

@@ -69,7 +69,8 @@
     "startMs": 11800,
     "endMs": 14200,
     "speakerLabel": "CIVIL-DEFENSE",
-    "text": "A-3、A-4ゲートは閉鎖。北側の誘導灯に従ってください。"
+    "text": "A-3、A-4ゲートは閉鎖。北側の誘導灯に従ってください。",
+    "importance": "important"
   },
   {
     "chunkId": "tx_evacuation_04a",
@@ -141,7 +142,11 @@
     "startMs": 43000,
     "endMs": 45500,
     "speakerLabel": "CIVIL-DEFENSE",
-    "text": "聞こえる方は、短い返答だけで構いません。位置を……"
+    "text": "聞こえる方は、短い返答だけで構いません。位置を……",
+    "importance": "important",
+    "fragmentRecovery": {
+      "lifetimeMultiplier": 1.25
+    }
   },
   {
     "chunkId": "tx_evacuation_08a",
@@ -159,7 +164,12 @@
     "startMs": 50800,
     "endMs": 53200,
     "speakerLabel": "CIVIL-DEFENSE",
-    "text": "自力で……北側へ……灯りが残っている間に……"
+    "text": "自力で……北側へ……灯りが残っている間に……",
+    "importance": "critical",
+    "fragmentRecovery": {
+      "weight": 1.7,
+      "lifetimeMultiplier": 1.55
+    }
   },
   {
     "chunkId": "tx_evacuation_09a",
@@ -168,6 +178,11 @@
     "startMs": 54200,
     "endMs": 55700,
     "speakerLabel": "CIVIL-DEFENSE",
-    "text": "どうか、声を失わないで。"
+    "text": "どうか、声を失わないで。",
+    "importance": "critical",
+    "fragmentRecovery": {
+      "weight": 1.9,
+      "lifetimeMultiplier": 1.7
+    }
   }
 ]

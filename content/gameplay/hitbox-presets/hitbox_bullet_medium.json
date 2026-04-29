@@ -1,0 +1,5 @@
+{
+  "hitboxPresetId": "hitbox_bullet_medium",
+  "shape": "circle",
+  "radius": 9
+}

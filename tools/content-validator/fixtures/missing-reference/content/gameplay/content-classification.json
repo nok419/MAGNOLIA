@@ -1,0 +1,20 @@
+{
+  "active": {
+    "missions": [],
+    "enemies": [],
+    "bullet-patterns": [],
+    "projectiles": []
+  },
+  "prototype": {
+    "missions": [],
+    "enemies": [],
+    "bullet-patterns": [],
+    "projectiles": []
+  },
+  "deprecated": {
+    "missions": [],
+    "enemies": [],
+    "bullet-patterns": [],
+    "projectiles": []
+  }
+}

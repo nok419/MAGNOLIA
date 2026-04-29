@@ -123,6 +123,7 @@ export function updateBattleProjectiles(input: {
     projectile.ageMs = (projectile.ageMs ?? 0) + input.dtMs
     applyBendTrajectory(projectile)
     if (projectile.anchorToPlayer) {
+      // 自機基準の攻撃は表示と判定の基準点を毎フレーム現在位置へ戻します。
       projectile.position = { ...input.battle.playerPosition }
     }
 
@@ -332,47 +333,6 @@ function spawnTrailExplosions(input: {
   return visuals
 }
 
-function applyMeleeSweepDamage(input: {
-  battle: InternalBattleState
-  origin: { x: number; y: number }
-  direction: { x: number; y: number }
-  range: number
-  arcDeg: number
-  damage: number
-  burnDamagePerSec?: number
-  burnDurationMs?: number
-}): void {
-  const forward = normalizeVector(input.direction)
-  const halfArcRadians = (Math.max(1, input.arcDeg) * Math.PI) / 360
-
-  for (const enemy of input.battle.enemies) {
-    const toEnemy = {
-      x: enemy.position.x - input.origin.x,
-      y: enemy.position.y - input.origin.y,
-    }
-    const distance = Math.hypot(toEnemy.x, toEnemy.y)
-    if (distance > input.range + enemy.radius) {
-      continue
-    }
-
-    const targetDirection = normalizeVector(toEnemy)
-    const dot = Math.max(
-      -1,
-      Math.min(1, forward.x * targetDirection.x + forward.y * targetDirection.y),
-    )
-    const angle = Math.acos(dot)
-    if (angle > halfArcRadians) {
-      continue
-    }
-
-    enemy.hp -= input.damage
-    if (input.burnDamagePerSec && input.burnDurationMs) {
-      enemy.burnDamagePerSec = input.burnDamagePerSec
-      enemy.burnUntilMs = input.battle.elapsedMs + input.burnDurationMs
-    }
-  }
-}
-
 function readRequestNumericParam(
   params: Record<string, number | string | boolean> | undefined,
   key: string,
@@ -518,18 +478,6 @@ function spawnProjectilesFromRequest(input: {
     const meleeSpreadDeg = readRequestNumericParam(input.request.params, "meleeSpreadDeg", 120)
 
     if (meleeStyle === "swordSweep") {
-      // 近接は円弧状の弾をばら撒かず、前方扇形の判定と一つの表示用スイープに分けます。
-      applyMeleeSweepDamage({
-        battle: input.battle,
-        origin: input.request.position,
-        direction: input.request.direction,
-        range: meleeRange,
-        arcDeg: meleeSpreadDeg,
-        damage: meleeDamage,
-        burnDamagePerSec,
-        burnDurationMs,
-      })
-
       const sweepDurationMs = readRequestNumericParam(
         input.request.params,
         "meleeSweepDurationMs",
@@ -546,10 +494,15 @@ function spawnProjectilesFromRequest(input: {
         initialLifetimeMs: sweepDurationMs,
         ageMs: 0,
         spawnDelayMs: input.request.delayMs ?? 0,
-        damage: 0,
+        damage: meleeDamage,
         noiseDamage: 0,
-        nonColliding: true,
+        // 剣の表示位置と当たり判定を同じ projectile に持たせ、自機移動中のずれを避けます。
+        nonColliding: false,
         anchorToPlayer: true,
+        meleeSweepArcDeg: meleeSpreadDeg,
+        meleeHitEnemyInstanceIds: [],
+        burnDamagePerSec,
+        burnDurationMs,
         inversePhaseVisual: Boolean(input.modifierPatch.visibilityModifiers?.inversePhaseVisual),
       })
       // main 弾の連射とは別に、近接の一振りだけを重く遅くします。

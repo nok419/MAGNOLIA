@@ -29,8 +29,10 @@ import type {
   FeatureAccessState,
   GameCommand,
   MissionId,
+  MissionMaster,
   MissionResult,
   MissionRunRow,
+  MetadataUnlocked,
   OpenArchiveCommand,
   OpenEquipmentCommand,
   OpenMapCommand,
@@ -47,6 +49,7 @@ import type {
   SettingsPath,
   SettingsRow,
   SettingsValue,
+  SignalProfile,
   StartMissionCommand,
   StartNewGameAtSlotCommand,
   TimeRange,
@@ -82,11 +85,18 @@ import type {
 } from "./battle-state"
 import { buildBattleHazardViewModels, stepBattlefieldHazards } from "./hazards"
 import {
+  resolveEnemyVisualView,
+  resolveHazardVisualView,
+  resolveProjectileVisualView,
+  resolveSupportFieldVisualView,
+} from "./battle-visuals"
+import {
   buildArchiveAccessState,
   buildFeatureAccessState,
   buildTranscriptViewChunks,
   buildWorldMapVisibilityState,
   createMissionReplaySeed,
+  selectWorldMapViewModel,
   seedMissionStateWithReplayProgress,
 } from "./selectors"
 import {
@@ -98,6 +108,7 @@ import {
   hasVisibleArchiveContent,
   isTransmissionSignalIdentified,
   mergeTranscriptSpans,
+  readTranscriptChunkRestorationRatio,
   readTransmissionCompletionState,
   subtractTimeRanges,
   timeRangesFromTranscriptSpans,
@@ -179,6 +190,52 @@ const EXPLORE_SCAN_RESPONSE_WIDTH = 140
 const EXPLORE_PASSIVE_SIGNAL_RADIUS = 520
 const EXPLORE_PASSIVE_CONFIDENCE_RADIUS = 300
 const EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE = 1
+const DEFAULT_FRAGMENT_RECOVERY_COOLDOWN_MS = 1300
+const DEFAULT_FRAGMENT_RECOVERY_LIFETIME_MS = {
+  calm: 3800,
+  terminal: 2800,
+}
+const DEFAULT_FRAGMENT_RECOVERY_DISTANCE_MIN = 72
+const DEFAULT_FRAGMENT_RECOVERY_DISTANCE_MAX = 184
+const DEFAULT_FRAGMENT_RECOVERY_MIN_SPAN_RATIO = 0.12
+const DEFAULT_FRAGMENT_RECOVERY_MAX_SPAN_RATIO = 0.42
+const DEFAULT_SIGNAL_PROFILE = {
+  passiveRadius: EXPLORE_PASSIVE_SIGNAL_RADIUS,
+  passiveConfidenceRadius: EXPLORE_PASSIVE_CONFIDENCE_RADIUS,
+  scanRadius: EXPLORE_SCAN_RADIUS,
+  confidenceMultiplier: 1,
+  hintStrengthMultiplier: 1,
+}
+const TRANSMISSION_SIGNAL_PROFILES = {
+  private: {
+    passiveRadius: 480,
+    passiveConfidenceRadius: 280,
+    scanRadius: 820,
+    confidenceMultiplier: 1.08,
+    hintStrengthMultiplier: 0.92,
+  },
+  broadcast: {
+    passiveRadius: 620,
+    passiveConfidenceRadius: 340,
+    scanRadius: 860,
+    confidenceMultiplier: 0.92,
+    hintStrengthMultiplier: 1.12,
+  },
+  automated: {
+    passiveRadius: 560,
+    passiveConfidenceRadius: 310,
+    scanRadius: 840,
+    confidenceMultiplier: 1,
+    hintStrengthMultiplier: 1,
+  },
+  maintenance: {
+    passiveRadius: 420,
+    passiveConfidenceRadius: 240,
+    scanRadius: 720,
+    confidenceMultiplier: 0.82,
+    hintStrengthMultiplier: 0.88,
+  },
+} satisfies Record<"private" | "broadcast" | "automated" | "maintenance", SignalProfile>
 /**
  * 新規ゲーム開始時にターミナルへ流れるブートログ。
  * 「不調箇所や不完全な初期設定はあるが、かろうじて再起動できた」
@@ -205,27 +262,162 @@ const BOOT_LINES = [
   "> residual carrier acquired",
 ]
 
-function computeExploreScanConfidenceDelta(distance: number): number {
+function computeExploreScanConfidenceDelta(distance: number, scanRadius: number): number {
   // scan 範囲を広げても遠距離ノードが一度で識別済みにならないよう、距離減衰を強めます。
-  const distanceStrength = clamp01(1 - distance / EXPLORE_SCAN_RADIUS)
+  const distanceStrength = clamp01(1 - distance / scanRadius)
   return Math.pow(distanceStrength, 1.8) * 0.64
 }
 
-function computeExploreScanHintStrength(distance: number, elapsedMs: number): number {
-  const distanceStrength = clamp01(1 - distance / EXPLORE_SCAN_RADIUS)
+function computeExploreScanHintStrength(distance: number, elapsedMs: number, scanRadius: number): number {
+  const distanceStrength = clamp01(1 - distance / scanRadius)
   if (distanceStrength <= 0) {
     return 0
   }
 
   // pulse の波面が届いた後にだけ反応を出し、遠距離ほど遅れて弱く見えるようにします。
   const pulseProgress = easeOutCubic(clamp01(elapsedMs / EXPLORE_SCAN_DURATION_MS))
-  const reachedRadius = EXPLORE_SCAN_RADIUS * pulseProgress
+  const reachedRadius = scanRadius * pulseProgress
   if (distance > reachedRadius) {
     return 0
   }
 
   const responseStrength = 0.24 + clamp01((reachedRadius - distance) / EXPLORE_SCAN_RESPONSE_WIDTH) * 0.76
   return Math.pow(distanceStrength, 1.25) * responseStrength
+}
+
+type ResolvedFragmentRecoveryTuning = {
+  cooldownMs: number
+  lifetimeMs: Record<"calm" | "terminal", number>
+  spawnDistanceMin: number
+  spawnDistanceMax: number
+  minSpanRatio: number
+  maxSpanRatio: number
+}
+
+type ResolvedChunkFragmentRecovery = {
+  weight: number
+  minSpanRatio?: number
+  maxSpanRatio?: number
+  lifetimeMultiplier: number
+}
+
+function resolveFragmentRecoveryTuning(mission: MissionMaster): ResolvedFragmentRecoveryTuning {
+  const tuning = mission.fragmentRecovery
+  const spawnDistanceMin = readPositiveNumber(
+    tuning?.spawnDistanceMin,
+    DEFAULT_FRAGMENT_RECOVERY_DISTANCE_MIN,
+  )
+  const spawnDistanceMax = Math.max(
+    spawnDistanceMin,
+    readPositiveNumber(tuning?.spawnDistanceMax, DEFAULT_FRAGMENT_RECOVERY_DISTANCE_MAX),
+  )
+  const minSpanRatio = readRatio(
+    tuning?.minSpanRatio,
+    DEFAULT_FRAGMENT_RECOVERY_MIN_SPAN_RATIO,
+  )
+  const maxSpanRatio = Math.max(
+    minSpanRatio,
+    readRatio(tuning?.maxSpanRatio, DEFAULT_FRAGMENT_RECOVERY_MAX_SPAN_RATIO),
+  )
+
+  return {
+    cooldownMs: readPositiveNumber(tuning?.cooldownMs, DEFAULT_FRAGMENT_RECOVERY_COOLDOWN_MS),
+    lifetimeMs: {
+      calm: readPositiveNumber(
+        tuning?.lifetimeMs?.calm,
+        DEFAULT_FRAGMENT_RECOVERY_LIFETIME_MS.calm,
+      ),
+      terminal: readPositiveNumber(
+        tuning?.lifetimeMs?.terminal,
+        DEFAULT_FRAGMENT_RECOVERY_LIFETIME_MS.terminal,
+      ),
+    },
+    spawnDistanceMin,
+    spawnDistanceMax,
+    minSpanRatio,
+    maxSpanRatio,
+  }
+}
+
+function resolveChunkFragmentRecovery(chunk: TranscriptChunk): ResolvedChunkFragmentRecovery {
+  const importanceWeight = readTranscriptImportanceWeight(chunk.importance)
+  const recovery = chunk.fragmentRecovery
+  return {
+    weight: readPositiveNumber(recovery?.weight, importanceWeight),
+    minSpanRatio: recovery?.minSpanRatio === undefined ? undefined : readRatio(recovery.minSpanRatio, 0),
+    maxSpanRatio: recovery?.maxSpanRatio === undefined ? undefined : readRatio(recovery.maxSpanRatio, 1),
+    lifetimeMultiplier: readPositiveNumber(
+      recovery?.lifetimeMultiplier,
+      readTranscriptImportanceLifetimeMultiplier(chunk.importance),
+    ),
+  }
+}
+
+function readTranscriptImportanceWeight(importance: TranscriptChunk["importance"]): number {
+  switch (importance) {
+    case "critical":
+      return 1.6
+    case "important":
+      return 1.25
+    default:
+      return 1
+  }
+}
+
+function readTranscriptImportanceLifetimeMultiplier(importance: TranscriptChunk["importance"]): number {
+  switch (importance) {
+    case "critical":
+      return 1.35
+    case "important":
+      return 1.18
+    default:
+      return 1
+  }
+}
+
+function readNewMetadataUnlockedKeys(
+  previous: MetadataUnlocked,
+  next: MetadataUnlocked,
+): Array<keyof MetadataUnlocked> {
+  return (["title", "sender", "recipient", "sentAt"] as const).filter(
+    (key) => !previous[key] && next[key],
+  )
+}
+
+function readPositiveNumber(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback
+}
+
+function readRatio(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? clamp01(value) : fallback
+}
+
+function resolveSignalProfile(
+  defaults: SignalProfile,
+  overrides: SignalProfile | undefined,
+): Required<SignalProfile> {
+  return {
+    passiveRadius: readPositiveNumber(
+      overrides?.passiveRadius ?? defaults.passiveRadius,
+      DEFAULT_SIGNAL_PROFILE.passiveRadius,
+    ),
+    passiveConfidenceRadius: readPositiveNumber(
+      overrides?.passiveConfidenceRadius ?? defaults.passiveConfidenceRadius,
+      DEFAULT_SIGNAL_PROFILE.passiveConfidenceRadius,
+    ),
+    scanRadius: readPositiveNumber(
+      overrides?.scanRadius ?? defaults.scanRadius,
+      DEFAULT_SIGNAL_PROFILE.scanRadius,
+    ),
+    confidenceMultiplier: readPositiveNumber(
+      overrides?.confidenceMultiplier ?? defaults.confidenceMultiplier,
+      DEFAULT_SIGNAL_PROFILE.confidenceMultiplier,
+    ),
+    hintStrengthMultiplier: readPositiveNumber(
+      overrides?.hintStrengthMultiplier ?? defaults.hintStrengthMultiplier,
+      DEFAULT_SIGNAL_PROFILE.hintStrengthMultiplier,
+    ),
+  }
 }
 
 function easeOutCubic(value: number): number {
@@ -250,6 +442,7 @@ export class MagnoliaGameSession {
   private lastExploreScanAtMs = -Infinity
   private exploreScanPulses: ExploreScanPulseViewModel[] = []
   private presentationQueue = [] as ReturnType<typeof flattenPresentationRequests>
+  private domainEventQueue: DomainEvent[] = []
   private archiveSelection: { areaId?: AreaId; transmissionId?: TransmissionId } = {}
   private instanceSerial = 0
 
@@ -315,14 +508,19 @@ export class MagnoliaGameSession {
     return queue
   }
 
+  drainDomainEvents(): DomainEvent[] {
+    const queue = [...this.domainEventQueue]
+    this.domainEventQueue = []
+    return queue
+  }
+
   getExploreRenderState(): ExploreRenderState | null {
     if (!this.activeProfile) {
       return null
     }
 
     const featureAccess = this.buildFeatureAccess()
-    // area は探索上のクラスター名であり、現行 demo では同じ 1 枚の world map を共有します。
-    const mapLogic = this.content.mapLogic[this.activeProfile.profile.currentAreaId ? this.content.areas[this.activeProfile.profile.currentAreaId].mapId : Object.keys(this.content.mapLogic)[0]]
+    const mapLogic = this.readCurrentMapLogic()
     const worldBounds = computeWorldBounds(mapLogic)
     const currentArea = this.content.areas[this.activeProfile.profile.currentAreaId]
     const displayArea = readDisplayArea({
@@ -415,6 +613,26 @@ export class MagnoliaGameSession {
     }
   }
 
+  getWorldMapViewModel() {
+    if (!this.activeProfile) {
+      return null
+    }
+
+    const renderState = this.getExploreRenderState()
+    if (!renderState) {
+      return null
+    }
+
+    // map 画面には selector 済みの値だけを渡し、content 全体を画面 props に出しません。
+    return selectWorldMapViewModel({
+      content: this.content,
+      profileAggregate: this.activeProfile,
+      snapshot: this.createExploreSnapshot(),
+      renderState,
+      mapLogic: this.readCurrentMapLogic(),
+    })
+  }
+
   getBattleRenderState(): BattleRenderState | null {
     if (!this.battleState) {
       return null
@@ -446,6 +664,10 @@ export class MagnoliaGameSession {
       enemies: battle.enemies.map<EnemyRenderState>((enemy) => ({
         enemyInstanceId: enemy.enemyInstanceId,
         enemyId: enemy.enemyId,
+        visual: resolveEnemyVisualView({
+          content: this.content,
+          enemyId: enemy.enemyId,
+        }),
         position: enemy.position,
         radius: enemy.radius,
         hp: enemy.hp,
@@ -458,6 +680,11 @@ export class MagnoliaGameSession {
           projectileInstanceId: projectile.projectileInstanceId,
           projectileId: projectile.projectileId,
           side: projectile.side,
+          visual: resolveProjectileVisualView({
+            content: this.content,
+            projectileId: projectile.projectileId,
+            inversePhaseVisual: projectile.inversePhaseVisual,
+          }),
           position: projectile.position,
           velocity: projectile.velocity,
           radius: projectile.radius,
@@ -465,11 +692,13 @@ export class MagnoliaGameSession {
             projectile.initialLifetimeMs && projectile.initialLifetimeMs > 0
               ? clamp01((projectile.ageMs ?? 0) / projectile.initialLifetimeMs)
               : undefined,
+          meleeSweepArcDeg: projectile.meleeSweepArcDeg,
           inversePhaseVisual: projectile.inversePhaseVisual,
         })),
       supportFields: battle.supportFields.map<SupportFieldRenderState>((field) => ({
         fieldInstanceId: field.fieldInstanceId,
         fieldId: field.fieldId,
+        visual: resolveSupportFieldVisualView(field.fieldId),
         position: field.position,
         radius: field.radius,
         remainingMs: field.remainingMs,
@@ -499,6 +728,10 @@ export class MagnoliaGameSession {
         hazardId: hazard.hazardId,
         phase: hazard.phase,
         phaseProgress: hazard.phaseProgress,
+        visual: resolveHazardVisualView({
+          content: this.content,
+          visualPresetId: hazard.visualPresetId,
+        }),
         position: { x: hazard.area.x, y: hazard.area.y },
         size: { width: hazard.area.width, height: hazard.area.height },
       })),
@@ -599,7 +832,7 @@ export class MagnoliaGameSession {
         await this.repository.saveSettings(this.settings)
         break
       case "collectItem":
-        this.handleCollectItem(command)
+        this.enqueueCollectibleEvent(this.handleCollectItem(command))
         break
       case "interactExploreNode":
         this.handleExploreNodeInteraction(command.nodeId)
@@ -912,11 +1145,6 @@ export class MagnoliaGameSession {
     strength: number
   }): void {
     const battle = input.battle
-    const fragmentCooldownMs = 1300
-    if (battle.elapsedMs - battle.lastFragmentSpawnedAtMs < fragmentCooldownMs) {
-      return
-    }
-
     const activeChunk = battle.transcript.find(
       (chunk) =>
         chunk.startMs < input.audioWindow.endMs &&
@@ -926,14 +1154,29 @@ export class MagnoliaGameSession {
       return
     }
 
+    const recoveryTuning = resolveFragmentRecoveryTuning(battle.mission)
+    const chunkRecovery = resolveChunkFragmentRecovery(activeChunk)
+    const fragmentCooldownMs = Math.max(
+      500,
+      recoveryTuning.cooldownMs / Math.sqrt(chunkRecovery.weight),
+    )
+    if (battle.elapsedMs - battle.lastFragmentSpawnedAtMs < fragmentCooldownMs) {
+      return
+    }
+
     const chunkDurationMs = Math.max(1, activeChunk.endMs - activeChunk.startMs)
     const centerRatio = clamp01(
       ((input.audioWindow.startMs + input.audioWindow.endMs) / 2 - activeChunk.startMs) /
         chunkDurationMs,
     )
-    const widthRatio = Math.min(0.42, 0.22 + clamp01(input.strength) * 0.16)
+    const minSpanRatio = chunkRecovery.minSpanRatio ?? recoveryTuning.minSpanRatio
+    const maxSpanRatio = chunkRecovery.maxSpanRatio ?? recoveryTuning.maxSpanRatio
+    const widthRatio = Math.min(
+      maxSpanRatio,
+      Math.max(minSpanRatio, (0.2 + clamp01(input.strength) * 0.14) * Math.sqrt(chunkRecovery.weight)),
+    )
     const startRatio = clamp01(centerRatio - widthRatio / 2)
-    const endRatio = clamp01(Math.max(startRatio + 0.12, centerRatio + widthRatio / 2))
+    const endRatio = clamp01(Math.max(startRatio + minSpanRatio, centerRatio + widthRatio / 2))
     const timeRange = {
       startMs: activeChunk.startMs + chunkDurationMs * startRatio,
       endMs: activeChunk.startMs + chunkDurationMs * endRatio,
@@ -941,7 +1184,11 @@ export class MagnoliaGameSession {
     const span = transcriptSpanForTimeRange(activeChunk, timeRange)
     const seed = hashString(`${activeChunk.chunkId}:${Math.floor(battle.elapsedMs / 250)}:${battle.fragments.length}`)
     const angle = -Math.PI * 0.5 + (pseudoRandomUnit(seed) - 0.5) * Math.PI * 1.25
-    const distance = 72 + pseudoRandomUnit(seed + 17) * 112
+    const distance =
+      recoveryTuning.spawnDistanceMin +
+      pseudoRandomUnit(seed + 17) *
+        Math.max(0, recoveryTuning.spawnDistanceMax - recoveryTuning.spawnDistanceMin)
+    const lifetimeMs = recoveryTuning.lifetimeMs[this.settings.difficulty] * chunkRecovery.lifetimeMultiplier
     const fragment: InternalBattleFragmentState = {
       fragmentId: this.nextInstanceId("frag_signal"),
       chunkId: span.chunkId,
@@ -952,8 +1199,8 @@ export class MagnoliaGameSession {
         y: Math.max(52, Math.min(BATTLE_HEIGHT - 36, battle.playerPosition.y + Math.sin(angle) * distance)),
       },
       radius: 13,
-      expiresAtMs: battle.elapsedMs + (this.settings.difficulty === "terminal" ? 2800 : 3800),
-      strength: clamp01(input.strength),
+      expiresAtMs: battle.elapsedMs + lifetimeMs,
+      strength: clamp01(input.strength * chunkRecovery.weight),
     }
 
     battle.fragments.push(fragment)
@@ -973,6 +1220,7 @@ export class MagnoliaGameSession {
         if (recoveredRange) {
           battle.heardRanges = appendTimeRange(battle.heardRanges, recoveredRange)
           battle.damageRanges = subtractTimeRanges(battle.damageRanges, [recoveredRange])
+          battle.recoveredFragmentCount += 1
           collected = true
         }
         continue
@@ -1248,6 +1496,7 @@ export class MagnoliaGameSession {
       supportFields: [],
       pickups: [],
       fragments: [],
+      recoveredFragmentCount: 0,
       enemies: [],
       projectiles: [],
       previousNoiseAudible: true,
@@ -1330,14 +1579,14 @@ export class MagnoliaGameSession {
     }
   }
 
-  private handleCollectItem(command: CollectItemCommand): void {
+  private handleCollectItem(command: CollectItemCommand): CollectibleMapNode | null {
     if (!this.activeProfile) {
-      return
+      return null
     }
     const mapLogic = this.content.mapLogic[this.content.areas[this.activeProfile.profile.currentAreaId].mapId]
     const node = mapLogic.collectibleNodes.find((candidate) => candidate.nodeId === command.nodeId)
     if (!node || this.activeProfile.profile.collectedNodeIds.includes(node.nodeId)) {
-      return
+      return null
     }
     if (node.collectibleKind === "selfRepairPoints") {
       this.activeProfile.profile.selfRepairPoints += node.selfRepairPointAmount ?? 0
@@ -1346,6 +1595,20 @@ export class MagnoliaGameSession {
       this.grantEquipment([node.equipmentId])
     }
     this.activeProfile.profile.collectedNodeIds.push(node.nodeId)
+    return node
+  }
+
+  private enqueueCollectibleEvent(node: CollectibleMapNode | null): void {
+    if (!node) {
+      return
+    }
+
+    // 回収成否と報酬付与は session 側で確定し、UI はここで積んだ event を表示へ変換するだけにします。
+    this.domainEventQueue.push({
+      type: "collectibleCollected",
+      nodeId: node.nodeId,
+      collectibleKind: node.collectibleKind,
+    })
   }
 
   private grantEquipment(equipmentIds: EquipmentId[]): void {
@@ -1494,6 +1757,19 @@ export class MagnoliaGameSession {
     })
   }
 
+  private readCurrentMapLogic(): WorldMapLogic {
+    const currentArea = this.activeProfile
+      ? this.content.areas[this.activeProfile.profile.currentAreaId]
+      : undefined
+    const fallbackArea = Object.values(this.content.areas)[0]
+    const mapId = currentArea?.mapId ?? fallbackArea?.mapId
+    const mapLogic = mapId ? this.content.mapLogic[mapId] : Object.values(this.content.mapLogic)[0]
+    if (!mapLogic) {
+      throw new Error("world map logic is missing")
+    }
+    return mapLogic
+  }
+
   private createExploreSnapshot(): ExploreSnapshot {
     if (!this.activeProfile) {
       return createEmptyExploreSnapshot()
@@ -1538,7 +1814,7 @@ export class MagnoliaGameSession {
       this.exploreScanPulses.push({
         pulseId: this.nextInstanceId("explore_scan"),
         startedAtMs: this.exploreElapsedMs,
-        radius: EXPLORE_SCAN_RADIUS,
+        radius: this.resolveExploreScanPulseRadius(input),
         durationMs: EXPLORE_SCAN_DURATION_MS,
       })
     }
@@ -1558,9 +1834,17 @@ export class MagnoliaGameSession {
       }
 
       const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-      const passiveStrength = clamp01(1 - distance / EXPLORE_PASSIVE_CONFIDENCE_RADIUS)
+      const transmission = this.content.transmissions[node.transmissionId]
+      const signalProfile = resolveSignalProfile(
+        transmission
+          ? TRANSMISSION_SIGNAL_PROFILES[transmission.category]
+          : DEFAULT_SIGNAL_PROFILE,
+        node.signalProfile,
+      )
+      const passiveStrength = clamp01(1 - distance / signalProfile.passiveConfidenceRadius)
       const scanConfidenceDelta = canStartScan
-        ? computeExploreScanConfidenceDelta(distance)
+        ? computeExploreScanConfidenceDelta(distance, signalProfile.scanRadius) *
+          signalProfile.confidenceMultiplier
         : 0
       const confidenceDelta =
         passiveStrength * (input.dtMs / 1000) * 0.16 +
@@ -1584,6 +1868,54 @@ export class MagnoliaGameSession {
     }
   }
 
+  private resolveExploreScanPulseRadius(input: {
+    mapLogic: WorldMapLogic
+    featureAccess: FeatureAccessState
+  }): number {
+    if (!this.activeProfile) {
+      return DEFAULT_SIGNAL_PROFILE.scanRadius
+    }
+
+    const radii = [DEFAULT_SIGNAL_PROFILE.scanRadius]
+    for (const node of input.mapLogic.transmissionNodes) {
+      if (!input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId)) {
+        continue
+      }
+      const existing = this.activeProfile.transmissionProgress.find(
+        (progress) => progress.transmissionId === node.transmissionId,
+      )
+      if (isTransmissionSignalIdentified(existing)) {
+        continue
+      }
+      const transmission = this.content.transmissions[node.transmissionId]
+      const signalProfile = resolveSignalProfile(
+        transmission
+          ? TRANSMISSION_SIGNAL_PROFILES[transmission.category]
+          : DEFAULT_SIGNAL_PROFILE,
+        node.signalProfile,
+      )
+      radii.push(signalProfile.scanRadius)
+    }
+
+    for (const node of input.mapLogic.collectibleNodes) {
+      if (this.activeProfile.profile.collectedNodeIds.includes(node.nodeId)) {
+        continue
+      }
+      if (!input.featureAccess.visibleAreaIds.includes(node.areaId)) {
+        continue
+      }
+      const signalProfile = resolveSignalProfile(
+        TRANSMISSION_SIGNAL_PROFILES.maintenance,
+        node.signalProfile,
+      )
+      radii.push(signalProfile.scanRadius)
+    }
+
+    // scan pulse は一つの円で描画するため、現在反応しうる node の最大半径を使います。
+    // 個別 node の識別判定は、この後の signalProfile.scanRadius で別々に処理します。
+    return Math.max(...radii)
+  }
+
   private buildExploreSignalHints(input: {
     mapLogic: WorldMapLogic
     featureAccess: FeatureAccessState
@@ -1601,15 +1933,23 @@ export class MagnoliaGameSession {
       .filter((node) => !isTransmissionSignalIdentified(transmissionProgress[node.transmissionId]))
       .flatMap<ExploreSignalHintViewModel>((node) => {
         const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-        const passiveStrength = clamp01(1 - distance / EXPLORE_PASSIVE_SIGNAL_RADIUS)
+        const transmission = this.content.transmissions[node.transmissionId]
+        const signalProfile = resolveSignalProfile(
+          transmission
+            ? TRANSMISSION_SIGNAL_PROFILES[transmission.category]
+            : DEFAULT_SIGNAL_PROFILE,
+          node.signalProfile,
+        )
+        const passiveStrength = clamp01(1 - distance / signalProfile.passiveRadius)
         const scanStrength = scanHintActive
-          ? computeExploreScanHintStrength(distance, scanElapsedMs)
+          ? computeExploreScanHintStrength(distance, scanElapsedMs, signalProfile.scanRadius)
           : 0
-        const strength = Math.max(passiveStrength, scanStrength * 0.9)
+        const strength = clamp01(
+          Math.max(passiveStrength, scanStrength * 0.9) * signalProfile.hintStrengthMultiplier,
+        )
         if (strength <= 0.04) {
           return []
         }
-        const transmission = this.content.transmissions[node.transmissionId]
         return [{
           nodeId: node.nodeId,
           kind: "transmission",
@@ -1627,11 +1967,17 @@ export class MagnoliaGameSession {
       .filter((node) => input.featureAccess.visibleAreaIds.includes(node.areaId))
       .flatMap<ExploreSignalHintViewModel>((node) => {
         const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-        const passiveStrength = clamp01(1 - distance / (EXPLORE_PASSIVE_SIGNAL_RADIUS * 0.72))
+        const signalProfile = resolveSignalProfile(
+          TRANSMISSION_SIGNAL_PROFILES.maintenance,
+          node.signalProfile,
+        )
+        const passiveStrength = clamp01(1 - distance / signalProfile.passiveRadius)
         const scanStrength = scanHintActive
-          ? computeExploreScanHintStrength(distance, scanElapsedMs)
+          ? computeExploreScanHintStrength(distance, scanElapsedMs, signalProfile.scanRadius)
           : 0
-        const strength = Math.max(passiveStrength, scanStrength * 0.85)
+        const strength = clamp01(
+          Math.max(passiveStrength, scanStrength * 0.85) * signalProfile.hintStrengthMultiplier,
+        )
         if (strength <= 0.06) {
           return []
         }
@@ -1767,16 +2113,19 @@ export class MagnoliaGameSession {
 
     const nearbyCollectible = findNearbyNode(mapLogic.collectibleNodes, playerPosition)
     if (nearbyCollectible && !this.activeProfile.profile.collectedNodeIds.includes(nearbyCollectible.nodeId)) {
-      this.handleCollectItem({
+      const collectedNode = this.handleCollectItem({
         type: "collectItem",
         nodeId: nearbyCollectible.nodeId,
       })
+      if (!collectedNode) {
+        return { events: [], presentationRequests: [] }
+      }
       return {
         events: [
           {
             type: "collectibleCollected",
-            nodeId: nearbyCollectible.nodeId,
-            collectibleKind: nearbyCollectible.collectibleKind,
+            nodeId: collectedNode.nodeId,
+            collectibleKind: collectedNode.collectibleKind,
           },
         ],
         presentationRequests: [],
@@ -1829,7 +2178,7 @@ export class MagnoliaGameSession {
       !this.activeProfile.profile.collectedNodeIds.includes(collectible.nodeId) &&
       isWithinRadius(playerPosition, { x: collectible.x, y: collectible.y }, collectible.interactionRadius)
     ) {
-      this.handleCollectItem({ type: "collectItem", nodeId: collectible.nodeId })
+      this.enqueueCollectibleEvent(this.handleCollectItem({ type: "collectItem", nodeId: collectible.nodeId }))
       return
     }
 
@@ -2150,6 +2499,26 @@ export class MagnoliaGameSession {
 
       let hitEnemy = false
       for (const enemy of battle.enemies) {
+        if (projectile.meleeSweepArcDeg) {
+          const hitEnemyIds = projectile.meleeHitEnemyInstanceIds ?? []
+          if (
+            hitEnemyIds.includes(enemy.enemyInstanceId) ||
+            !isEnemyInsideMeleeSweep(projectile, enemy)
+          ) {
+            continue
+          }
+
+          enemy.hp -= projectile.damage
+          projectile.meleeHitEnemyInstanceIds = [...hitEnemyIds, enemy.enemyInstanceId]
+          if (projectile.burnDamagePerSec && projectile.burnDurationMs) {
+            enemy.burnDamagePerSec = projectile.burnDamagePerSec
+            enemy.burnUntilMs = battle.elapsedMs + projectile.burnDurationMs
+          }
+          // 近接スイープは表示の寿命が判定の寿命でもあるため、命中後も残します。
+          hitEnemy = true
+          continue
+        }
+
         if (!isWithinRadius(projectile.position, enemy.position, projectile.radius + enemy.radius)) {
           continue
         }
@@ -2175,7 +2544,7 @@ export class MagnoliaGameSession {
         hitEnemy = true
         break
       }
-      if (!hitEnemy) {
+      if (!hitEnemy || projectile.meleeSweepArcDeg) {
         remainingProjectiles.push(projectile)
       }
     }
@@ -2281,16 +2650,28 @@ export class MagnoliaGameSession {
     // 解析率は run ごとの最大値、本文開放は累積 heardRanges を使うので、両者を明確に分けて更新します。
     transmissionProgress.archiveRestorationRate =
       transcriptDurationMs > 0 ? computeRangesDuration(mergedHeardRanges) / transcriptDurationMs : 0
-    transmissionProgress.metadataUnlocked = unlockMetadata(
+    const previousMetadataUnlocked = transmissionProgress.metadataUnlocked
+    const nextMetadataUnlocked = unlockMetadata(
       transmissionProgress.bestAnalysisRate,
       battle.transmission.metadataUnlockThresholds,
-      transmissionProgress.metadataUnlocked,
+      previousMetadataUnlocked,
     )
+    const newMetadataUnlocked = readNewMetadataUnlockedKeys(
+      previousMetadataUnlocked,
+      nextMetadataUnlocked,
+    )
+    transmissionProgress.metadataUnlocked = nextMetadataUnlocked
 
     const newHeardRangeMs = Math.max(
       0,
       computeRangesDuration(mergedHeardRanges) - previousArchiveHeardMs,
     )
+    const importantChunks = battle.transcript.filter(
+      (chunk) => chunk.importance && chunk.importance !== "normal",
+    )
+    const importantPhraseRestored = importantChunks.filter(
+      (chunk) => readTranscriptChunkRestorationRatio(chunk, mergedTranscriptSpans) >= 0.85,
+    ).length
 
     const isFirstClear = !this.activeProfile.profile.clearedMissionIds.includes(battle.mission.missionId)
     if (isFirstClear) {
@@ -2352,6 +2733,10 @@ export class MagnoliaGameSession {
       score: run.score,
       selfRepairPointsEarned,
       newHeardRangeMs,
+      recoveredFragmentCount: battle.recoveredFragmentCount,
+      importantPhraseRestored,
+      importantPhraseTotal: importantChunks.length,
+      newMetadataUnlocked,
       grantedEquipmentIds,
       isFirstClear,
       cleared: true,
@@ -2669,6 +3054,67 @@ export class MagnoliaGameSession {
     this.instanceSerial += 1
     return `${prefix}:${this.instanceSerial}`
   }
+}
+
+function isEnemyInsideMeleeSweep(
+  projectile: InternalProjectileState,
+  enemy: InternalEnemyState,
+): boolean {
+  const currentSwing = computeMeleeSwingProgress(projectile, projectile.ageMs ?? 0)
+  const direction = normalizeVector(projectile.velocity)
+  const baseAngle = Math.atan2(direction.y, direction.x)
+  const sweepSpan = ((projectile.meleeSweepArcDeg ?? 120) * Math.PI) / 180
+  const bladeAngle = baseAngle - sweepSpan * 0.5 + sweepSpan * currentSwing.progress
+  const bladeDirection = { x: Math.cos(bladeAngle), y: Math.sin(bladeAngle) }
+  const bladeStart = Math.max(12, projectile.radius * 0.13)
+  const bladeLength = projectile.radius * 1.28
+  const bladeWidth =
+    Math.max(7.4, projectile.radius * 0.105) * (1 + Math.sin(Math.PI * currentSwing.phase) * 0.22)
+  const from = {
+    x: projectile.position.x + bladeDirection.x * bladeStart,
+    y: projectile.position.y + bladeDirection.y * bladeStart,
+  }
+  const to = {
+    x: projectile.position.x + bladeDirection.x * bladeLength,
+    y: projectile.position.y + bladeDirection.y * bladeLength,
+  }
+
+  // 現在描画されている光剣の刃だけを致死判定にし、振り抜き済みの扇形では命中させません。
+  return distancePointToSegment(enemy.position, from, to) <= enemy.radius + bladeWidth
+}
+
+function computeMeleeSwingProgress(
+  projectile: InternalProjectileState,
+  ageMs: number,
+): { phase: number; progress: number } {
+  const rawProgress =
+    projectile.initialLifetimeMs && projectile.initialLifetimeMs > 0
+      ? clamp01(ageMs / projectile.initialLifetimeMs)
+      : 0
+  const phase = clamp01((rawProgress - 0.08) / 0.74)
+  return {
+    phase,
+    progress: easeInOutCubic(phase),
+  }
+}
+
+function distancePointToSegment(point: Vector2, from: Vector2, to: Vector2): number {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const lengthSquared = dx * dx + dy * dy
+  if (lengthSquared <= 0.0001) {
+    return Math.hypot(point.x - from.x, point.y - from.y)
+  }
+  const t = clamp01(((point.x - from.x) * dx + (point.y - from.y) * dy) / lengthSquared)
+  const nearest = {
+    x: from.x + dx * t,
+    y: from.y + dy * t,
+  }
+  return Math.hypot(point.x - nearest.x, point.y - nearest.y)
+}
+
+function easeInOutCubic(value: number): number {
+  return value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2
 }
 
 function uniqueIds<T>(values: T[]): T[] {

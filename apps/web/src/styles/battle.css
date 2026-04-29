@@ -245,6 +245,11 @@
   color: rgba(216, 231, 246, 0.72);
 }
 
+.battle-result-transcript__important {
+  border-left: 2px solid rgba(93, 164, 209, 0.82);
+  padding-left: 8px;
+}
+
 .battle-result-overlay__stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

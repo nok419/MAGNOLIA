@@ -1,0 +1,10 @@
+[
+  {
+    "chunkId": "chunk_fixture_01",
+    "transmissionId": "tx_missing_mission",
+    "lineId": "line_fixture_01",
+    "startMs": 0,
+    "endMs": 1000,
+    "text": "fixture"
+  }
+]

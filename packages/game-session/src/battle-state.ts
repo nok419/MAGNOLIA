@@ -60,6 +60,8 @@ export type InternalProjectileState = {
   explosionVisualProjectileId?: string
   nonColliding?: boolean
   anchorToPlayer?: boolean
+  meleeSweepArcDeg?: number
+  meleeHitEnemyInstanceIds?: string[]
   inversePhaseVisual?: boolean
 }
 
@@ -134,6 +136,7 @@ export type InternalBattleState = {
   supportFields: InternalSupportFieldState[]
   pickups: InternalPickupState[]
   fragments: InternalBattleFragmentState[]
+  recoveredFragmentCount: number
   enemies: InternalEnemyState[]
   projectiles: InternalProjectileState[]
   activeResult?: MissionResult

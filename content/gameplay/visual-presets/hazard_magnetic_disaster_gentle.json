@@ -1,0 +1,9 @@
+{
+  "presetId": "hazard_magnetic_disaster_gentle",
+  "category": "hazard",
+  "rendererKind": "magneticDisaster",
+  "paletteRole": "dangerNoise",
+  "accessibilityVariant": "reducedFlash",
+  "telegraphFlashHz": 2,
+  "edgeFeather": 18
+}

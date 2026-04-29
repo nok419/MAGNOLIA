@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties, MouseEvent } from "react"
 import type { ExploreSnapshot, ShipVariant, WorldMapNodeId } from "@magnolia/contracts"
 import type { ExploreNodeRenderState, ExploreRenderState } from "@magnolia/game-session"
@@ -21,6 +21,8 @@ type ExploreScreenProps = {
   itemPopups?: Array<{ id: string; title: string; detail: string }>
   shipVariant: ShipVariant
   showEquipmentHint?: boolean
+  showScanHint?: boolean
+  onScanHintDismissed?: () => void
   onInteractNode?: (nodeId: WorldMapNodeId) => void
   displayOptions: DisplayOptions
 }
@@ -41,6 +43,8 @@ export function ExploreScreen({
   itemPopups = [],
   shipVariant,
   showEquipmentHint = false,
+  showScanHint = false,
+  onScanHintDismissed,
   onInteractNode,
   displayOptions,
 }: ExploreScreenProps) {
@@ -74,7 +78,10 @@ export function ExploreScreen({
       : undefined
   const [waveformFrame, setWaveformFrame] = useState(0)
   const [overlayFrame, setOverlayFrame] = useState<ExploreOverlayFrame | null>(null)
-  const [hasSeenFirstScan, setHasSeenFirstScan] = useState(false)
+  const [scanHintVisible, setScanHintVisible] = useState(showScanHint)
+  const scanHintMarkedRef = useRef(false)
+  const scanPulseCountRef = useRef(renderState.scanPulses.length)
+  const onScanHintDismissedRef = useRef(onScanHintDismissed)
 
   const handleOverlayFrame = useCallback((nextFrame: ExploreOverlayFrame) => {
     setOverlayFrame((currentFrame) =>
@@ -95,9 +102,25 @@ export function ExploreScreen({
   }, [canShowStrengthMeter, presentation.hidesHud])
 
   useEffect(() => {
-    // 初回だけ scan の実行を促し、scan pulse が生成されたら誘導を閉じます。
-    if (renderState.scanPulses.length > 0) {
-      setHasSeenFirstScan(true)
+    onScanHintDismissedRef.current = onScanHintDismissed
+  }, [onScanHintDismissed])
+
+  useEffect(() => {
+    if (!scanHintVisible || !overlayFrame || scanHintMarkedRef.current) {
+      return
+    }
+    // 表示された時点で profile 単位の既読にし、mission 復帰後の再表示を防ぎます。
+    scanHintMarkedRef.current = true
+    onScanHintDismissedRef.current?.()
+  }, [overlayFrame, scanHintVisible])
+
+  useEffect(() => {
+    const previousCount = scanPulseCountRef.current
+    scanPulseCountRef.current = renderState.scanPulses.length
+    // scan を実行したら、現在表示中の初回誘導も閉じます。
+    if (previousCount === 0 && renderState.scanPulses.length > 0) {
+      setScanHintVisible(false)
+      onScanHintDismissedRef.current?.()
     }
   }, [renderState.scanPulses.length])
 
@@ -116,7 +139,7 @@ export function ExploreScreen({
   }
   const activeStrengthSegments = Math.round(clampedStrength * STRENGTH_SEGMENT_COUNT)
   const canShowPrompts = presentation.kind === "none"
-  const shouldShowScanHint = canShowPrompts && overlayFrame !== null && !hasSeenFirstScan
+  const shouldShowScanHint = canShowPrompts && overlayFrame !== null && scanHintVisible
   const shipPromptPlacement = overlayFrame
     ? resolveInteractionPromptPlacement(overlayFrame.playerPoint, overlayFrame.width, overlayFrame.height)
     : "right-up"
@@ -289,7 +312,7 @@ export function ExploreScreen({
       <section className={`ehud ehud--help${hudTransitionClass}`} style={hudTransitionStyle}>
         <p>move — wasd / arrows</p>
         <p>connect — enter / click</p>
-        <p>scan — r / click 2</p>
+        <p>scan — r</p>
         <p>equipment — e</p>
         <p>map — m</p>
       </section>

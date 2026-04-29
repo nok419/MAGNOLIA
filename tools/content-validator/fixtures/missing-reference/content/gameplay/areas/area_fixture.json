@@ -1,0 +1,10 @@
+{
+  "areaId": "area_fixture",
+  "name": "Fixture Area",
+  "mapId": "map_fixture",
+  "worldPosition": { "x": 0, "y": 0 },
+  "initialState": "visible",
+  "transmissionIds": ["tx_missing_mission"],
+  "visibilityConditionId": "cond_always",
+  "themeId": "theme_fixture"
+}

@@ -1,9 +1,12 @@
 import type {
   AreaMaster,
   BulletPattern,
+  ClassifiedContentKind,
   ConditionId,
   ConditionSpec,
   ContentBundle,
+  ContentClassification,
+  ContentIdMigrationMap,
   EffectSpec,
   EffectId,
   EnemyArchetype,
@@ -16,6 +19,7 @@ import type {
   MissionMaster,
   ProjectileId,
   ProjectileSpec,
+  SignalProfile,
   TranscriptChunk,
   TranscriptChunkId,
   TransmissionId,
@@ -69,6 +73,8 @@ import missionWhereAreYouJson from "../../../content/gameplay/missions/mission_w
 import missionEvacuationJson from "../../../content/gameplay/missions/mission_evacuation.json"
 import condAlwaysJson from "../../../content/gameplay/progression/conditions/cond_always.json"
 import condMissionGoodMorningClearedJson from "../../../content/gameplay/progression/conditions/cond_mission_good_morning_cleared.json"
+import contentClassificationJson from "../../../content/gameplay/content-classification.json"
+import migratedIdMapJson from "../../../content/gameplay/migrated-id-map.json"
 import projEnemyBasicJson from "../../../content/gameplay/projectiles/proj_enemy_basic.json"
 import projEnemyCoreJson from "../../../content/gameplay/projectiles/proj_enemy_core.json"
 import projEnemyGeoJson from "../../../content/gameplay/projectiles/proj_enemy_geo.json"
@@ -106,6 +112,7 @@ const SUPPORTED_ENEMY_OVERRIDE_KEYS = new Set([
   "pauseAtY",
   "pauseMs",
 ])
+const SUPPORTED_TRANSCRIPT_IMPORTANCE = new Set(["normal", "important", "critical"])
 
 export function loadContentBundle(): ContentBundle {
   if (cachedBundle) {
@@ -114,8 +121,9 @@ export function loadContentBundle(): ContentBundle {
 
   // いまは content-tools 未導入のため、実データ JSON を明示 import して bundle を組み立てます。
   // 生成済み bundle に切り替える時は、この関数の内部だけを差し替えれば済む構成に留めます。
+  const contentClassification = contentClassificationJson as ContentClassification
+  const migratedIds = migratedIdMapJson as ContentIdMigrationMap
   const areas = [areaBroadcastFacilityJson, areaCentralTowerJson] as AreaMaster[]
-  const missions = [missionGoodMorningJson, missionWhereAreYouJson, missionEvacuationJson] as MissionMaster[]
   const transmissions = [txGoodMorningJson, txWhereAreYouJson, txEvacuationJson] as TransmissionMaster[]
   const transcriptChunks = [
     ...(txGoodMorningChunksJson as TranscriptChunk[]),
@@ -123,7 +131,12 @@ export function loadContentBundle(): ContentBundle {
     ...(txEvacuationChunksJson as TranscriptChunk[]),
   ]
   const mapLogic = [worldMapDemoJson as WorldMapLogic]
-  const enemies = [
+  const allMissions = [
+    missionGoodMorningJson,
+    missionWhereAreYouJson,
+    missionEvacuationJson,
+  ] as MissionMaster[]
+  const allEnemies = [
     enemyA1Json,
     enemyA2Json,
     enemyC1Json,
@@ -132,7 +145,7 @@ export function loadContentBundle(): ContentBundle {
     enemyScoutJson,
     enemyStandardJson,
   ] as EnemyArchetype[]
-  const bulletPatterns = [
+  const allBulletPatterns = [
     bpA2LanceSpreadJson,
     bpC1PressureRingJson,
     bpB1CoreBurstJson,
@@ -143,7 +156,7 @@ export function loadContentBundle(): ContentBundle {
     bpSpiralStreamJson,
     bpStandardSpreadJson,
   ] as BulletPattern[]
-  const projectiles = [
+  const allProjectiles = [
     projEnemyBasicJson,
     projEnemyCoreJson,
     projEnemyGeoJson,
@@ -154,6 +167,32 @@ export function loadContentBundle(): ContentBundle {
     projPlayerPulseJson,
     projPlayerPulseMeleeJson,
   ] as ProjectileSpec[]
+  // runtime は active content だけを bundle に入れます。
+  // prototype は validator と docs の対象に残し、mission へ混入した場合は missing reference として止めます。
+  const missions = filterActiveContent(
+    "missions",
+    allMissions,
+    "missionId",
+    contentClassification,
+  )
+  const enemies = filterActiveContent(
+    "enemies",
+    allEnemies,
+    "enemyId",
+    contentClassification,
+  )
+  const bulletPatterns = filterActiveContent(
+    "bullet-patterns",
+    allBulletPatterns,
+    "bulletPatternId",
+    contentClassification,
+  )
+  const projectiles = filterActiveContent(
+    "projectiles",
+    allProjectiles,
+    "projectileId",
+    contentClassification,
+  )
   const equipment = [
     eqMainCarrierJson,
     eqMainPulseJson,
@@ -215,11 +254,34 @@ export function loadContentBundle(): ContentBundle {
       "battle.invincible.start",
     ]),
     difficultyModifiers: createDefaultDifficultyModifiers(),
+    contentClassification,
+    migratedIds,
   }
 
   validateBundle(bundle)
   cachedBundle = bundle
   return bundle
+}
+
+function filterActiveContent<
+  Item extends Record<Key, string>,
+  Key extends keyof Item,
+>(
+  kind: ClassifiedContentKind,
+  items: Item[],
+  key: Key,
+  classification: ContentClassification,
+): Item[] {
+  const activeIds = new Set<string>(classification.active[kind])
+  const knownIds = new Set<string>(items.map((item) => String(item[key])))
+
+  for (const activeId of activeIds) {
+    if (!knownIds.has(activeId)) {
+      throw new Error(`Active ${kind} id ${activeId} is not present in content files.`)
+    }
+  }
+
+  return items.filter((item) => activeIds.has(String(item[key])))
 }
 
 function collectVisualPresetIds(
@@ -400,6 +462,7 @@ function validateBundle(bundle: ContentBundle): void {
       if (chunk.startMs < previousChunkEndMs) {
         throw new Error(`Transcript chunk ${chunkId} overlaps previous chunk in ${transmission.transmissionId}.`)
       }
+      assertTranscriptChunkRecovery(chunk)
       previousChunkEndMs = chunk.endMs
     }
   }
@@ -418,6 +481,7 @@ function validateBundle(bundle: ContentBundle): void {
         `Unsupported player spawn ${mission.playerSpawnId} in mission ${mission.missionId}.`,
       )
     }
+    assertFragmentRecoveryTuning(mission)
 
     for (const wave of mission.waves) {
       for (const entry of wave.entries) {
@@ -537,6 +601,7 @@ function validateBundle(bundle: ContentBundle): void {
       }
       assertConditionExists(bundle, node.visibilityConditionId, `node ${node.nodeId}`)
       assertConditionExists(bundle, node.accessConditionId, `node ${node.nodeId}`)
+      assertSignalProfile(node.signalProfile, `node ${node.nodeId}`)
     }
 
     for (const node of mapLogic.warpNodes) {
@@ -558,6 +623,7 @@ function validateBundle(bundle: ContentBundle): void {
         throw new Error(`Missing equipment ${node.equipmentId} for collectible ${node.nodeId}.`)
       }
       assertConditionExists(bundle, node.visibilityConditionId, `node ${node.nodeId}`)
+      assertSignalProfile(node.signalProfile, `node ${node.nodeId}`)
     }
   }
 
@@ -613,6 +679,165 @@ function validateBundle(bundle: ContentBundle): void {
         }
         break
     }
+  }
+
+  assertEffectProjectileReferences(bundle)
+  assertMigrationMapTargets(bundle, validNodeIds)
+}
+
+function assertEffectProjectileReferences(bundle: ContentBundle): void {
+  const projectileReferenceKeys = [
+    "projectileId",
+    "meleeProjectileId",
+    "explosionVisualProjectileId",
+  ]
+
+  for (const effect of Object.values(bundle.effects)) {
+    for (const key of projectileReferenceKeys) {
+      const projectileId = effect.params?.[key]
+      if (typeof projectileId !== "string") {
+        continue
+      }
+      if (!bundle.projectiles[projectileId]) {
+        throw new Error(`Missing projectile ${projectileId} for effect ${effect.effectId}.${key}.`)
+      }
+    }
+  }
+}
+
+function assertMigrationMapTargets(
+  bundle: ContentBundle,
+  validNodeIds: Set<string>,
+): void {
+  assertMigrationTargets(bundle.migratedIds.areas, bundle.areas, "area")
+  assertMigrationTargets(bundle.migratedIds.transmissions, bundle.transmissions, "transmission")
+  assertMigrationTargets(bundle.migratedIds.missions, bundle.missions, "mission")
+  assertMigrationTargets(bundle.migratedIds.equipment, bundle.equipment, "equipment")
+  assertMigrationTargets(bundle.migratedIds.enemies, bundle.enemies, "enemy")
+  assertMigrationTargets(bundle.migratedIds.bulletPatterns, bundle.bulletPatterns, "bullet pattern")
+  assertMigrationTargets(bundle.migratedIds.projectiles, bundle.projectiles, "projectile")
+
+  for (const [sourceId, targetId] of Object.entries(bundle.migratedIds.worldMapNodes)) {
+    if (!validNodeIds.has(targetId)) {
+      throw new Error(`Migration target node ${targetId} for ${sourceId} does not exist.`)
+    }
+  }
+}
+
+function assertMigrationTargets<T>(
+  mappings: Record<string, string>,
+  targetIndex: Record<string, T>,
+  label: string,
+): void {
+  for (const [sourceId, targetId] of Object.entries(mappings)) {
+    if (!targetIndex[targetId]) {
+      throw new Error(`Migration target ${label} ${targetId} for ${sourceId} does not exist.`)
+    }
+  }
+}
+
+function assertTranscriptChunkRecovery(chunk: TranscriptChunk): void {
+  const importance = chunk.importance
+  if (importance && !SUPPORTED_TRANSCRIPT_IMPORTANCE.has(importance)) {
+    throw new Error(`Unsupported importance ${importance} for transcript chunk ${chunk.chunkId}.`)
+  }
+
+  const recovery = chunk.fragmentRecovery
+  if (!recovery) {
+    return
+  }
+
+  assertPositiveNumber(recovery.weight, `fragmentRecovery.weight for transcript chunk ${chunk.chunkId}`)
+  assertRate(recovery.minSpanRatio, `fragmentRecovery.minSpanRatio for transcript chunk ${chunk.chunkId}`)
+  assertRate(recovery.maxSpanRatio, `fragmentRecovery.maxSpanRatio for transcript chunk ${chunk.chunkId}`)
+  assertPositiveNumber(
+    recovery.lifetimeMultiplier,
+    `fragmentRecovery.lifetimeMultiplier for transcript chunk ${chunk.chunkId}`,
+  )
+  if (
+    recovery.minSpanRatio !== undefined &&
+    recovery.maxSpanRatio !== undefined &&
+    recovery.minSpanRatio > recovery.maxSpanRatio
+  ) {
+    throw new Error(`Transcript chunk ${chunk.chunkId} has minSpanRatio greater than maxSpanRatio.`)
+  }
+}
+
+function assertFragmentRecoveryTuning(mission: MissionMaster): void {
+  const tuning = mission.fragmentRecovery
+  if (!tuning) {
+    return
+  }
+
+  assertPositiveNumber(tuning.cooldownMs, `fragmentRecovery.cooldownMs for mission ${mission.missionId}`)
+  assertPositiveNumber(
+    tuning.spawnDistanceMin,
+    `fragmentRecovery.spawnDistanceMin for mission ${mission.missionId}`,
+  )
+  assertPositiveNumber(
+    tuning.spawnDistanceMax,
+    `fragmentRecovery.spawnDistanceMax for mission ${mission.missionId}`,
+  )
+  assertRate(tuning.minSpanRatio, `fragmentRecovery.minSpanRatio for mission ${mission.missionId}`)
+  assertRate(tuning.maxSpanRatio, `fragmentRecovery.maxSpanRatio for mission ${mission.missionId}`)
+  if (
+    tuning.spawnDistanceMin !== undefined &&
+    tuning.spawnDistanceMax !== undefined &&
+    tuning.spawnDistanceMin > tuning.spawnDistanceMax
+  ) {
+    throw new Error(`Mission ${mission.missionId} has spawnDistanceMin greater than spawnDistanceMax.`)
+  }
+  if (
+    tuning.minSpanRatio !== undefined &&
+    tuning.maxSpanRatio !== undefined &&
+    tuning.minSpanRatio > tuning.maxSpanRatio
+  ) {
+    throw new Error(`Mission ${mission.missionId} has minSpanRatio greater than maxSpanRatio.`)
+  }
+  for (const [difficulty, lifetimeMs] of Object.entries(tuning.lifetimeMs ?? {})) {
+    if (difficulty !== "calm" && difficulty !== "terminal") {
+      throw new Error(`Mission ${mission.missionId} has unsupported fragment lifetime difficulty ${difficulty}.`)
+    }
+    assertPositiveNumber(lifetimeMs, `fragmentRecovery.lifetimeMs.${difficulty} for mission ${mission.missionId}`)
+  }
+}
+
+function assertSignalProfile(profile: SignalProfile | undefined, ownerLabel: string): void {
+  if (!profile) {
+    return
+  }
+
+  assertPositiveNumber(profile.passiveRadius, `signalProfile.passiveRadius for ${ownerLabel}`)
+  assertPositiveNumber(
+    profile.passiveConfidenceRadius,
+    `signalProfile.passiveConfidenceRadius for ${ownerLabel}`,
+  )
+  assertPositiveNumber(profile.scanRadius, `signalProfile.scanRadius for ${ownerLabel}`)
+  assertPositiveNumber(
+    profile.confidenceMultiplier,
+    `signalProfile.confidenceMultiplier for ${ownerLabel}`,
+  )
+  assertPositiveNumber(
+    profile.hintStrengthMultiplier,
+    `signalProfile.hintStrengthMultiplier for ${ownerLabel}`,
+  )
+}
+
+function assertPositiveNumber(value: number | undefined, ownerLabel: string): void {
+  if (value === undefined) {
+    return
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${ownerLabel} must be a positive number.`)
+  }
+}
+
+function assertRate(value: number | undefined, ownerLabel: string): void {
+  if (value === undefined) {
+    return
+  }
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error(`${ownerLabel} must be between 0 and 1.`)
   }
 }
 

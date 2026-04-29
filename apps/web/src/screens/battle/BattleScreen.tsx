@@ -1,35 +1,37 @@
-import type { ContentBundle, ShipVariant } from "@magnolia/contracts"
-import type { BattleRenderState } from "@magnolia/game-session"
+import type { ShipVariant } from "@magnolia/contracts"
+import type { BattleRenderState, BattleResultViewModel } from "@magnolia/game-session"
 import type { ReactNode } from "react"
-import { readEquipmentSlotLabel } from "@/app/display-helpers"
+import type { TimedPresentationRequest } from "@/app/app-state"
 import type { DisplayOptions } from "@/app/display-options"
 import { BattleCanvas } from "@/components/BattleCanvas"
 import { ActionButton } from "@/components/ActionButton"
 
 type BattleScreenProps = {
-  content: ContentBundle
   renderState: BattleRenderState
+  resultViewModel: BattleResultViewModel
+  presentationRequests: TimedPresentationRequest[]
   shipVariant: ShipVariant
   displayOptions: DisplayOptions
   onReturnToExplore: () => void
 }
 
-export function BattleScreen({ content, renderState, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
-  const progress = renderState.missionDurationMs > 0
-    ? Math.max(0, Math.min(1, renderState.elapsedMs / renderState.missionDurationMs))
-    : 0
-  const progressPercent = Math.round(progress * 100)
-  const remainingSeconds = Math.ceil(Math.max(0, renderState.missionDurationMs - renderState.elapsedMs) / 1000)
-  const grantedEquipment = (renderState.pendingResult?.grantedEquipmentIds ?? []).flatMap((equipmentId) => {
-    const equipment = content.equipment[equipmentId]
-    return equipment ? [equipment] : []
-  })
-  const resultTranscriptPreview = selectResultTranscriptPreview(renderState.resultTranscriptPreview)
-
+export function BattleScreen({
+  renderState,
+  resultViewModel,
+  presentationRequests,
+  shipVariant,
+  displayOptions,
+  onReturnToExplore,
+}: BattleScreenProps) {
   return (
     <main className="battle-screen">
       <div className="battle-screen__playfield">
-        <BattleCanvas renderState={renderState} shipVariant={shipVariant} displayOptions={displayOptions} />
+        <BattleCanvas
+          renderState={renderState}
+          presentationRequests={presentationRequests}
+          shipVariant={shipVariant}
+          displayOptions={displayOptions}
+        />
       </div>
 
       <div className="battle-screen__sidebar">
@@ -37,23 +39,23 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
         <section className="battle-mission-panel" aria-label="mission progress">
           <div className="battle-mission-panel__header">
             <span>mission</span>
-            <span>{progressPercent}%</span>
+            <span>{resultViewModel.progressPercent}%</span>
           </div>
           <div
             className="battle-mission-panel__meter"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={progressPercent}
+            aria-valuenow={resultViewModel.progressPercent}
           >
             <span
               className="battle-mission-panel__fill"
-              style={{ transform: `scaleX(${progress})` }}
+              style={{ transform: `scaleX(${resultViewModel.progress})` }}
             />
           </div>
           <div className="battle-mission-panel__meta">
             <span>remain</span>
-            <span>{formatMissionTime(remainingSeconds)}</span>
+            <span>{formatMissionTime(resultViewModel.remainingSeconds)}</span>
           </div>
         </section>
 
@@ -107,11 +109,19 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
         <div className="battle-result-overlay">
           <div className="battle-result-overlay__backdrop" />
           <section className="battle-result-overlay__panel">
-            <p className="battle-result-overlay__eyebrow">mission complete</p>
-            {resultTranscriptPreview.length > 0 ? (
+            <p className="battle-result-overlay__eyebrow">通信復元結果</p>
+            {resultViewModel.transcriptPreview.length > 0 ? (
               <div className="battle-result-transcript" aria-label="restored transcript preview">
-                {resultTranscriptPreview.map((chunk) => (
-                  <p key={chunk.chunkId} className={chunk.audible ? "" : "battle-result-transcript__damaged"}>
+                {resultViewModel.transcriptPreview.map((chunk) => (
+                  <p
+                    key={chunk.chunkId}
+                    className={[
+                      chunk.audible ? "" : "battle-result-transcript__damaged",
+                      chunk.importance && chunk.importance !== "normal"
+                        ? "battle-result-transcript__important"
+                        : "",
+                    ].filter(Boolean).join(" ")}
+                  >
                     {chunk.text}
                   </p>
                 ))}
@@ -119,11 +129,11 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
             ) : null}
             <div className="battle-result-overlay__stats">
               <ResultMetric
-                label="解析率"
+                label="ノイズ源解析"
                 value={`${Math.round(renderState.pendingResult.analysisRate * 100)}%`}
               />
               <ResultMetric
-                label="復元率"
+                label="本文復元"
                 value={`${Math.round(renderState.pendingResult.restorationRate * 100)}%`}
               />
               <ResultMetric
@@ -131,37 +141,49 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
                 value={`+${renderState.pendingResult.selfRepairPointsEarned}`}
               />
               <ResultMetric
-                label="新規聴取"
+                label="新たに守れた音声"
                 value={`+${Math.round(renderState.pendingResult.newHeardRangeMs / 100) / 10}s`}
+              />
+              <ResultMetric
+                label="回収した断片"
+                value={`+${renderState.pendingResult.recoveredFragmentCount}`}
+              />
+              <ResultMetric
+                label="重要フレーズ"
+                value={`${renderState.pendingResult.importantPhraseRestored}/${renderState.pendingResult.importantPhraseTotal}`}
+              />
+              <ResultMetric
+                label="初開示メタ"
+                value={formatMetadataUnlocked(renderState.pendingResult.newMetadataUnlocked)}
               />
             </div>
 
-            {grantedEquipment.length > 0 ? (
+            {resultViewModel.grantedEquipment.length > 0 ? (
               <div className="battle-result-overlay__rewards battle-result-overlay__rewards--highlight">
                 <div className="battle-result-rewards__banner" aria-hidden="true">
                   <span className="battle-result-rewards__diamond">◆</span>
-                  <span className="battle-result-rewards__banner-label">NEW EQUIPMENT ACQUIRED</span>
+                  <span className="battle-result-rewards__banner-label">新しい装備を取得</span>
                   <span className="battle-result-rewards__diamond">◆</span>
                 </div>
                 <ul className="battle-result-overlay__reward-list battle-result-overlay__reward-list--highlight">
-                  {grantedEquipment.map((equipment) => (
+                  {resultViewModel.grantedEquipment.map((equipment) => (
                     <li key={equipment.equipmentId}>
                       <span className="battle-result-reward__mark" aria-hidden="true">▸</span>
                       <span className="battle-result-reward__name">{equipment.name}</span>
                       <span className="battle-result-reward__slot">
-                        {readEquipmentSlotLabel(equipment.slot, "short")}
+                        {equipment.slotLabel}
                       </span>
                     </li>
                   ))}
                 </ul>
                 <p className="battle-result-rewards__hint">
                   <kbd className="battle-result-rewards__hint-key">E</kbd>
-                  を押して装備画面から装着してください
+                  で装備画面を開いて装着できます
                 </p>
               </div>
             ) : null}
             <ActionButton onClick={onReturnToExplore}>
-              return to explore
+              探索へ戻る
             </ActionButton>
           </section>
         </div>
@@ -170,11 +192,19 @@ export function BattleScreen({ content, renderState, shipVariant, displayOptions
   )
 }
 
-function selectResultTranscriptPreview(
-  chunks: BattleRenderState["resultTranscriptPreview"],
-) {
-  const restored = (chunks ?? []).filter((chunk) => chunk.restorationRatio > 0)
-  return (restored.length > 0 ? restored : chunks ?? []).slice(0, 4)
+type MetadataResultKey = "title" | "sender" | "recipient" | "sentAt"
+
+function formatMetadataUnlocked(keys: MetadataResultKey[]): string {
+  if (keys.length === 0) {
+    return "なし"
+  }
+  const labels = {
+    title: "件名",
+    sender: "発信者",
+    recipient: "宛先",
+    sentAt: "送信時刻",
+  } satisfies Record<MetadataResultKey, string>
+  return keys.map((key) => labels[key]).join(" / ")
 }
 
 function renderSubtitleText(input: {

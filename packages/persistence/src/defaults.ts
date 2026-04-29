@@ -4,6 +4,7 @@ import type {
   MetaRow,
   PlayerShipSpec,
   PresentationCueSpec,
+  BulletVisualPreset,
   ThemeId,
   UiThemePreset,
   VisualPreset,
@@ -245,34 +246,73 @@ export function createDefaultPresentationCues(): Record<string, PresentationCueS
 
 function createVisualPreset(id: VisualPresetId): VisualPreset {
   if (id.startsWith("vis_enemy_")) {
+    const isBoss = id.endsWith("_b1") || id.endsWith("_c1")
+    const isHeavy = id.endsWith("_heavy") || isBoss
+    const isStandard = id.endsWith("_standard") || id.endsWith("_a2")
+    // content 側の visualPresetId は旧 ID を含むため、ここで rendererKind と配色へ正規化する。
+    // Web renderer はこの解決済み contract を見ればよく、enemyId 分岐を持たない。
     return {
       visualPresetId: id,
-      coreRadius: id === "vis_enemy_heavy" ? 18 : id === "vis_enemy_standard" ? 14 : 10,
-      orbit1Radius: id === "vis_enemy_heavy" ? 28 : id === "vis_enemy_standard" ? 22 : 16,
-      orbit2Radius: id === "vis_enemy_heavy" ? 38 : id === "vis_enemy_standard" ? 30 : 22,
-      orbit1Width: 4,
-      orbit2Width: 3,
+      rendererKind: isBoss ? "orbitalBoss" : "orbital",
+      paletteRole: "dangerNoise",
+      accentColor: isBoss ? "#ff7d72" : isHeavy ? "#ff8f66" : isStandard ? "#ff9d72" : "#ffb08a",
+      secondaryColor: isBoss ? "#ffd2aa" : "#ffe0c4",
+      glowColor: isBoss
+        ? "rgba(255, 96, 86, 0.88)"
+        : isHeavy
+          ? "rgba(255, 112, 86, 0.74)"
+          : "rgba(255, 128, 100, 0.64)",
+      seedBucket: id.endsWith("_b1")
+        ? 211
+        : id.endsWith("_c1")
+          ? 101
+          : isHeavy
+            ? 37
+            : isStandard
+              ? 23
+              : 11,
+      coreRadius: isHeavy ? 18 : isStandard ? 14 : 10,
+      orbit1Radius: isHeavy ? 28 : isStandard ? 22 : 16,
+      orbit2Radius: isHeavy ? 38 : isStandard ? 30 : 22,
+      orbit1Width: isBoss ? 4.4 : 4,
+      orbit2Width: isBoss ? 3.4 : 3,
       orbit1ArcStart: 0,
-      orbit1ArcEnd: Math.PI,
-      orbit2ArcStart: 0,
-      orbit2ArcEnd: Math.PI * 1.5,
-      orbit1AngularSpeed: 0.8,
-      orbit2AngularSpeed: -0.6,
+      orbit1ArcEnd: Math.PI * 1.2,
+      orbit2ArcStart: 25 * (Math.PI / 180),
+      orbit2ArcEnd: Math.PI * 2 - 25 * (Math.PI / 180),
+      orbit1AngularSpeed: isBoss ? 0.62 : 0.82,
+      orbit2AngularSpeed: isBoss ? -0.46 : -0.58,
       iconType: "dot",
-      iconAngle: 0,
-      iconGapAngle: 0.35,
-      glowStrength: 0.6,
+      iconAngle: Math.PI,
+      iconGapAngle: isBoss ? 0.38 : 0.44,
+      glowStrength: isBoss ? 0.82 : isHeavy ? 0.72 : 0.58,
     }
   }
 
   if (id.startsWith("vis_bullet_")) {
+    // projectile renderer の差し替えは rendererKind で表す。
+    // 旧 content ID はここで互換的に解釈し、Canvas core へ伝播させない。
+    const rendererKind = readBulletRendererKind(id)
+    const isPlayer = id.includes("_player_")
+    const isDanger = !isPlayer
     return {
       visualPresetId: id,
+      rendererKind,
+      paletteRole: isDanger ? "dangerNoise" : "normalSignal",
+      accentColor: isDanger ? "#ff6d7f" : "#7cdcff",
+      secondaryColor: isDanger ? "#ffd0a8" : "#e2fbff",
+      glowColor: isDanger ? "rgba(255, 90, 110, 0.68)" : "rgba(93, 164, 209, 0.76)",
+      radiusScale: rendererKind === "playerMelee" ? 1.25 : rendererKind === "bossCore" ? 1.16 : 1,
+      auraKind: "none",
       bodyType: id.includes("enemy") ? "noiseCluster" : "diamondCluster",
-      trailType: id.includes("carrier") ? "trailC" : "trailA",
-      seedBucket: 1,
-      scale: id.includes("melee") ? 1.25 : 1,
-      glowStrength: 0.55,
+      trailType: rendererKind === "playerCarrier" || rendererKind === "playerCarrierBlast"
+        ? "trailC"
+        : rendererKind === "enemyLance"
+          ? "trailB"
+          : "trailA",
+      seedBucket: id.includes("geo") ? 17 : id.includes("lance") ? 29 : id.includes("core") ? 41 : 1,
+      scale: rendererKind === "playerMelee" ? 1.25 : 1,
+      glowStrength: isDanger ? 0.62 : 0.58,
     }
   }
 
@@ -301,4 +341,16 @@ function createVisualPreset(id: VisualPresetId): VisualPreset {
     wingOffsetY: 0,
     glowStrength: 0,
   }
+}
+
+function readBulletRendererKind(id: VisualPresetId): BulletVisualPreset["rendererKind"] {
+  if (id.includes("carrier_blast")) return "playerCarrierBlast"
+  if (id.includes("carrier")) return "playerCarrier"
+  if (id.includes("melee")) return "playerMelee"
+  if (id.includes("geo")) return "geoDiamond"
+  if (id.includes("lance")) return "enemyLance"
+  if (id.includes("core")) return "bossCore"
+  if (id.includes("petal")) return "signalShard"
+  if (id.includes("player")) return "playerPulse"
+  return "noiseOrb"
 }

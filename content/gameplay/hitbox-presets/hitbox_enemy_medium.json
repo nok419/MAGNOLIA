@@ -1,0 +1,5 @@
+{
+  "hitboxPresetId": "hitbox_enemy_medium",
+  "shape": "circle",
+  "radius": 18
+}

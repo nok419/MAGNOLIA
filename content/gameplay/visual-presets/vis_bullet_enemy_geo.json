@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_bullet_enemy_geo",
+  "category": "projectile",
+  "rendererKind": "geoDiamond",
+  "paletteRole": "dangerNoise",
+  "accessibilityVariant": "highContrast",
+  "trailRole": "trailB"
+}

@@ -14,6 +14,63 @@ type KeyVisualModalProps = {
 /* 黄金角 (137.508°) — フィボナッチ弾幕用 */
 const TAU = Math.PI * 2
 const GOLDEN_ANGLE = TAU * (1 - 1 / 1.618033988749895) // ≈ 2.3999…
+type PreviewEnemyVisual = BattleRenderState["enemies"][number]["visual"]
+type PreviewProjectileVisual = BattleRenderState["projectiles"][number]["visual"]
+type PreviewHazardVisual = BattleRenderState["hazards"][number]["visual"]
+
+const PREVIEW_STANDARD_ENEMY_VISUAL: PreviewEnemyVisual = {
+  visualPresetId: "preview.enemy.standard",
+  rendererKind: "orbital",
+  paletteRole: "dangerNoise",
+  accentColor: "#ff9d72",
+  secondaryColor: "#ffe0c4",
+  glowColor: "rgba(255, 128, 100, 0.64)",
+  seedBucket: 23,
+  orbit1Scale: 1.62,
+  orbit2Scale: 2.62,
+  orbit1Width: 4,
+  orbit2Width: 3,
+  orbit1ArcStart: 0,
+  orbit1ArcEnd: Math.PI * 1.2,
+  orbit2ArcStart: 25 * (Math.PI / 180),
+  orbit2ArcEnd: Math.PI * 2 - 25 * (Math.PI / 180),
+  orbit1AngularSpeed: 0.82,
+  orbit2AngularSpeed: -0.58,
+  iconType: "dot",
+  iconAngle: Math.PI,
+  iconGapAngle: 0.44,
+  iconSize: 3.2,
+  glowStrength: 0.58,
+}
+
+const PREVIEW_BOSS_ENEMY_VISUAL: PreviewEnemyVisual = {
+  ...PREVIEW_STANDARD_ENEMY_VISUAL,
+  visualPresetId: "preview.enemy.poster-core",
+  rendererKind: "orbitalBoss",
+  accentColor: "#ff7d72",
+  secondaryColor: "#ffd2aa",
+  glowColor: "rgba(255, 96, 86, 0.88)",
+  seedBucket: 211,
+  orbit1Scale: 1.7,
+  orbit2Scale: 2.7,
+  midOrbitScale: 2.18,
+  iconCount: 4,
+  iconSize: 4,
+  glowStrength: 0.82,
+}
+
+const PREVIEW_HAZARD_VISUAL: PreviewHazardVisual = {
+  visualPresetId: "preview.hazard.poster-noise",
+  rendererKind: "magneticDisaster",
+  paletteRole: "dangerNoise",
+  telegraphColor: "#ff5a6e",
+  activeColor: "#ff3b5a",
+  telegraphFlashHz: 2.4,
+  noiseScrollSpeed: 0.2,
+  edgeFeather: 18,
+  telegraphOpacity: 0.24,
+  activeOpacity: 0.38,
+}
 
 export function KeyVisualModal({ variant, onClose, displayOptions }: KeyVisualModalProps) {
   const [elapsedMs, setElapsedMs] = useState(0)
@@ -335,17 +392,20 @@ function buildKeyVisualRenderState(
     // 重装型 (ボス) — 大型、弾幕の焦点
     {
       enemyInstanceId: "kv_heavy", enemyId: "enemy_heavy",
+      visual: PREVIEW_BOSS_ENEMY_VISUAL,
       position: { x: cx, y: bossY },
       radius: 34, hp: 999, maxHp: 999, burning: false,
     },
     // 通常型 ×2 — 左右の端寄り
     {
       enemyInstanceId: "kv_std_l", enemyId: "enemy_standard",
+      visual: PREVIEW_STANDARD_ENEMY_VISUAL,
       position: { x: stdLX, y: stdY },
       radius: 20, hp: 50, maxHp: 56, burning: false,
     },
     {
       enemyInstanceId: "kv_std_r", enemyId: "enemy_standard",
+      visual: PREVIEW_STANDARD_ENEMY_VISUAL,
       position: { x: stdRX, y: stdY },
       radius: 20, hp: 50, maxHp: 56, burning: false,
     },
@@ -442,6 +502,7 @@ function buildKeyVisualRenderState(
         hazardId: "hazard_key_visual_top",
         phase: "active",
         phaseProgress: 0.7 + 0.2 * Math.sin(elapsedMs * 0.0006),
+        visual: PREVIEW_HAZARD_VISUAL,
         position: { x: -16, y: -10 },
         size: { width: 480 * 0.72, height: 115 },
       },
@@ -463,6 +524,7 @@ function kvShotColumn(
     projectileInstanceId: `kv_ps_${baseX}_${i}`,
     projectileId: "proj_player_pulse",
     side: "player" as const,
+    visual: readPreviewProjectileVisual("proj_player_pulse"),
     position: { x: baseX, y: baseY - i * 42 + (t * 0.12) % 42 },
     velocity: { x: 0, y: -400 },
     radius: 6,
@@ -490,6 +552,7 @@ function kvGoldenSpiral(
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
       side: "enemy" as const,
+      visual: readPreviewProjectileVisual(projId),
       position: {
         x: cx + Math.cos(angle) * r,
         y: cy + Math.sin(angle) * r,
@@ -521,6 +584,7 @@ function kvRing(
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
       side: "enemy" as const,
+      visual: readPreviewProjectileVisual(projId),
       position: {
         x: cx + Math.cos(angle) * radius,
         y: cy + Math.sin(angle) * radius,
@@ -532,6 +596,42 @@ function kvRing(
       radius: 7,
     }
   })
+}
+
+function readPreviewProjectileVisual(projectileId: string): PreviewProjectileVisual {
+  const rendererKind = projectileId === "proj_enemy_geo"
+    ? "geoDiamond"
+    : projectileId === "proj_enemy_lance"
+      ? "enemyLance"
+      : projectileId === "proj_enemy_core"
+        ? "bossCore"
+        : projectileId === "proj_enemy_petal"
+          ? "signalShard"
+          : projectileId === "proj_player_carrier"
+            ? "playerCarrier"
+            : projectileId === "proj_player_carrier_blast"
+              ? "playerCarrierBlast"
+              : projectileId === "proj_player_pulse_melee"
+                ? "playerMelee"
+                : projectileId === "proj_player_pulse"
+                  ? "playerPulse"
+                  : "noiseOrb"
+  const isPlayer = projectileId.startsWith("proj_player_")
+  return {
+    visualPresetId: `preview.${projectileId}`,
+    rendererKind,
+    paletteRole: isPlayer ? "normalSignal" : "dangerNoise",
+    accentColor: isPlayer ? "#7cdcff" : "#ff6d7f",
+    secondaryColor: isPlayer ? "#e2fbff" : "#ffd0a8",
+    glowColor: isPlayer ? "rgba(93, 164, 209, 0.76)" : "rgba(255, 90, 110, 0.68)",
+    radiusScale: rendererKind === "playerMelee" ? 1.25 : rendererKind === "bossCore" ? 1.16 : 1,
+    auraKind: "none",
+    bodyType: isPlayer ? "diamondCluster" : "noiseCluster",
+    trailType: rendererKind === "playerCarrier" || rendererKind === "playerCarrierBlast" ? "trailC" : "trailA",
+    seedBucket: rendererKind === "geoDiamond" ? 17 : rendererKind === "enemyLance" ? 29 : 1,
+    scale: rendererKind === "playerMelee" ? 1.25 : 1,
+    glowStrength: isPlayer ? 0.58 : 0.62,
+  }
 }
 
 /* ==================================================================
@@ -554,6 +654,7 @@ function kvFan(
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
       side: "enemy" as const,
+      visual: readPreviewProjectileVisual(projId),
       position: {
         x: cx + Math.cos(angle) * radius,
         y: cy + Math.sin(angle) * radius,
@@ -591,6 +692,7 @@ function kvArcStream(
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
       side: "enemy" as const,
+      visual: readPreviewProjectileVisual(projId),
       position: {
         x: cx + Math.cos(angle) * r,
         y: cy + Math.sin(angle) * r,
@@ -624,6 +726,7 @@ function kvNoiseScatter(
       projectileInstanceId: `${prefix}_${i}`,
       projectileId: projId,
       side: "enemy" as const,
+      visual: readPreviewProjectileVisual(projId),
       position: { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r },
       velocity: { x: Math.cos(angle) * 12, y: Math.sin(angle) * 12 },
       radius: 7,

@@ -1,0 +1,31 @@
+{
+  "mapId": "map_fixture",
+  "playerSpawnNodeId": "node_area_fixture",
+  "areaNodes": [
+    {
+      "type": "area",
+      "nodeId": "node_area_fixture",
+      "x": 0,
+      "y": 0,
+      "areaId": "area_fixture",
+      "minimapVisibleByDefault": true,
+      "visibilityConditionId": "cond_always"
+    }
+  ],
+  "transmissionNodes": [
+    {
+      "type": "transmission",
+      "nodeId": "node_tx_missing_mission",
+      "x": 16,
+      "y": 0,
+      "transmissionId": "tx_missing_mission",
+      "areaId": "area_fixture",
+      "interactionRadius": 20,
+      "panelKind": "transmission",
+      "visibilityConditionId": "cond_always",
+      "accessConditionId": "cond_always"
+    }
+  ],
+  "warpNodes": [],
+  "collectibleNodes": []
+}

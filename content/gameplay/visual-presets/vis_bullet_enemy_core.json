@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_bullet_enemy_core",
+  "category": "projectile",
+  "rendererKind": "bossCore",
+  "paletteRole": "dangerNoise",
+  "accessibilityVariant": "highContrast",
+  "trailRole": "trailB"
+}

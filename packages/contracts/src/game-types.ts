@@ -18,6 +18,37 @@ export type ProfileId = string
 export type WorldMapNodeId = string
 export type TranscriptChunkId = string
 
+export type ClassifiedContentKind =
+  | "missions"
+  | "enemies"
+  | "bullet-patterns"
+  | "projectiles"
+
+export type ContentClassificationBucket = {
+  missions: MissionId[]
+  enemies: EnemyId[]
+  "bullet-patterns": BulletPatternId[]
+  projectiles: ProjectileId[]
+}
+
+export type ContentClassification = {
+  active: ContentClassificationBucket
+  prototype: ContentClassificationBucket
+  deprecated: ContentClassificationBucket
+}
+
+export type ContentIdMigrationMap = {
+  schemaVersion: number
+  areas: Record<string, AreaId>
+  transmissions: Record<string, TransmissionId>
+  missions: Record<string, MissionId>
+  equipment: Record<string, EquipmentId>
+  worldMapNodes: Record<string, WorldMapNodeId>
+  enemies: Record<string, EnemyId>
+  bulletPatterns: Record<string, BulletPatternId>
+  projectiles: Record<string, ProjectileId>
+}
+
 export type Difficulty = "calm" | "terminal"
 export type VolumeLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7
 /**
@@ -69,6 +100,32 @@ export type TranscriptSpan = {
   chunkId: TranscriptChunkId
   startRatio: number
   endRatio: number
+}
+
+export type SignalProfile = {
+  passiveRadius?: number
+  passiveConfidenceRadius?: number
+  scanRadius?: number
+  confidenceMultiplier?: number
+  hintStrengthMultiplier?: number
+}
+
+export type TranscriptChunkImportance = "normal" | "important" | "critical"
+
+export type TranscriptFragmentRecoverySpec = {
+  weight?: number
+  minSpanRatio?: number
+  maxSpanRatio?: number
+  lifetimeMultiplier?: number
+}
+
+export type FragmentRecoveryTuning = {
+  cooldownMs?: number
+  lifetimeMs?: Partial<Record<Difficulty, number>>
+  spawnDistanceMin?: number
+  spawnDistanceMax?: number
+  minSpanRatio?: number
+  maxSpanRatio?: number
 }
 
 export type BattleFragmentViewModel = {
@@ -206,6 +263,7 @@ export type TransmissionMapNode = {
   panelKind: "transmission"
   visibilityConditionId?: ConditionId
   accessConditionId?: ConditionId
+  signalProfile?: SignalProfile
 }
 
 export type WarpMapNode = {
@@ -232,6 +290,7 @@ export type CollectibleMapNode = {
   interactionRadius: number
   visibilityConditionId?: ConditionId
   visualHint: "glow"
+  signalProfile?: SignalProfile
 }
 
 export type WorldMapLogic = {
@@ -275,6 +334,8 @@ export type TranscriptChunk = {
   endMs: number
   speakerLabel?: string
   text: string
+  importance?: TranscriptChunkImportance
+  fragmentRecovery?: TranscriptFragmentRecoverySpec
 }
 
 export type TranscriptViewChunk = TranscriptChunk & {
@@ -299,6 +360,7 @@ export type MissionMaster = {
   hearingThresholdOverride?: number
   baseSelfRepairPoints: number
   repeatDecayRate: number
+  fragmentRecovery?: FragmentRecoveryTuning
   waves: EnemyWave[]
   hazards: BattlefieldHazardSpec[]
   clearCondition: "surviveUntilEnd"
@@ -517,6 +579,12 @@ export type ShipVisualPreset = {
 
 export type EnemyVisualPreset = {
   visualPresetId: VisualPresetId
+  rendererKind: "orbital" | "orbitalBoss"
+  paletteRole: "normalSignal" | "memoryFragment" | "dangerNoise" | "support"
+  accentColor: string
+  secondaryColor?: string
+  glowColor: string
+  seedBucket: number
   coreRadius: number
   orbit1Radius: number
   orbit2Radius: number
@@ -536,6 +604,22 @@ export type EnemyVisualPreset = {
 
 export type BulletVisualPreset = {
   visualPresetId: VisualPresetId
+  rendererKind:
+    | "playerPulse"
+    | "playerCarrier"
+    | "playerCarrierBlast"
+    | "playerMelee"
+    | "noiseOrb"
+    | "geoDiamond"
+    | "enemyLance"
+    | "bossCore"
+    | "signalShard"
+  paletteRole: "normalSignal" | "memoryFragment" | "dangerNoise" | "support"
+  accentColor: string
+  secondaryColor?: string
+  glowColor: string
+  radiusScale: number
+  auraKind: "none" | "inversePhase"
   bodyType: "diamondCluster" | "noiseCluster"
   trailType: "trailA" | "trailB" | "trailC"
   seedBucket: number
@@ -786,6 +870,10 @@ export type MissionResult = {
   score: number
   selfRepairPointsEarned: number
   newHeardRangeMs: number
+  recoveredFragmentCount: number
+  importantPhraseRestored: number
+  importantPhraseTotal: number
+  newMetadataUnlocked: Array<keyof MetadataUnlocked>
   grantedEquipmentIds: EquipmentId[]
   isFirstClear: boolean
   cleared: boolean

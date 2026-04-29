@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_bullet_enemy_petal",
+  "category": "projectile",
+  "rendererKind": "signalShard",
+  "paletteRole": "dangerNoise",
+  "accessibilityVariant": "highContrast",
+  "trailRole": "trailA"
+}

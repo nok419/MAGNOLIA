@@ -5,14 +5,11 @@ import {
   useState,
 } from "react"
 import type {
-  ArchiveSnapshot,
   AreaId,
-  CollectibleMapNode,
   ContentBundle,
   DomainEvent,
   EquipmentId,
   PresentationRequest,
-  ProfileAggregate,
   RootSnapshot,
   SaveSlotId,
   SettingsRow,
@@ -21,8 +18,8 @@ import type {
 } from "@magnolia/contracts"
 import {
   MagnoliaGameSession,
-  type BattleRenderState,
-  type ExploreRenderState,
+  selectBattleResultViewModel,
+  selectEquipmentHint,
 } from "@magnolia/game-session"
 import {
   createDexieSaveRepository,
@@ -33,89 +30,36 @@ import {
   readExplorePresentationState,
   readPresentationDurationMs,
   REBOOT_SEQUENCE_CUE_ID,
-  REBOOT_SETTLE_CUE_ID,
   shouldAutoDismissOverlayPresentation,
-  type OverlayPresentationRequest,
 } from "@/app/explore-presentation"
 import {
   formatPlayTime,
   formatTimestamp,
-  readEquipmentSlotLabel,
 } from "@/app/display-helpers"
 import { useMagnoliaInput } from "@/app/use-magnolia-input"
-
-type MagnoliaAppState = {
-  ready: boolean
-  errorMessage?: string
-  snapshot: RootSnapshot | null
-  content: ContentBundle | null
-  profile: ProfileAggregate | null
-  settings: SettingsRow | null
-  exploreSnapshot: RootSnapshot["explore"] | null
-  exploreRenderState: ExploreRenderState | null
-  battleRenderState: BattleRenderState | null
-  archiveSnapshot: ArchiveSnapshot | null
-  slotSelectMode: SlotSelectMode | null
-  activeOverlayPresentation: OverlayPresentationRequest | null
-  pendingOverlayPresentations: OverlayPresentationRequest[]
-  itemPopups: ExploreItemPopup[]
-  equipmentModalNodeId: string | null
-  seenEquipmentIds: string[]
-}
-
-type CommandTarget =
-  | "map"
-  | "archive"
-  | "equipment"
-  | "settings"
-  | "closePanel"
-  | "returnToTitle"
-  | "saveCurrentSlot"
-
-const FRAME_INTERVAL_MS = 1000 / 60
-const LOW_FRAME_INTERVAL_MS = 1000 / 30
-const ZERO_VECTOR = { x: 0, y: 0 }
-const OVERLAY_CHANNEL = "overlay"
-const ITEM_POPUP_DURATION_MS = 2200
-const SEEN_EQUIPMENT_STORAGE_PREFIX = "magnolia.seenEquipment:"
-const MISSION_GOOD_MORNING_ID = "mission_good_morning"
-
-function readSeenEquipmentFromStorage(profileId: string | null | undefined): string[] {
-  if (!profileId || typeof window === "undefined") {
-    return []
-  }
-  try {
-    const raw = window.localStorage.getItem(`${SEEN_EQUIPMENT_STORAGE_PREFIX}${profileId}`)
-    if (!raw) {
-      return []
-    }
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : []
-  } catch {
-    return []
-  }
-}
-
-function writeSeenEquipmentToStorage(profileId: string | null | undefined, ids: string[]): void {
-  if (!profileId || typeof window === "undefined") {
-    return
-  }
-  try {
-    window.localStorage.setItem(
-      `${SEEN_EQUIPMENT_STORAGE_PREFIX}${profileId}`,
-      JSON.stringify(Array.from(new Set(ids))),
-    )
-  } catch {
-    // ignore quota / disabled storage
-  }
-}
-
-type ExploreItemPopup = {
-  id: string
-  title: string
-  detail: string
-  expiresAt: number
-}
+import type { MagnoliaAppState } from "@/app/app-state"
+import {
+  dispatchCommandTarget,
+  type CommandTarget,
+} from "@/app/app-commands"
+import { useMagnoliaFrameLoop } from "@/app/frame-loop"
+import {
+  buildCollectiblePopups,
+  createExplorePopup,
+  pushExplorePopup,
+} from "@/app/item-popups"
+import {
+  dismissOverlayPresentation,
+  mergePresentationRequests,
+  selectTimedPresentationRequests,
+  transitionRebootToSettle,
+} from "@/app/presentation-queue"
+import {
+  readScanHintDismissedFromStorage,
+  readSeenEquipmentFromStorage,
+  writeScanHintDismissedToStorage,
+  writeSeenEquipmentToStorage,
+} from "@/app/ui-preferences"
 
 export function useMagnoliaApp() {
   const input = useMagnoliaInput()
@@ -127,18 +71,20 @@ export function useMagnoliaApp() {
     settings: null,
     exploreSnapshot: null,
     exploreRenderState: null,
+    worldMapViewModel: null,
     battleRenderState: null,
+    battleResultViewModel: null,
     archiveSnapshot: null,
     slotSelectMode: null,
     activeOverlayPresentation: null,
     pendingOverlayPresentations: [],
+    activeNonOverlayPresentations: [],
     itemPopups: [],
     equipmentModalNodeId: null,
     seenEquipmentIds: [],
+    scanHintDismissed: false,
   })
   const sessionRef = useRef<MagnoliaGameSession | null>(null)
-  const lastFrameAtRef = useRef<number | null>(null)
-  const frameHandleRef = useRef<number | null>(null)
   const stateRef = useRef(state)
 
   useEffect(() => {
@@ -251,143 +197,13 @@ export function useMagnoliaApp() {
     return false
   }
 
-  useEffect(() => {
-    function stepFrame(now: number) {
-      frameHandleRef.current = window.requestAnimationFrame(stepFrame)
-
-      const session = sessionRef.current
-      const appState = stateRef.current
-      const snapshot = appState.snapshot
-
-      if (!session || !snapshot || appState.slotSelectMode) {
-        lastFrameAtRef.current = now
-        return
-      }
-
-      const settings = session.getSettings()
-      const targetFrameIntervalMs = settings.lowFrameRateMode
-        ? LOW_FRAME_INTERVAL_MS
-        : FRAME_INTERVAL_MS
-      if (
-        lastFrameAtRef.current !== null &&
-        now - lastFrameAtRef.current < targetFrameIntervalMs
-      ) {
-        return
-      }
-      const previousFrameAt = lastFrameAtRef.current ?? now
-      lastFrameAtRef.current = now
-      const dtMs = Math.max(8, Math.min(34, now - previousFrameAt || FRAME_INTERVAL_MS))
-      const explorePresentation = readExplorePresentationState(
-        appState.activeOverlayPresentation,
-        appState.content,
-      )
-
-      const pausesWorld =
-        snapshot.screen === "explore"
-          ? explorePresentation.pausesWorld
-          : Boolean(appState.activeOverlayPresentation?.blocking)
-      if (pausesWorld) {
-        input.syncButtonEdges(settings)
-        return
-      }
-
-      if (
-        (snapshot.screen === "archive" ||
-          snapshot.screen === "equipment" ||
-          snapshot.screen === "settings" ||
-          snapshot.screen === "map") &&
-        input.isClosePanelPressed(snapshot.screen, settings)
-      ) {
-        // 開閉に同じキーを使うため、画面を閉じる瞬間に押下状態を消費して再オープンを防ぎます。
-        input.syncButtonEdges(settings)
-        void session.dispatch({ type: "closePanel" }).then(() => syncFromSession(session))
-        return
-      }
-
-      // equipment modal が出ている間も explore をポーズ
-      if (snapshot.screen === "explore" && stateRef.current.equipmentModalNodeId) {
-        return
-      }
-
-      if (snapshot.screen === "explore") {
-        const mapPressed = input.isMapPressed(settings)
-        const equipmentPressed = input.isEquipmentPressed(settings)
-        // explore 専用の演出 state を正本にし、入力停止の条件をここ 1 か所へ寄せます。
-        const inputsLocked = explorePresentation.blocksInput
-        if (inputsLocked) {
-          // 演出中の click / key edge を通常操作へ持ち越さないよう、この frame で消費します。
-          input.syncButtonEdges(settings)
-        }
-
-        if (mapPressed && !inputsLocked) {
-          if (!tryOpenMap(session)) {
-            input.syncButtonEdges(settings)
-            return
-          }
-          // M 押下をここで消費しないと、map 画面へ入った直後に閉じ判定へ流れます。
-          input.syncButtonEdges(settings)
-          void session.dispatch({ type: "openMap" }).then(() => syncFromSession(session))
-          return
-        }
-
-        if (equipmentPressed && !inputsLocked) {
-          // E 押下を消費し、equipment 画面へ入った直後の即時 close を防ぎます。
-          input.syncButtonEdges(settings)
-          void session.dispatch({ type: "openEquipment" }).then(() => syncFromSession(session))
-          return
-        }
-
-        const result = session.stepExplore({
-          dtMs,
-          move: inputsLocked
-            ? ZERO_VECTOR
-            : input.readMovementVector(settings),
-          dashPressed: inputsLocked
-            ? false
-            : input.isDashPressed(settings),
-          interactPressed: inputsLocked
-            ? false
-            : input.isInteractPressed(settings) || input.isPrimaryMouseJustPressed(),
-          scanPressed: inputsLocked
-            ? false
-            : input.isScanPressed(settings) || input.isSecondaryMouseJustPressed(),
-        })
-        syncFromSession(session, result.presentationRequests, result.events)
-        return
-      }
-
-      if (snapshot.screen === "map") {
-        input.syncButtonEdges(settings)
-        return
-      }
-
-      if (snapshot.screen === "battle") {
-        const mouseButtons = input.mouseButtons
-        const result = session.stepBattle({
-          dtMs,
-          move: input.readMovementVector(settings),
-          fireMain: mouseButtons.left,
-          fireSub: mouseButtons.right,
-          focus: input.isDashPressed(settings),
-          pausePressed: false,
-        })
-        // 戦闘中の副ボタンは sub 用です。探索へ戻った直後の scan として再利用しません。
-        input.syncButtonEdges(settings)
-        syncFromSession(session, result.presentationRequests)
-        return
-      }
-
-      input.syncButtonEdges(settings)
-    }
-
-    frameHandleRef.current = window.requestAnimationFrame(stepFrame)
-
-    return () => {
-      if (frameHandleRef.current !== null) {
-        window.cancelAnimationFrame(frameHandleRef.current)
-      }
-    }
-  }, [])
+  useMagnoliaFrameLoop({
+    controls: input,
+    sessionRef,
+    stateRef,
+    tryOpenMap,
+    syncFromSession,
+  })
 
   const effectiveScreen =
     state.slotSelectMode ? "slotSelect" : state.snapshot?.screen ?? "title"
@@ -396,18 +212,15 @@ export function useMagnoliaApp() {
     state.content,
   )
 
-  // 取得済みだがまだ装備画面で確認していない装備。
-  // 探索中の誘導表示とカテゴリタブ NEW バッジの共通ソース。
-  const ownedEquipmentIds = state.profile?.profile.ownedEquipmentIds ?? []
-  const seenEquipmentSet = new Set(state.seenEquipmentIds)
-  const unseenEquipmentIds = ownedEquipmentIds.filter((id) => !seenEquipmentSet.has(id))
-  // mission 01 をクリア済みでまだ未確認装備がある間だけ、探索画面で E キー誘導を出す。
-  // MAGNOLIA OS を装備済みの場合は誘導済みとみなして非表示にする。
-  const hasMagnoliaOs = state.profile?.profile.equipped.os === "eq_os_magnolia"
-  const shouldShowEquipmentHint =
-    (state.profile?.profile.clearedMissionIds.includes(MISSION_GOOD_MORNING_ID) ?? false) &&
-    unseenEquipmentIds.length > 0 &&
-    !hasMagnoliaOs
+  // mission 報酬由来の未確認装備がある間だけ、探索画面で E キー誘導を出します。
+  // 特定 ID ではなく content の rewardEquipmentIds と装備済み状態から判定します。
+  const equipmentHint = selectEquipmentHint({
+    content: state.content,
+    profile: state.profile,
+    seenEquipmentIds: state.seenEquipmentIds,
+  })
+  const hasMissionResult = (state.profile?.missionRuns.length ?? 0) > 0
+  const shouldShowScanHint = !state.scanHintDismissed && !hasMissionResult
 
   return {
     ready: state.ready,
@@ -419,15 +232,39 @@ export function useMagnoliaApp() {
     settings: state.settings,
     exploreSnapshot: state.exploreSnapshot,
     exploreRenderState: state.exploreRenderState,
+    worldMapViewModel: state.worldMapViewModel,
     battleRenderState: state.battleRenderState,
+    battleResultViewModel: state.battleResultViewModel,
     archiveSnapshot: state.archiveSnapshot,
     slotSelectMode: state.slotSelectMode,
     activeOverlayPresentation: state.activeOverlayPresentation,
     explorePresentation,
+    battlePresentationRequests: selectTimedPresentationRequests(
+      state.activeNonOverlayPresentations,
+      "battle",
+    ),
+    explorePresentationRequests: selectTimedPresentationRequests(
+      state.activeNonOverlayPresentations,
+      "explore",
+    ),
+    transitionPresentationRequests: selectTimedPresentationRequests(
+      state.activeNonOverlayPresentations,
+      "transition",
+    ),
     itemPopups: state.itemPopups,
     equipmentModalNodeId: state.equipmentModalNodeId,
-    unseenEquipmentIds,
-    shouldShowEquipmentHint,
+    unseenEquipmentIds: equipmentHint.unseenEquipmentIds,
+    shouldShowEquipmentHint: equipmentHint.shouldShowEquipmentHint,
+    shouldShowScanHint,
+    markScanHintDismissed() {
+      setState((current) => {
+        if (current.scanHintDismissed) {
+          return current
+        }
+        writeScanHintDismissedToStorage(current.profile?.profile.profileId)
+        return { ...current, scanHintDismissed: true }
+      })
+    },
     saveSlots: buildSaveSlotSummaries(state.snapshot, state.content),
     markEquipmentSeen(equipmentIds: string[]) {
       if (equipmentIds.length === 0) {
@@ -484,34 +321,14 @@ export function useMagnoliaApp() {
         return
       }
 
-      switch (target) {
-        case "map":
-          if (!tryOpenMap(session)) {
-            return
-          }
-          await session.dispatch({ type: "openMap" })
-          break
-        case "archive":
-          await session.dispatch({ type: "openArchive" })
-          break
-        case "equipment":
-          await session.dispatch({ type: "openEquipment" })
-          break
-        case "settings":
-          await session.dispatch({ type: "openSettings" })
-          break
-        case "closePanel":
-          await session.dispatch({ type: "closePanel" })
-          break
-        case "returnToTitle":
-          await session.dispatch({ type: "returnToTitle" })
-          break
-        case "saveCurrentSlot":
-          await session.dispatch({ type: "saveToCurrentSlot" })
-          break
+      const dispatched = await dispatchCommandTarget({
+        session,
+        target,
+        onLockedMap: showLockedMapPopup,
+      })
+      if (dispatched) {
+        syncFromSession(session)
       }
-
-      syncFromSession(session)
     },
     async startMission(missionId: string) {
       const session = sessionRef.current
@@ -666,9 +483,8 @@ export function useMagnoliaApp() {
     async interactExploreNode(nodeId: WorldMapNodeId) {
       const session = sessionRef.current
       if (!session) return
-      const interactionEvents = buildExploreNodeInteractionEvents(nodeId, stateRef.current)
       await session.dispatch({ type: "interactExploreNode", nodeId })
-      syncFromSession(session, [], interactionEvents)
+      syncFromSession(session)
     },
     async setShipVariant(nextValue: SettingsRow["shipVariant"]) {
       const session = sessionRef.current
@@ -692,10 +508,8 @@ export function useMagnoliaApp() {
     incomingPresentationRequests: PresentationRequest[] = [],
     incomingEvents: DomainEvent[] = [],
   ) {
-    // 現行の Web 実装では overlay channel だけを React で描画します。
-    // それ以外の channel は将来の演出実装まで queue せず、state を軽く保ちます。
-    const incomingOverlayRequests = filterOverlayPresentations(incomingPresentationRequests)
-    const queuedOverlayRequests = filterOverlayPresentations(session.drainPresentationRequests())
+    const queuedPresentationRequests = session.drainPresentationRequests()
+    const queuedDomainEvents = session.drainDomainEvents()
 
     const snapshot = session.getSnapshot()
     const content = session.getContentBundle()
@@ -703,9 +517,17 @@ export function useMagnoliaApp() {
     const settings = session.getSettings()
     const exploreSnapshot = session.getExploreSnapshot()
     const exploreRenderState = session.getExploreRenderState()
+    const worldMapViewModel = session.getWorldMapViewModel()
     const battleRenderState = session.getBattleRenderState()
+    const battleResultViewModel =
+      battleRenderState
+        ? selectBattleResultViewModel({ content, renderState: battleRenderState })
+        : null
     const archiveSnapshot = session.getArchiveSnapshot()
-    const parsedPopups = buildCollectiblePopups(incomingEvents, content)
+    const parsedPopups = buildCollectiblePopups(
+      [...queuedDomainEvents, ...incomingEvents],
+      content,
+    )
 
     input.syncButtonEdges(settings)
 
@@ -719,6 +541,10 @@ export function useMagnoliaApp() {
           previousProfileId === nextProfileId
             ? current.seenEquipmentIds
             : readSeenEquipmentFromStorage(nextProfileId)
+        const scanHintDismissed =
+          previousProfileId === nextProfileId
+            ? current.scanHintDismissed
+            : readScanHintDismissedFromStorage(nextProfileId)
 
         return {
           ...current,
@@ -730,137 +556,26 @@ export function useMagnoliaApp() {
           settings,
           exploreSnapshot,
           exploreRenderState,
+          worldMapViewModel,
           battleRenderState,
+          battleResultViewModel,
           archiveSnapshot,
           seenEquipmentIds,
+          scanHintDismissed,
           itemPopups: [
             ...current.itemPopups.filter((popup) => popup.expiresAt > Date.now()),
             ...parsedPopups.popups,
           ].slice(-3),
           // 隠し装備は通常 popup ではなく、専用 modal で内容を見せます。
           equipmentModalNodeId: parsedPopups.equipmentModalNodeId ?? current.equipmentModalNodeId,
-          ...mergeOverlayPresentations(current, [
-            ...queuedOverlayRequests,
-            ...incomingOverlayRequests,
-          ]),
+          ...mergePresentationRequests(
+            current,
+            [...queuedPresentationRequests, ...incomingPresentationRequests],
+            content,
+          ),
         }
       })
     })
-  }
-}
-
-function createExplorePopup(title: string, detail: string): ExploreItemPopup {
-  return {
-    id: `${title}:${detail}:${Date.now()}`,
-    title,
-    detail,
-    expiresAt: Date.now() + ITEM_POPUP_DURATION_MS,
-  }
-}
-
-function pushExplorePopup(
-  currentPopups: ExploreItemPopup[],
-  popup: ExploreItemPopup,
-): ExploreItemPopup[] {
-  const activePopups = currentPopups.filter((entry) => entry.expiresAt > Date.now())
-
-  // 同じ locked 通知を短時間に重ね過ぎると読みにくいので、同内容は入れ替えます。
-  const deduped = activePopups.filter(
-    (entry) => !(entry.title === popup.title && entry.detail === popup.detail),
-  )
-
-  return [...deduped, popup].slice(-3)
-}
-
-function filterOverlayPresentations(
-  requests: PresentationRequest[],
-): OverlayPresentationRequest[] {
-  return requests.filter(
-    (request): request is OverlayPresentationRequest => request.channel === OVERLAY_CHANNEL,
-  )
-}
-
-function mergeOverlayPresentations(
-  current: MagnoliaAppState,
-  nextRequests: OverlayPresentationRequest[],
-): Pick<MagnoliaAppState, "activeOverlayPresentation" | "pendingOverlayPresentations"> {
-  if (nextRequests.length === 0) {
-    return {
-      activeOverlayPresentation: current.activeOverlayPresentation,
-      pendingOverlayPresentations: current.pendingOverlayPresentations,
-    }
-  }
-
-  const queue = [...current.pendingOverlayPresentations]
-  const knownRequestIds = new Set<string>(
-    [
-      current.activeOverlayPresentation?.requestId,
-      ...current.pendingOverlayPresentations.map((request) => request.requestId),
-    ].filter((value): value is string => Boolean(value)),
-  )
-
-  for (const request of nextRequests) {
-    if (knownRequestIds.has(request.requestId)) {
-      continue
-    }
-    knownRequestIds.add(request.requestId)
-    queue.push(request)
-  }
-
-  if (current.activeOverlayPresentation) {
-    return {
-      activeOverlayPresentation: current.activeOverlayPresentation,
-      pendingOverlayPresentations: queue,
-    }
-  }
-
-  const [nextActive, ...rest] = queue
-  return {
-    activeOverlayPresentation: nextActive ?? null,
-    pendingOverlayPresentations: rest,
-  }
-}
-
-function dismissOverlayPresentation(
-  current: MagnoliaAppState,
-  requestId?: string,
-): MagnoliaAppState {
-  if (!current.activeOverlayPresentation) {
-    return current
-  }
-  if (requestId && current.activeOverlayPresentation.requestId !== requestId) {
-    return current
-  }
-
-  const [nextActive, ...rest] = current.pendingOverlayPresentations
-  return {
-    ...current,
-    activeOverlayPresentation: nextActive ?? null,
-    pendingOverlayPresentations: rest,
-  }
-}
-
-function transitionRebootToSettle(
-  current: MagnoliaAppState,
-  rebootRequestId: string,
-): MagnoliaAppState {
-  const active = current.activeOverlayPresentation
-  if (!active || active.requestId !== rebootRequestId) {
-    return current
-  }
-
-  const settleRequest: OverlayPresentationRequest = {
-    requestId: `${rebootRequestId}.settle`,
-    cueId: REBOOT_SETTLE_CUE_ID,
-    channel: "overlay",
-    blocking: true,
-  }
-
-  return {
-    ...current,
-    activeOverlayPresentation: settleRequest,
-    // pending は reboot 本編と同じ順序で維持。settle は本編の "延長" として active を差し替える扱い。
-    pendingOverlayPresentations: current.pendingOverlayPresentations,
   }
 }
 
@@ -883,99 +598,4 @@ function buildSaveSlotSummaries(
     playTimeLabel: formatPlayTime(slot.playTimeMs),
     isEmpty: !slot.profileId,
   }))
-}
-
-function buildCollectiblePopups(
-  events: DomainEvent[],
-  content: ContentBundle,
-): { popups: ExploreItemPopup[]; equipmentModalNodeId: string | null } {
-  if (events.length === 0) {
-    return { popups: [], equipmentModalNodeId: null }
-  }
-
-  const now = Date.now()
-  let equipmentModalNodeId: string | null = null
-  const popups = events.flatMap((event) => {
-    if (event.type !== "collectibleCollected") {
-      return []
-    }
-
-    const node = findCollectibleNode(content, event.nodeId)
-    if (!node) {
-      return []
-    }
-
-    if (node.collectibleKind === "hiddenEquipment") {
-      equipmentModalNodeId = node.nodeId
-      return []
-    }
-
-    const popup = describeCollectiblePopup(node, content)
-    return [
-      {
-        id: `${event.nodeId}:${now}`,
-        title: popup.title,
-        detail: popup.detail,
-        expiresAt: now + ITEM_POPUP_DURATION_MS,
-      },
-    ]
-  })
-
-  return { popups, equipmentModalNodeId }
-}
-
-function buildExploreNodeInteractionEvents(
-  nodeId: WorldMapNodeId,
-  state: MagnoliaAppState,
-): DomainEvent[] {
-  const collectible = state.exploreRenderState?.visibleCollectibles.find(
-    (node) => node.nodeId === nodeId,
-  )
-  if (!collectible || state.profile?.profile.collectedNodeIds.includes(nodeId)) {
-    return []
-  }
-
-  const contentNode = state.content ? findCollectibleNode(state.content, nodeId) : null
-  if (!contentNode) {
-    return []
-  }
-
-  return [
-    {
-      type: "collectibleCollected",
-      nodeId,
-      collectibleKind: contentNode.collectibleKind,
-    },
-  ]
-}
-
-function findCollectibleNode(
-  content: ContentBundle,
-  nodeId: string,
-): CollectibleMapNode | null {
-  for (const mapLogic of Object.values(content.mapLogic)) {
-    const node = mapLogic.collectibleNodes.find((candidate) => candidate.nodeId === nodeId)
-    if (node) {
-      return node
-    }
-  }
-  return null
-}
-
-function describeCollectiblePopup(
-  node: CollectibleMapNode,
-  content: ContentBundle,
-): { title: string; detail: string } {
-  if (node.collectibleKind === "selfRepairPoints") {
-    return {
-      title: "自己修復ポイントを取得",
-      detail: `+${node.selfRepairPointAmount ?? 0} pt`,
-    }
-  }
-
-  const equipment = node.equipmentId ? content.equipment[node.equipmentId] : undefined
-  return {
-    title: equipment?.name ?? "装備を取得",
-    detail: equipment ? `${readEquipmentSlotLabel(equipment.slot)}を取得` : "装備を取得",
-  }
 }

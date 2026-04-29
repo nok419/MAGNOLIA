@@ -3,9 +3,9 @@
   "slot": "os",
   "name": "MAGNOLIA",
   "iconId": "icon_eq_os_magnolia",
-  "summary": "探索UIと全体マップを解放する基本OS。",
-  "description": "MAGNOLIAの基本UI。ミニマップ・強度計・情報パネルの表示、装備・アーカイブへのアクセス、エリア外部の観測を有効にする。",
-  "flavorText": "",
+  "summary": "探索UI、全体マップ、通信探索の補助を解放する基本OS。",
+  "description": "MAGNOLIAの基本UI。ミニマップ・強度計・情報パネルの表示、装備・アーカイブへのアクセス、エリア外部の観測と信号探索を有効にする。",
+  "flavorText": "残った通信を拾うための観測系。目標地点ではなく、声の兆候を表示する。",
   "passiveEffectIds": [
     "eff_os_magnolia"
   ],

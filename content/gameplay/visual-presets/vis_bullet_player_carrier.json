@@ -1,0 +1,8 @@
+{
+  "presetId": "vis_bullet_player_carrier",
+  "category": "projectile",
+  "rendererKind": "playerCarrier",
+  "paletteRole": "normalSignal",
+  "accessibilityVariant": "highContrast",
+  "trailRole": "trailC"
+}

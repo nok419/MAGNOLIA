@@ -73,22 +73,21 @@ export function App() {
           itemPopups={app.itemPopups}
           shipVariant={app.settings.shipVariant}
           showEquipmentHint={app.shouldShowEquipmentHint}
+          showScanHint={app.shouldShowScanHint}
+          onScanHintDismissed={app.markScanHintDismissed}
           onInteractNode={(nodeId) => void app.interactExploreNode(nodeId)}
           displayOptions={displayOptions}
         />
       )
       break
     case "map":
-      if (!app.exploreSnapshot || !app.exploreRenderState || !app.profile) {
+      if (!app.worldMapViewModel) {
         screen = null
         break
       }
       screen = (
         <MapScreen
-          content={app.content}
-          profile={app.profile}
-          snapshot={app.exploreSnapshot}
-          renderState={app.exploreRenderState}
+          viewModel={app.worldMapViewModel}
           displayOptions={displayOptions}
           onBack={() => void app.runCommand("closePanel")}
           onWarpToArea={(areaId) => void app.warpToArea(areaId)}
@@ -97,14 +96,15 @@ export function App() {
       )
       break
     case "battle":
-      if (!app.snapshot.battle || !app.battleRenderState) {
+      if (!app.snapshot.battle || !app.battleRenderState || !app.battleResultViewModel) {
         screen = null
         break
       }
       screen = (
         <BattleScreen
-          content={app.content}
           renderState={app.battleRenderState}
+          resultViewModel={app.battleResultViewModel}
+          presentationRequests={app.battlePresentationRequests}
           shipVariant={app.settings.shipVariant}
           displayOptions={displayOptions}
           onReturnToExplore={() => void app.returnToExplore()}

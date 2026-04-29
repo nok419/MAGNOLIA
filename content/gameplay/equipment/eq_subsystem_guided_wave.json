@@ -3,9 +3,9 @@
   "slot": "subsystem",
   "name": "誘導波",
   "iconId": "icon_eq_subsystem_guided_wave",
-  "summary": "mainショットに緩い追尾性能を与える。",
-  "description": "mainショットが敵をある程度追尾するようになる。",
-  "flavorText": "",
+  "summary": "main の波形を近いノイズ源へ緩く誘導する。",
+  "description": "main の波形が近いノイズ源へある程度追従する。細い可視ノイズの処理を補助し、聴取中の位置取りを安定させる。",
+  "flavorText": "乱れた信号の中心へ、波形を少しだけ曲げる。",
   "passiveEffectIds": [
     "eff_subsystem_guided_wave"
   ],

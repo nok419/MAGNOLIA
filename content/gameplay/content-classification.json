@@ -1,0 +1,55 @@
+{
+  "active": {
+    "missions": [
+      "mission_good_morning",
+      "mission_where_are_you",
+      "mission_evacuation"
+    ],
+    "enemies": [
+      "enemy_scout",
+      "enemy_standard",
+      "enemy_heavy"
+    ],
+    "bullet-patterns": [
+      "bp_scout_single",
+      "bp_standard_spread",
+      "bp_heavy_burst",
+      "bp_spiral_stream"
+    ],
+    "projectiles": [
+      "proj_enemy_basic",
+      "proj_enemy_geo",
+      "proj_enemy_petal",
+      "proj_player_carrier",
+      "proj_player_carrier_blast",
+      "proj_player_pulse",
+      "proj_player_pulse_melee"
+    ]
+  },
+  "prototype": {
+    "missions": [],
+    "enemies": [
+      "a1",
+      "a2",
+      "b1",
+      "c1"
+    ],
+    "bullet-patterns": [
+      "bp_a2_lance_spread",
+      "bp_b1_core_burst",
+      "bp_b1_lance_stream",
+      "bp_c1_pressure_ring",
+      "bp_radial_burst"
+    ],
+    "projectiles": [
+      "proj_enemy_core",
+      "proj_enemy_lance"
+    ]
+  },
+  "deprecated": {
+    "missions": [],
+    "enemies": [],
+    "bullet-patterns": [],
+    "projectiles": []
+  }
+}

@@ -3,9 +3,9 @@
   "slot": "subsystem",
   "name": "解析回路",
   "iconId": "icon_eq_subsystem_analysis_circuit",
-  "summary": "時間経過で解析率を少しずつ伸ばす。",
-  "description": "ミッション中、時間経過で解析率が自動的に上昇する。",
-  "flavorText": "",
+  "summary": "受信中のノイズ源解析を少しずつ補助する。",
+  "description": "ミッション中、時間経過で解析率が自動的に上昇する。直接本文を復元する装備ではなく、通信メタデータの開放を支える。",
+  "flavorText": "音の周囲に残った規則性を拾い、発信元の輪郭を戻す。",
   "passiveEffectIds": [
     "eff_subsystem_analysis_circuit"
   ],

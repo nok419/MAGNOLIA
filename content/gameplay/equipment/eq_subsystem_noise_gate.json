@@ -3,9 +3,9 @@
   "slot": "subsystem",
   "name": "ノイズゲート",
   "iconId": "icon_eq_subsystem_noise_gate",
-  "summary": "被弾時のノイズ増加を抑える防御補助。",
-  "description": "被弾時のノイズ蓄積量を軽減する。",
-  "flavorText": "",
+  "summary": "被弾時のノイズ増加を抑え、本文欠損を減らす。",
+  "description": "被弾時のノイズ蓄積量を軽減する。聴取閾値を超えにくくし、重要な発話の欠損を抑える。",
+  "flavorText": "壊れかけた音に、細い門を置く。",
   "passiveEffectIds": [
     "eff_subsystem_noise_gate"
   ],

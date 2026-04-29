@@ -1,0 +1,11 @@
+[
+  {
+    "id": "fixture.cue",
+    "channel": "overlay",
+    "defaultDurationMs": 1000,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 1000
+    }
+  }
+]

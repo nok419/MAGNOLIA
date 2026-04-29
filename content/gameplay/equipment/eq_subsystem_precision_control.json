@@ -3,9 +3,9 @@
   "slot": "subsystem",
   "name": "精密操作",
   "iconId": "icon_eq_subsystem_precision_control",
-  "summary": "Shiftで低速移動を有効にする操作補助。",
-  "description": "Shiftキーで低速移動が可能になる。細かい回避に有用。",
-  "flavorText": "",
+  "summary": "Shiftで低速移動を有効にし、細かい回避を支える。",
+  "description": "Shiftキーで低速移動が可能になる。弾幕と断片の間を細かく移動し、欠けた言葉を拾いに行きやすくする。",
+  "flavorText": "拾いに行くか、守りに戻るか。その一歩を短くする。",
   "passiveEffectIds": [
     "eff_subsystem_precision_control"
   ],

@@ -1,0 +1,6 @@
+{
+  "hitboxPresetId": "hitbox_bullet_thin",
+  "shape": "ellipse",
+  "radiusX": 4,
+  "radiusY": 12
+}
