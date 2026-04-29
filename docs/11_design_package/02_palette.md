@@ -21,4 +21,3 @@ CSS token と canvas palette は同じ semantic name を使います。
 - canvas の `rgba()` で alpha を動的に変える場合。ただし `canvas-palette.ts` の role から作る。
 - 既存 CSS の段階的移行。新規 class では token を使う。
 - 一時検証用の色。merge 前に token へ戻す。
-

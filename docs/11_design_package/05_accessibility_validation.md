@@ -22,4 +22,3 @@
 - presentation cue の channel、duration、`reduceFlashingVariant`
 
 direct color literal は既存分の移行を一括要求しません。新規追加時は `apps/web/src/styles/tokens.css` と `apps/web/src/render/shared/canvas-palette.ts` の semantic name を使います。
-

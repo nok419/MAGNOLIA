@@ -32,4 +32,3 @@
 | menu | 装備状態、装備一覧、詳細、費用/条件の順 |
 
 画面側で mission ID、enemy ID、projectile ID を見て個別分岐を増やしません。必要な差は content preset に置きます。
-
