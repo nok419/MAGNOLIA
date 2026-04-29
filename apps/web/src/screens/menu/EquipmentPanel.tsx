@@ -1,6 +1,12 @@
 import { useEffect, useRef } from "react"
-import type { ContentBundle, EquipmentMaster, EquipmentSlot, ProfileAggregate, ShipVariant } from "@magnolia/contracts"
+import type {
+  EquipmentCatalogItemViewModel,
+  EquipmentPanelViewModel,
+  EquipmentSlot,
+  ShipVariant,
+} from "@magnolia/contracts"
 import { ActionButton } from "@/components/ActionButton"
+import { PanelFrame } from "@/components/common"
 import { ShipStatusPanel } from "@/screens/menu/ShipStatusPanel"
 
 const SLOT_CATEGORIES: { key: EquipmentSlot; label: string }[] = [
@@ -9,21 +15,6 @@ const SLOT_CATEGORIES: { key: EquipmentSlot; label: string }[] = [
   { key: "os", label: "os" },
   { key: "subsystem", label: "subsystem" },
 ]
-
-function shouldMaskEquipmentInfo(equipment: EquipmentMaster, owned: boolean): boolean {
-  return !owned && equipment.unlockSource.kind !== "purchase"
-}
-
-/**
- * アップグレード cost を解決する。
- * 次レベル (currentLevel + 1) の `levelParams` を探し、`selfRepairPointCost` を返す。
- * 見つからない場合は 0 (セッション側で同様のフォールバックをする)。
- */
-function resolveUpgradeCost(equipment: EquipmentMaster, currentLevel: number): number {
-  const nextLevel = currentLevel + 1
-  const params = equipment.levelParams.find((p) => p.level === nextLevel)
-  return params?.selfRepairPointCost ?? 0
-}
 
 /**
  * equipmentId から表示用の 4 桁 16 進フラグメントを生成する。
@@ -45,16 +36,17 @@ function ProcurementPanel({
   mode,
   cost,
   balance,
+  canAct,
   onAction,
   levelInfo,
 }: {
   mode: "purchase" | "upgrade"
   cost: number
   balance: number
+  canAct: boolean
   onAction: () => void
   levelInfo?: { current: number; next: number; max: number }
 }) {
-  const affordable = balance >= cost
   const shortage = Math.max(0, cost - balance)
   // 進捗バーは「残高 / 必要コスト」の比率 (最大 100%)。コスト 0 の場合は 100% 扱い。
   const progress = cost > 0 ? Math.min(1, balance / cost) : 1
@@ -66,7 +58,7 @@ function ProcurementPanel({
   return (
     <section
       className={`procurement procurement--${mode} ${
-        affordable ? "procurement--ready" : "procurement--short"
+        canAct ? "procurement--ready" : "procurement--short"
       }`}
       aria-label={mode === "purchase" ? "装備の取得" : "装備のアップグレード"}
     >
@@ -97,7 +89,7 @@ function ProcurementPanel({
           <span className="procurement__key">balance</span>
           <span
             className={`procurement__value ${
-              affordable ? "procurement__value--ok" : "procurement__value--short"
+              canAct ? "procurement__value--ok" : "procurement__value--short"
             }`}
           >
             <span className="procurement__num">{balance.toLocaleString()}</span>
@@ -122,26 +114,26 @@ function ProcurementPanel({
         <div className="procurement__bar-cap" aria-hidden="true" />
       </div>
 
-      {!affordable ? (
+      {!canAct && shortage > 0 ? (
         <p className="procurement__shortage-note">
-          あと <strong>{shortage.toLocaleString()}</strong> pts で取得可能です
+          あと <span>{shortage.toLocaleString()}</span> pts で取得可能です
         </p>
       ) : null}
 
       <button
         type="button"
         className={`procurement__cta ${
-          affordable ? "procurement__cta--ready" : "procurement__cta--locked"
+          canAct ? "procurement__cta--ready" : "procurement__cta--locked"
         }`}
-        disabled={!affordable}
+        disabled={!canAct}
         onClick={() => {
-          if (affordable) onAction()
+          if (canAct) onAction()
         }}
       >
         <span className="procurement__cta-label">
-          {affordable ? ctaReady : ctaShort}
+          {canAct ? ctaReady : ctaShort}
         </span>
-        {affordable ? (
+        {canAct ? (
           <span className="procurement__cta-cost">−{cost.toLocaleString()} pts</span>
         ) : null}
       </button>
@@ -153,8 +145,7 @@ function ProcurementPanel({
    EQUIPMENT PANEL — 4-column: ship status | categories | items | detail
    ============================================================ */
 export function EquipmentPanel({
-  content,
-  profile,
+  viewModel,
   selectedCategory,
   selectedEquipmentId,
   onSelectCategory,
@@ -167,8 +158,7 @@ export function EquipmentPanel({
   unseenEquipmentIds,
   onMarkEquipmentSeen,
 }: {
-  content: ContentBundle
-  profile: ProfileAggregate
+  viewModel: EquipmentPanelViewModel
   selectedCategory: EquipmentSlot
   selectedEquipmentId: string | null
   onSelectCategory: (slot: EquipmentSlot) => void
@@ -181,18 +171,16 @@ export function EquipmentPanel({
   unseenEquipmentIds: string[]
   onMarkEquipmentSeen: (equipmentIds: string[]) => void
 }) {
-  const owned = new Set(profile.profile.ownedEquipmentIds)
-  const equipped = profile.profile.equipped
-  const filteredItems = Object.values(content.equipment).filter(
-    (eq) => eq.slot === selectedCategory,
-  )
+  const catalog = viewModel.catalog
+  const equipped = catalog.equipped
+  const filteredItems = catalog.items.filter((eq) => eq.slot === selectedCategory)
 
   // カテゴリ毎の未確認装備を数え、タブ上の NEW バッジ表示に使う。
   // 既所持かつ seen 未登録のものだけが対象。
   const unseenSet = new Set(unseenEquipmentIds)
   const unseenCountByCategory = new Map<EquipmentSlot, number>()
   for (const equipmentId of unseenEquipmentIds) {
-    const equipment = content.equipment[equipmentId]
+    const equipment = catalog.items.find((item) => item.equipmentId === equipmentId)
     if (!equipment) continue
     unseenCountByCategory.set(
       equipment.slot,
@@ -210,25 +198,17 @@ export function EquipmentPanel({
     onSelectEquipment(id)
   }
 
-  const selected = selectedEquipmentId ? content.equipment[selectedEquipmentId] : undefined
-  const isSelectedOwned = selectedEquipmentId ? owned.has(selectedEquipmentId) : false
-  const isSelectedMasked = selected ? shouldMaskEquipmentInfo(selected, isSelectedOwned) : false
-  const isSelectedEquipped = selectedEquipmentId
-    ? equipped.main === selectedEquipmentId ||
-      equipped.sub === selectedEquipmentId ||
-      equipped.os === selectedEquipmentId ||
-      equipped.subsystems.includes(selectedEquipmentId)
-    : false
-  const currentLevel = selectedEquipmentId
-    ? profile.profile.equipmentLevels?.[selectedEquipmentId] ?? 0
-    : 0
-  const canUpgrade = selected && isSelectedOwned && currentLevel < selected.maxLevel
+  const selected = selectedEquipmentId
+    ? catalog.items.find((item) => item.equipmentId === selectedEquipmentId)
+    : undefined
+  const isSelectedOwned = Boolean(selected?.owned)
+  const isSelectedMasked = Boolean(selected?.masked)
+  const currentLevel = selected?.currentLevel ?? 0
   return (
     <div className="equip-4col">
       {/* ship status */}
       <ShipStatusPanel
-        content={content}
-        profile={profile}
+        viewModel={viewModel}
         selectedCategory={selectedCategory}
         onSelectCategory={(slot) => { onSelectCategory(slot); onSelectEquipment(null) }}
         shipVariant={shipVariant}
@@ -264,7 +244,6 @@ export function EquipmentPanel({
       {/* items list (arc layout) */}
       <EquipmentArcList
         items={filteredItems}
-        owned={owned}
         equipped={equipped}
         selectedEquipmentId={selectedEquipmentId}
         onSelectEquipment={handleSelectEquipment}
@@ -272,7 +251,7 @@ export function EquipmentPanel({
       />
 
       {/* detail */}
-      <div className="equip-detail">
+      <PanelFrame className="equip-detail" bodyClassName="equip-detail__surface">
         <div className="equip-detail__decorator equip-detail__decorator--tl" />
         <div className="equip-detail__decorator equip-detail__decorator--tr" />
         <div className="equip-detail__decorator equip-detail__decorator--bl" />
@@ -318,7 +297,7 @@ export function EquipmentPanel({
                 <span className="equip-detail__id">0x{equipmentIdFragment(selected.equipmentId)}</span>
               </header>
               <div className="equip-detail__rule" aria-hidden="true" />
-              <h3 className="detail-title">{selected.name}</h3>
+              <h3 className="detail-title">{selected.visibleName}</h3>
               <div className="equip-detail__meta">
                 <span className="equip-detail__slot-chip">{selected.slot}</span>
                 <span
@@ -339,10 +318,10 @@ export function EquipmentPanel({
                   </span>
                 </span>
               </div>
-              <p className="equip-detail__desc">{selected.description}</p>
+              <p className="equip-detail__desc">{selected.visibleDescription}</p>
               <blockquote className="equip-detail__flavor">
                 <span className="equip-detail__flavor-mark" aria-hidden="true" />
-                <span>{selected.flavorText}</span>
+                <span>{selected.flavorText ?? ""}</span>
               </blockquote>
               <div className="equip-detail__actions">
                 {/* 装備切替セクション: 既所持のみ表示 */}
@@ -350,53 +329,57 @@ export function EquipmentPanel({
                   <div className="button-row">
                     {selected.slot === "subsystem" ? (
                       <>
-                        {[0, 1].map((subsystemIndex) => {
-                          const alreadyEquippedAtTarget =
-                            equipped.subsystems[subsystemIndex] === selected.equipmentId
+                        {selected.equipTargets.map((target) => {
+                          const alreadyEquippedAtTarget = target.equipped
                           return (
                             <ActionButton
-                              key={subsystemIndex}
+                              key={target.subsystemIndex ?? target.label}
                               tone={alreadyEquippedAtTarget ? "ghost" : "primary"}
-                              disabled={alreadyEquippedAtTarget}
+                              disabled={!target.canEquip}
                               onClick={() =>
-                                onEquip(selected.equipmentId, selected.slot, subsystemIndex as 0 | 1)
+                                onEquip(selected.equipmentId, target.slot, target.subsystemIndex)
                               }
                               style={{ fontSize: 12, padding: "6px 16px", minHeight: 0 }}
                             >
-                              {alreadyEquippedAtTarget ? `subsystem ${subsystemIndex + 1}` : `equip s${subsystemIndex + 1}`}
+                              {alreadyEquippedAtTarget ? target.label : `equip ${target.label}`}
                             </ActionButton>
                           )
                         })}
                       </>
                     ) : (
-                      <ActionButton
-                        tone={isSelectedEquipped ? "ghost" : "primary"}
-                        disabled={isSelectedEquipped}
-                        onClick={() => onEquip(selected.equipmentId, selected.slot)}
-                        style={{ fontSize: 12, padding: "6px 16px", minHeight: 0 }}
-                      >
-                        {isSelectedEquipped ? "装備中" : "装備する"}
-                      </ActionButton>
+                      selected.equipTargets.map((target) => (
+                        <ActionButton
+                          key={target.label}
+                          tone={target.equipped ? "ghost" : "primary"}
+                          disabled={!target.canEquip}
+                          onClick={() => onEquip(selected.equipmentId, target.slot)}
+                          style={{ fontSize: 12, padding: "6px 16px", minHeight: 0 }}
+                        >
+                          {target.equipped ? "装備中" : "装備する"}
+                        </ActionButton>
+                      ))
                     )}
                   </div>
                 ) : null}
 
                 {/* 購入パネル: 未所持 + 購入対象のみ */}
-                {!isSelectedOwned && selected.unlockSource?.kind === "purchase" ? (
+                {!isSelectedOwned && selected.purchaseCost !== undefined ? (
                   <ProcurementPanel
                     mode="purchase"
-                    cost={selected.unlockSource.selfRepairPointCost}
-                    balance={profile.profile.selfRepairPoints}
+                    cost={selected.purchaseCost}
+                    balance={catalog.selfRepairPoints}
+                    canAct={selected.canPurchase}
                     onAction={() => onPurchase(selected.equipmentId)}
                   />
                 ) : null}
 
                 {/* アップグレードパネル: 既所持 + 次レベルがある */}
-                {canUpgrade && selected ? (
+                {selected.upgradeCost !== undefined ? (
                   <ProcurementPanel
                     mode="upgrade"
-                    cost={resolveUpgradeCost(selected, currentLevel)}
-                    balance={profile.profile.selfRepairPoints}
+                    cost={selected.upgradeCost ?? 0}
+                    balance={catalog.selfRepairPoints}
+                    canAct={selected.canUpgrade}
                     levelInfo={{
                       current: currentLevel,
                       next: currentLevel + 1,
@@ -407,10 +390,10 @@ export function EquipmentPanel({
                 ) : null}
 
                 {/* ロック中: 未所持かつ購入以外のアンロック条件 */}
-                {!isSelectedOwned && selected.unlockSource?.kind !== "purchase" ? (
+                {!isSelectedOwned && selected.purchaseCost === undefined ? (
                   <div className="equip-detail__locked-note">
                     <span className="equip-detail__locked-mark">▲</span>
-                    <span>ロック中 — 条件を満たすと解放されます</span>
+                    <span>{selected.lockedReasonLabel ?? "ロック中です"}</span>
                   </div>
                 ) : null}
 
@@ -433,7 +416,7 @@ export function EquipmentPanel({
             <p className="equip-empty-state__text">// AWAITING SELECTION</p>
           </div>
         )}
-      </div>
+      </PanelFrame>
     </div>
   )
 }
@@ -445,15 +428,13 @@ export function EquipmentPanel({
    ============================================================ */
 function EquipmentArcList({
   items,
-  owned,
   equipped,
   selectedEquipmentId,
   onSelectEquipment,
   unseenEquipmentIds,
 }: {
-  items: EquipmentMaster[]
-  owned: Set<string>
-  equipped: ProfileAggregate["profile"]["equipped"]
+  items: EquipmentCatalogItemViewModel[]
+  equipped: EquipmentPanelViewModel["equipped"]
   selectedEquipmentId: string | null
   onSelectEquipment: (id: string | null) => void
   unseenEquipmentIds: Set<string>
@@ -482,8 +463,8 @@ function EquipmentArcList({
   return (
     <div className="equip-list equip-list--plain" ref={scrollRef}>
       {items.map((eq) => {
-        const isOwn = owned.has(eq.equipmentId)
-        const isMasked = shouldMaskEquipmentInfo(eq, isOwn)
+        const isOwn = eq.owned
+        const isMasked = eq.masked
         const isEq =
           equipped.main === eq.equipmentId ||
           equipped.sub === eq.equipmentId ||
@@ -505,12 +486,12 @@ function EquipmentArcList({
               </span>
             ) : null}
             <p style={{ fontWeight: 500, fontSize: 14, margin: "0 0 2px" }}>
-              {isMasked ? "???" : eq.name}
+              {eq.visibleName}
               {isEq ? <span className="equip-badge">装備中</span> : null}
               {!isOwn ? <span className="equip-badge equip-badge--locked">未入手</span> : null}
             </p>
             <p className="muted-text" style={{ fontSize: 12, margin: 0 }}>
-              {isMasked ? "詳細不明" : eq.description}
+              {eq.visibleDescription}
             </p>
           </button>
         )

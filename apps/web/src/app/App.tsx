@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react"
 import type { ReactNode } from "react"
-import { createEmptyFeatureAccessState } from "@magnolia/contracts"
 import { TitleScreen } from "@/screens/title/TitleScreen"
 import { ExploreScreen } from "@/screens/explore/ExploreScreen"
 import { BattleScreen } from "@/screens/battle/BattleScreen"
@@ -119,13 +118,12 @@ export function App() {
       }
       screen = (
         <MenuScreen
+          menuViewModel={app.snapshot.menu}
           content={app.content}
-          profile={app.profile}
+          equipmentViewModel={app.snapshot.equipment}
+          archiveViewModel={app.archiveSnapshot?.viewModel}
           settings={app.settings}
           saveSlots={app.snapshot.saveSlots.slots}
-          featureAccess={app.exploreSnapshot?.featureAccess ?? createEmptyFeatureAccessState()}
-          archiveAccess={app.archiveSnapshot?.access}
-          selectedTransmissionId={app.archiveSnapshot?.selectedTransmissionId}
           initialTab={app.screen === "archive" ? "archive" : app.screen === "settings" ? "settings" : "equipment"}
           unseenEquipmentIds={app.unseenEquipmentIds}
           onMarkEquipmentSeen={app.markEquipmentSeen}

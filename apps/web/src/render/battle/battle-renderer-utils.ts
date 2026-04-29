@@ -4,28 +4,43 @@ export const PHI = 1.618033988749895
 export const PHI_INV = 1 / PHI
 export const TAU = Math.PI * 2
 
-export function resolveBattleRenderer<T>(registry: Record<string, T>, candidates: Array<string | undefined>): T {
-  for (const candidate of candidates) {
-    if (candidate && registry[candidate]) {
-      return registry[candidate]
-    }
+export type BattleRendererCategory = "enemy" | "projectile" | "hazard" | "background"
+
+export function resolveBattleRenderer<T>(
+  registry: Record<string, T>,
+  rendererKind: string,
+  diagnostic: { presetId?: string; category: BattleRendererCategory },
+): T {
+  const renderer = registry[rendererKind]
+  if (renderer) {
+    return renderer
   }
+  warnUnknownRendererKind(rendererKind, diagnostic)
   return registry.default
 }
 
-export function buildEntityRendererKeys(input: {
-  visualPresetId?: string
-  legacyEntityId: string
-  missionId: string
-}) {
-  // visualPresetId を優先し、content 側の preset が来た時点で描画 dispatch を切り替えられるようにする。
-  return [
-    input.visualPresetId,
-    `mission:${input.missionId}:${input.legacyEntityId}`,
-    input.legacyEntityId,
-    `mission:${input.missionId}`,
-    "default",
-  ]
+const warnedRendererKinds = new Set<string>()
+
+function warnUnknownRendererKind(
+  rendererKind: string,
+  diagnostic: { presetId?: string; category: BattleRendererCategory },
+): void {
+  // unknown rendererKind を黙って fallback させると content の取りこぼしが見えなくなるため、
+  // 開発環境では同一 key 1 回だけ console.warn を出して validator と整合させます。
+  const env = typeof process !== "undefined" ? process.env?.NODE_ENV : undefined
+  if (env === "production") {
+    return
+  }
+  const cacheKey = `${diagnostic.category}:${diagnostic.presetId ?? "?"}:${rendererKind}`
+  if (warnedRendererKinds.has(cacheKey)) {
+    return
+  }
+  warnedRendererKinds.add(cacheKey)
+  if (typeof console !== "undefined" && typeof console.warn === "function") {
+    console.warn(
+      `[battle-renderer] unknown rendererKind="${rendererKind}" for ${diagnostic.category} preset "${diagnostic.presetId ?? "(none)"}" — falling back to default.`,
+    )
+  }
 }
 
 export function normalizeCanvasVector(x: number, y: number) {

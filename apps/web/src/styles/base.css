@@ -8,24 +8,24 @@
    while renderer and UI code move to the shared names. */
 :root {
   /* palette */
-  --mg-void:        #040810;
-  --mg-abyss:       #060d1a;
-  --mg-deep:        #0a1628;
-  --mg-panel:       rgba(8, 18, 34, 0.82);
-  --mg-panel-solid: #0b1424;
-  --mg-border:      rgba(140, 195, 255, 0.16);
-  --mg-border-hi:   rgba(140, 195, 255, 0.38);
-  --mg-accent:      #5da4d1;
-  --mg-accent-dim:  rgba(93, 164, 209, 0.35);
-  --mg-text:        #dce8f5;
-  --mg-text-dim:    #8eabc8;
-  --mg-text-muted:  #5a7a96;
-  --mg-glow-blue:   rgba(93, 164, 209, 0.6);
-  --mg-glow-warm:   rgba(240, 198, 116, 0.5);
-  --mg-warm:        #f0c674;
-  --mg-green:       #84f0a3;
-  --mg-red:         #ff5a6e;
-  --mg-red-dim:     rgba(255, 90, 110, 0.25);
+  --mg-void:        var(--color-void-base);
+  --mg-abyss:       var(--color-void-raised);
+  --mg-deep:        var(--color-void-depth);
+  --mg-panel:       var(--color-void-panel);
+  --mg-panel-solid: var(--color-void-panel-solid);
+  --mg-border:      var(--color-line-subtle);
+  --mg-border-hi:   var(--color-line-strong);
+  --mg-accent:      var(--color-signal-primary);
+  --mg-accent-dim:  var(--color-signal-primary-dim);
+  --mg-text:        var(--color-signal-readable);
+  --mg-text-dim:    var(--color-signal-secondary);
+  --mg-text-muted:  var(--color-signal-muted);
+  --mg-glow-blue:   var(--glow-signal-primary);
+  --mg-glow-warm:   var(--glow-residual-warmth);
+  --mg-warm:        var(--color-residual-warmth);
+  --mg-green:       var(--color-restoration);
+  --mg-red:         var(--color-threat-noise);
+  --mg-red-dim:     var(--color-threat-noise-dim);
 
   /* typography */
   --font-body:   "IBM Plex Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;

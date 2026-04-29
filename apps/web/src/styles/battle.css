@@ -29,7 +29,14 @@
 }
 .battle-screen__sidebar > * {
   background: var(--mg-panel-solid);
+}
+.battle-screen__sidebar > .common-panel {
+  border: 0;
+  border-radius: 0;
   padding: 16px 18px;
+}
+.battle-screen__sidebar .common-panel__body {
+  min-width: 0;
 }
 
 /* canvas */
@@ -51,8 +58,6 @@
 .battle-mission-panel {
   position: relative;
   overflow: hidden;
-  display: grid;
-  gap: 10px;
   min-width: 0;
   isolation: isolate;
 }
@@ -66,6 +71,12 @@
     linear-gradient(90deg, rgba(93, 164, 209, 0.1), transparent 54%),
     radial-gradient(circle at 88% 12%, rgba(240, 198, 116, 0.1), transparent 34%);
   pointer-events: none;
+}
+
+.battle-mission-panel__body,
+.battle-mission-panel__content {
+  display: grid;
+  gap: 10px;
 }
 
 .battle-mission-panel__header,
@@ -135,15 +146,24 @@
   box-shadow: 0 0 8px rgba(216, 236, 248, 0.75);
 }
 
+/* mission panel 内の補助 meter (聴取安定 / 解析進行) */
+.battle-mission-panel__meters {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
 /* subtitle panel */
 .battle-subtitle-panel {
   min-height: 0;
   height: 100%;
+  overflow: auto;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+.battle-subtitle-panel__body {
   display: grid;
   gap: 8px;
   align-content: start;
-  overflow: auto;
-  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
 }
 .battle-subtitle-panel--hit {
   transform: translateX(1px);
@@ -161,6 +181,17 @@
 .battle-subtitle-panel--clear,
 .battle-subtitle-panel--recovered {
   background: linear-gradient(90deg, rgba(174, 236, 255, 0.08), transparent 62%);
+}
+.battle-subtitle-panel--protect {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-restoration) 10%, transparent),
+    color-mix(in srgb, var(--color-residual-warmth) 5%, transparent) 52%,
+    transparent 72%
+  );
+}
+.battle-subtitle-panel--tutorial {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-signal-readable) 8%, transparent), transparent 62%);
 }
 .battle-subtitle-panel__speaker {
   font-family: var(--font-mono);
@@ -186,8 +217,52 @@
   background: rgba(6, 10, 16, 0.88);
   box-shadow: inset 0 0 0 1px rgba(240, 198, 116, 0.12);
 }
+.subtitle-safe {
+  color: var(--color-restoration);
+  text-shadow: 0 0 8px rgba(132, 240, 163, 0.18);
+}
 .magnolia-app--reduce-flashing .subtitle-corrupt {
   text-shadow: none;
+}
+.magnolia-app--reduce-flashing .subtitle-safe {
+  text-shadow: none;
+}
+
+/* 守れた割合の下線 — 連続度で守った量を、欠落部の不連続で欠けた量を示す。
+   色は意味毎に semantic token を使い、点滅ではなく長さ・color role で読み取れる形にする。 */
+.battle-subtitle-panel__underline {
+  position: relative;
+  margin-top: 6px;
+  height: 2px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(90, 122, 150, 0.34) 0 5px,
+      rgba(90, 122, 150, 0.08) 5px 9px
+    ),
+    var(--mg-deep);
+  border: 0;
+  overflow: hidden;
+}
+.battle-subtitle-panel__underline-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+}
+.battle-subtitle-panel__underline-segment--safe {
+  background: linear-gradient(
+    90deg,
+    var(--color-restoration) 0%,
+    var(--color-signal-readable) 100%
+  );
+}
+.battle-subtitle-panel__underline-segment--damage {
+  background: linear-gradient(90deg, var(--color-threat-noise), var(--color-residual-warmth));
+  opacity: 0.76;
+}
+.battle-subtitle-panel--recovered .battle-subtitle-panel__underline-segment--safe {
+  box-shadow: 0 0 8px rgba(132, 240, 163, 0.28);
 }
 
 /* battle help */
@@ -224,12 +299,10 @@
 .battle-result-overlay__panel {
   position: relative;
   width: min(680px, calc(100vw - 64px));
-  padding: 24px;
-  border: 1px solid rgba(240, 198, 116, 0.28);
-  background:
-    linear-gradient(180deg, rgba(240, 198, 116, 0.06), rgba(255, 255, 255, 0.01)),
-    rgba(6, 14, 28, 0.92);
+  /* common PanelFrame の内枠を主とし、外側は幅と影だけを持つ。重なった panel の二重枠を避ける。 */
   box-shadow: 0 0 36px rgba(0, 0, 0, 0.3);
+}
+.battle-result-overlay__panel .common-panel {
   display: grid;
   gap: 18px;
 }

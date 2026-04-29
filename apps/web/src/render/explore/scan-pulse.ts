@@ -1,6 +1,5 @@
 import type { ExploreRenderState, Rect } from "@magnolia/game-session"
-
-const TAU = Math.PI * 2
+import { drawSignalPulse } from "@/render/shared/effects/signal-pulse"
 
 export function drawExploreScanPulseLayer(
   ctx: CanvasRenderingContext2D,
@@ -12,6 +11,8 @@ export function drawExploreScanPulseLayer(
     elapsedMs: number
     pulses: ExploreRenderState["scanPulses"]
     alpha: number
+    reduceFlashing?: boolean
+    lowFrameRateMode?: boolean
   },
 ) {
   if (input.alpha <= 0.001 || input.pulses.length === 0) {
@@ -27,17 +28,17 @@ export function drawExploreScanPulseLayer(
       continue
     }
     ctx.globalAlpha = fade
-    ctx.strokeStyle = "rgba(180, 235, 255, 0.72)"
-    ctx.lineWidth = 1.2
-    ctx.beginPath()
-    ctx.arc(input.playerPoint.x, input.playerPoint.y, radius, 0, TAU)
-    ctx.stroke()
-
-    ctx.globalAlpha = fade * 0.12
-    ctx.fillStyle = "rgba(93, 164, 209, 0.7)"
-    ctx.beginPath()
-    ctx.arc(input.playerPoint.x, input.playerPoint.y, radius, 0, TAU)
-    ctx.fill()
+    drawSignalPulse(ctx, {
+      origin: input.playerPoint,
+      radius,
+      progress,
+      paletteRole: "signalPrimary",
+      reduceFlashing: Boolean(input.reduceFlashing),
+      lowFrameRateMode: Boolean(input.lowFrameRateMode),
+      nowMs: input.elapsedMs,
+      intensity: 1,
+      semantic: "scan",
+    })
   }
   ctx.restore()
 }

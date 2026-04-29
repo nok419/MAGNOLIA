@@ -1,4 +1,5 @@
 import type { Rect } from "@magnolia/game-session"
+import { worldToCanvasPoint } from "@/render/shared/coordinates"
 
 const TAU = Math.PI * 2
 
@@ -44,7 +45,13 @@ export function createExploreTrailState() {
   }
 }
 
-export function updateTrail(state: ExploreTrailState, wx: number, wy: number, now: number) {
+export function updateTrail(
+  state: ExploreTrailState,
+  wx: number,
+  wy: number,
+  now: number,
+  lowFrameRateMode = false,
+) {
   if (!state.initialized) {
     // 初回描画では前フレームとの差分が存在しないため、過去の原点から線を引かない。
     resetTrailState(state, wx, wy)
@@ -68,7 +75,7 @@ export function updateTrail(state: ExploreTrailState, wx: number, wy: number, no
     // フレーム間の移動量が大きいと点列が折れるため、区間上を一定間隔で補間して記録する。
     // ただし描画は node 数に比例して重くなるため、補間数は上限を持たせる。
     const sampleCount = Math.min(
-      TRAIL_MAX_SAMPLES_PER_FRAME,
+      lowFrameRateMode ? 2 : TRAIL_MAX_SAMPLES_PER_FRAME,
       Math.max(1, Math.ceil(speed / TRAIL_SAMPLE_WORLD_STEP)),
     )
     for (let step = 1; step <= sampleCount; step += 1) {
@@ -81,7 +88,7 @@ export function updateTrail(state: ExploreTrailState, wx: number, wy: number, no
       pushTrailNode(state, state.smoothTrailX, state.smoothTrailY, sampleTime)
     }
 
-    emitTrailMote(state, now)
+    emitTrailMote(state, now, lowFrameRateMode)
   } else if (state.stoppedAt === 0 && state.nodes.length > 0) {
     state.stoppedAt = now
   }
@@ -98,7 +105,7 @@ export function updateTrail(state: ExploreTrailState, wx: number, wy: number, no
   if (state.stoppedAt > 0 && now - state.stoppedAt > TRAIL_DISSOLVE_MS) {
     state.nodes.length = 0
   }
-  trimTrailNodeBudget(state)
+  trimTrailNodeBudget(state, lowFrameRateMode)
   state.prevPlayerX = wx
   state.prevPlayerY = wy
 }
@@ -121,20 +128,23 @@ function resetTrailState(state: ExploreTrailState, wx: number, wy: number) {
   state.lightMotes.length = 0
 }
 
-function trimTrailNodeBudget(state: ExploreTrailState) {
-  if (state.nodes.length <= TRAIL_MAX_NODE_COUNT) {
+function trimTrailNodeBudget(state: ExploreTrailState, lowFrameRateMode: boolean) {
+  const maxNodeCount = lowFrameRateMode ? 180 : TRAIL_MAX_NODE_COUNT
+  if (state.nodes.length <= maxNodeCount) {
     return
   }
 
   // 継続移動時の描画上限を固定し、古い尾だけを落として先端側の滑らかさを残す。
-  state.nodes.splice(0, state.nodes.length - TRAIL_MAX_NODE_COUNT)
+  state.nodes.splice(0, state.nodes.length - maxNodeCount)
 }
 
-function emitTrailMote(state: ExploreTrailState, now: number) {
+function emitTrailMote(state: ExploreTrailState, now: number, lowFrameRateMode: boolean) {
+  const maxMotes = lowFrameRateMode ? 10 : MAX_MOTES
+  const emitIntervalMs = lowFrameRateMode ? 120 : 54
   if (
-    state.lightMotes.length >= MAX_MOTES ||
+    state.lightMotes.length >= maxMotes ||
     state.nodes.length <= 8 ||
-    now - state.lastMoteEmissionMs < 54
+    now - state.lastMoteEmissionMs < emitIntervalMs
   ) {
     return
   }
@@ -194,13 +204,13 @@ function catmullRomCP(
 
 type RoundedTrailPoint = { x: number; y: number; nodeIndex: number }
 
-function buildRoundedTrailPath(cx: number[], cy: number[]): RoundedTrailPoint[] {
+function buildRoundedTrailPath(cx: number[], cy: number[], lowFrameRateMode: boolean): RoundedTrailPoint[] {
   let points = cx.map((x, index) => ({ x, y: cy[index], nodeIndex: index }))
   if (points.length < 3) {
     return points
   }
 
-  const passCount = points.length > 220 ? 1 : TRAIL_ROUNDING_PASSES
+  const passCount = lowFrameRateMode ? 1 : points.length > 220 ? 1 : TRAIL_ROUNDING_PASSES
   for (let pass = 0; pass < passCount; pass += 1) {
     const nextPoints: RoundedTrailPoint[] = [points[0]]
     for (let index = 0; index < points.length - 1; index += 1) {
@@ -249,10 +259,11 @@ function trailColorAt(ratio: number): { outer: string; mid: string; spine: strin
 export function drawTrail(
   ctx: CanvasRenderingContext2D, state: ExploreTrailState, now: number,
   viewport: Rect, W: number, H: number, pad: number,
+  lowFrameRateMode = false,
 ) {
   const N = state.nodes.length
   if (N < 2) {
-    drawLightMotes(ctx, state, now, viewport, W, H, pad)
+    drawLightMotes(ctx, state, now, viewport, W, H, pad, lowFrameRateMode)
     return
   }
 
@@ -260,7 +271,7 @@ export function drawTrail(
   const cx: number[] = new Array(N)
   const cy: number[] = new Array(N)
   for (let i = 0; i < N; i++) {
-    const p = worldToCanvas(viewport, W, H, pad, state.nodes[i].wx, state.nodes[i].wy)
+    const p = toCanvasPoint(viewport, W, H, pad, state.nodes[i].wx, state.nodes[i].wy)
     cx[i] = p.x
     cy[i] = p.y
   }
@@ -285,10 +296,10 @@ export function drawTrail(
     }
   }
 
-  const pathPoints = buildRoundedTrailPath(cx, cy)
+  const pathPoints = buildRoundedTrailPath(cx, cy, lowFrameRateMode)
   const pathPointCount = pathPoints.length
   if (pathPointCount < 2) {
-    drawLightMotes(ctx, state, now, viewport, W, H, pad)
+    drawLightMotes(ctx, state, now, viewport, W, H, pad, lowFrameRateMode)
     return
   }
 
@@ -369,10 +380,12 @@ export function drawTrail(
     }
   }
 
-  drawTrailOrnaments(ctx, pathPoints, segFade, now)
+  if (!lowFrameRateMode) {
+    drawTrailOrnaments(ctx, pathPoints, segFade, now)
+  }
 
   ctx.restore()
-  drawLightMotes(ctx, state, now, viewport, W, H, pad)
+  drawLightMotes(ctx, state, now, viewport, W, H, pad, lowFrameRateMode)
 }
 
 function drawTrailOrnaments(
@@ -466,6 +479,7 @@ function drawTrailOrnaments(
 function drawLightMotes(
   ctx: CanvasRenderingContext2D, state: ExploreTrailState, now: number,
   viewport: Rect, W: number, H: number, pad: number,
+  lowFrameRateMode: boolean,
 ) {
   if (state.lightMotes.length === 0) return
 
@@ -497,11 +511,12 @@ function drawLightMotes(
     const fadeOut = t * t * t  // cubic falloff → すっと消える
     const opacity = fadeIn * fadeOut * dissolveMul
     if (opacity < 0.01) continue
+    if (lowFrameRateMode && i % 2 === 1) continue
 
     const shimmer = 0.7 + 0.3 * Math.sin(age * 0.012 + m.phase)
     const radius = m.r * (0.3 + 0.7 * fadeOut)
 
-    const sp = worldToCanvas(viewport, W, H, pad, m.wx, m.wy)
+    const sp = toCanvasPoint(viewport, W, H, pad, m.wx, m.wy)
 
     // ぼんやりしたハロー (控えめ)
     ctx.globalAlpha = opacity * 0.12 * shimmer
@@ -521,10 +536,13 @@ function drawLightMotes(
 }
 
 
-function worldToCanvas(bounds: Rect, W: number, H: number, pad: number, wx: number, wy: number) {
-  const rx = (wx - bounds.x) / Math.max(1, bounds.width)
-  const ry = (wy - bounds.y) / Math.max(1, bounds.height)
-  return { x: pad + rx * (W - pad * 2), y: pad + ry * (H - pad * 2) }
+function toCanvasPoint(bounds: Rect, W: number, H: number, pad: number, wx: number, wy: number) {
+  return worldToCanvasPoint({
+    bounds,
+    size: { width: W, height: H },
+    padding: pad,
+    worldPosition: { x: wx, y: wy },
+  })
 }
 
 function lerpScalar(from: number, to: number, amount: number) {

@@ -4,19 +4,29 @@ import {
   TAU,
   seededRandom,
 } from "@/render/battle/battle-renderer-utils"
+import { rgba } from "@/render/shared/canvas-palette"
+import type { BackgroundPreset } from "@magnolia/contracts"
 
 const WIDTH = BATTLE_CANVAS_WIDTH
 const HEIGHT = BATTLE_CANVAS_HEIGHT
 
+type BattleBackgroundInput = {
+  width: number
+  height: number
+  timeMs: number
+  background: BackgroundPreset
+  lowFrameRateMode?: boolean
+}
+
 export function drawBattleBackgroundPreset(
   ctx: CanvasRenderingContext2D,
-  input: { width: number; height: number; timeMs: number; backgroundPresetId?: string },
+  input: BattleBackgroundInput,
 ): void {
-  switch (input.backgroundPresetId) {
-    case "bg_central_tower":
+  switch (input.background.theme) {
+    case "centralTower":
       drawCentralTowerBackground(ctx, input)
       break
-    case "bg_broadcast_facility":
+    case "broadcastFacility":
       drawBroadcastFacilityBackground(ctx, input)
       break
     default:
@@ -27,7 +37,7 @@ export function drawBattleBackgroundPreset(
 
 function drawCentralTowerBackground(
   ctx: CanvasRenderingContext2D,
-  input: { width: number; height: number; timeMs: number },
+  input: BattleBackgroundInput,
 ) {
   const gradient = ctx.createLinearGradient(0, 0, 0, input.height)
   gradient.addColorStop(0, "#080711")
@@ -36,9 +46,10 @@ function drawCentralTowerBackground(
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, input.width, input.height)
 
-  ctx.strokeStyle = "rgba(174, 236, 255, 0.055)"
+  ctx.strokeStyle = `rgba(174, 236, 255, ${0.03 + input.background.structureDensity * 0.05})`
   ctx.lineWidth = 1
-  for (let x = input.width * 0.5 - 120; x <= input.width * 0.5 + 120; x += 40) {
+  const structureStep = 56 - input.background.structureDensity * 28
+  for (let x = input.width * 0.5 - 120; x <= input.width * 0.5 + 120; x += structureStep) {
     ctx.beginPath()
     ctx.moveTo(x, 0)
     ctx.lineTo(input.width * 0.5 + (x - input.width * 0.5) * 0.36, input.height)
@@ -46,11 +57,12 @@ function drawCentralTowerBackground(
   }
 
   drawBackgroundParticles(ctx, input, "140, 210, 250")
+  drawBackgroundScanlines(ctx, input)
 }
 
 function drawBroadcastFacilityBackground(
   ctx: CanvasRenderingContext2D,
-  input: { width: number; height: number; timeMs: number },
+  input: BattleBackgroundInput,
 ) {
   const gradient = ctx.createLinearGradient(0, 0, 0, input.height)
   gradient.addColorStop(0, "#0a0510")
@@ -59,16 +71,17 @@ function drawBroadcastFacilityBackground(
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, input.width, input.height)
 
-  ctx.strokeStyle = "rgba(93, 164, 209, 0.05)"
+  ctx.strokeStyle = `rgba(93, 164, 209, ${0.025 + input.background.structureDensity * 0.055})`
   ctx.lineWidth = 1
   ctx.beginPath()
-  for (let x = 0; x < input.width; x += 40) {
+  const structureStep = 54 - input.background.structureDensity * 26
+  for (let x = 0; x < input.width; x += structureStep) {
     ctx.moveTo(x, 0)
     ctx.lineTo(x, input.height)
   }
   ctx.stroke()
 
-  ctx.strokeStyle = "rgba(140, 195, 255, 0.06)"
+  ctx.strokeStyle = `rgba(140, 195, 255, ${0.025 + input.background.residualWarmth * 0.08})`
   ctx.beginPath()
   for (let index = 0; index < 8; index += 1) {
     const offset = (input.timeMs * 0.06 + index * 60) % (input.height + 60)
@@ -78,15 +91,18 @@ function drawBroadcastFacilityBackground(
   ctx.stroke()
 
   drawBackgroundParticles(ctx, input, "140, 195, 255")
+  drawBackgroundScanlines(ctx, input)
 }
 
 function drawBackgroundParticles(
   ctx: CanvasRenderingContext2D,
-  input: { width: number; height: number; timeMs: number },
+  input: BattleBackgroundInput,
   tint: string,
 ) {
-  ctx.fillStyle = `rgba(${tint}, 0.15)`
-  for (let index = 0; index < 20; index += 1) {
+  ctx.fillStyle = `rgba(${tint}, ${0.05 + input.background.dustDensity * 0.32})`
+  const particleBudget = input.lowFrameRateMode ? 0.46 : 1
+  const particleCount = Math.max(4, Math.round((8 + input.background.dustDensity * 34) * particleBudget))
+  for (let index = 0; index < particleCount; index += 1) {
     const px = seededRandom(index * 7 + 1) * input.width
     const py = (
       seededRandom(index * 13 + 3) * input.height +
@@ -97,6 +113,41 @@ function drawBackgroundParticles(
     ctx.arc(px, py, pr, 0, Math.PI * 2)
     ctx.fill()
   }
+
+  const vignette = ctx.createRadialGradient(
+    input.width * 0.5,
+    input.height * 0.46,
+    input.width * 0.1,
+    input.width * 0.5,
+    input.height * 0.48,
+    input.width * 0.78,
+  )
+  vignette.addColorStop(0, rgba("voidBase", 0))
+  vignette.addColorStop(1, rgba("voidBase", input.background.vignetteStrength * 0.72))
+  ctx.fillStyle = vignette
+  ctx.fillRect(0, 0, input.width, input.height)
+}
+
+function drawBackgroundScanlines(
+  ctx: CanvasRenderingContext2D,
+  input: BattleBackgroundInput,
+) {
+  if (input.background.scanlineIntensity <= 0) {
+    return
+  }
+  ctx.save()
+  ctx.globalAlpha = input.background.scanlineIntensity * 0.28
+  ctx.strokeStyle = rgba("signalReadable", 0.08)
+  ctx.lineWidth = 1
+  const scanlineStep = input.lowFrameRateMode ? 11 : 6
+  const offset = Math.floor(input.timeMs * 0.018) % scanlineStep
+  for (let y = offset; y < input.height; y += scanlineStep) {
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(input.width, y)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 export function drawTransparentAtmosphere(ctx: CanvasRenderingContext2D, t: number) {

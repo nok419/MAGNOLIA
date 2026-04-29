@@ -1,6 +1,7 @@
 :root {
   --color-void-base: #040810;
   --color-void-raised: #060d1a;
+  --color-void-depth: #0a1628;
   --color-void-panel: rgba(8, 18, 34, 0.82);
   --color-void-panel-solid: #0b1424;
   --color-line-subtle: rgba(140, 195, 255, 0.16);
@@ -31,7 +32,7 @@
 
   --mg-void: var(--color-void-base);
   --mg-abyss: var(--color-void-raised);
-  --mg-deep: #0a1628;
+  --mg-deep: var(--color-void-depth);
   --mg-panel: var(--color-void-panel);
   --mg-panel-solid: var(--color-void-panel-solid);
   --mg-border: var(--color-line-subtle);

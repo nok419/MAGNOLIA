@@ -19,6 +19,12 @@ type MouseButtons = {
   right: boolean
 }
 
+type PointerPressStamp = {
+  pointerId: number
+  button: number
+  timeStamp: number
+}
+
 export function useMagnoliaInput() {
   const keyStateRef = useRef(new Set<string>())
   const mouseButtonsRef = useRef<MouseButtons>({
@@ -34,6 +40,7 @@ export function useMagnoliaInput() {
     right: false,
   })
   const previousButtonsRef = useRef<Record<string, boolean>>({})
+  const lastPointerPressRef = useRef<PointerPressStamp | null>(null)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -74,6 +81,22 @@ export function useMagnoliaInput() {
   }, [])
 
   useEffect(() => {
+    function syncMouseButtonsFromMask(buttons: number) {
+      const nextLeft = (buttons & 1) !== 0
+      const nextRight = (buttons & 2) !== 0
+
+      // 複数ボタン同時押しでは event.button が環境依存で落ちることがあるため、
+      // buttons bitmask の遷移を押下 edge として扱います。
+      if (nextLeft && !mouseButtonsRef.current.left) {
+        queuedMousePressRef.current.left = true
+      }
+      if (nextRight && !mouseButtonsRef.current.right) {
+        queuedMousePressRef.current.right = true
+      }
+      mouseButtonsRef.current.left = nextLeft
+      mouseButtonsRef.current.right = nextRight
+    }
+
     function queueMouseButtonPress(button: number) {
       if (button === 0) {
         queuedMousePressRef.current.left = true
@@ -85,54 +108,79 @@ export function useMagnoliaInput() {
       }
     }
 
-    function releaseMouseButton(button: number) {
-      if (button === 0) {
-        mouseButtonsRef.current.left = false
-      }
-      if (button === 2) {
-        mouseButtonsRef.current.right = false
-      }
-    }
-
     function handleMouseDown(event: MouseEvent) {
-      queueMouseButtonPress(event.button)
+      if (event.buttons > 0) {
+        syncMouseButtonsFromMask(event.buttons)
+      } else {
+        queueMouseButtonPress(event.button)
+      }
     }
 
     function handleMouseUp(event: MouseEvent) {
-      releaseMouseButton(event.button)
+      syncMouseButtonsFromMask(event.buttons)
+    }
+
+    function handleMouseMove(event: MouseEvent) {
+      syncMouseButtonsFromMask(event.buttons)
     }
 
     function handlePointerDown(event: PointerEvent) {
-      queueMouseButtonPress(event.button)
+      if (isDuplicatePointerPress(event, lastPointerPressRef.current)) {
+        return
+      }
+      lastPointerPressRef.current = {
+        pointerId: event.pointerId,
+        button: event.button,
+        timeStamp: event.timeStamp,
+      }
+      if (event.buttons > 0) {
+        syncMouseButtonsFromMask(event.buttons)
+      } else {
+        queueMouseButtonPress(event.button)
+      }
     }
 
     function handlePointerUp(event: PointerEvent) {
-      releaseMouseButton(event.button)
+      syncMouseButtonsFromMask(event.buttons)
+    }
+
+    function handlePointerMove(event: PointerEvent) {
+      syncMouseButtonsFromMask(event.buttons)
     }
 
     function handlePointerCancel(event: PointerEvent) {
-      releaseMouseButton(event.button)
+      syncMouseButtonsFromMask(event.buttons)
     }
 
     function handleContextMenu(event: MouseEvent) {
       event.preventDefault()
-      queueMouseButtonPress(2)
-      releaseMouseButton(2)
     }
 
-    window.addEventListener("pointerdown", handlePointerDown, true)
-    window.addEventListener("pointerup", handlePointerUp, true)
-    window.addEventListener("pointercancel", handlePointerCancel, true)
-    window.addEventListener("mousedown", handleMouseDown, true)
-    window.addEventListener("mouseup", handleMouseUp, true)
+    const supportsPointerEvents = "PointerEvent" in window
+    if (supportsPointerEvents) {
+      // pointer event を正経路にし、mouse event は pointer 非対応環境だけの fallback にします。
+      window.addEventListener("pointerdown", handlePointerDown, true)
+      window.addEventListener("pointermove", handlePointerMove, true)
+      window.addEventListener("pointerup", handlePointerUp, true)
+      window.addEventListener("pointercancel", handlePointerCancel, true)
+    } else {
+      window.addEventListener("mousedown", handleMouseDown, true)
+      window.addEventListener("mousemove", handleMouseMove, true)
+      window.addEventListener("mouseup", handleMouseUp, true)
+    }
     window.addEventListener("contextmenu", handleContextMenu, true)
 
     return () => {
-      window.removeEventListener("pointerdown", handlePointerDown, true)
-      window.removeEventListener("pointerup", handlePointerUp, true)
-      window.removeEventListener("pointercancel", handlePointerCancel, true)
-      window.removeEventListener("mousedown", handleMouseDown, true)
-      window.removeEventListener("mouseup", handleMouseUp, true)
+      if (supportsPointerEvents) {
+        window.removeEventListener("pointerdown", handlePointerDown, true)
+        window.removeEventListener("pointermove", handlePointerMove, true)
+        window.removeEventListener("pointerup", handlePointerUp, true)
+        window.removeEventListener("pointercancel", handlePointerCancel, true)
+      } else {
+        window.removeEventListener("mousedown", handleMouseDown, true)
+        window.removeEventListener("mousemove", handleMouseMove, true)
+        window.removeEventListener("mouseup", handleMouseUp, true)
+      }
       window.removeEventListener("contextmenu", handleContextMenu, true)
     }
   }, [])
@@ -319,6 +367,18 @@ function syncButtonEdges(
 
 function uniqueCodes(codes: Array<string | undefined>): string[] {
   return Array.from(new Set(codes.filter((code): code is string => Boolean(code))))
+}
+
+function isDuplicatePointerPress(event: PointerEvent, previous: PointerPressStamp | null): boolean {
+  if (!previous) {
+    return false
+  }
+
+  return (
+    previous.pointerId === event.pointerId &&
+    previous.button === event.button &&
+    previous.timeStamp === event.timeStamp
+  )
 }
 
 function shouldPreventDefaultForKey(code: string): boolean {

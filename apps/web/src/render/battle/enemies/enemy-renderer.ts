@@ -1,179 +1,114 @@
-import type { BattleRenderState } from "@magnolia/game-session"
+import type { BattleRenderState, EnemyRenderState } from "@magnolia/game-session"
 import {
   PHI,
   TAU,
-  buildEntityRendererKeys,
   hashString,
   resolveBattleRenderer,
 } from "@/render/battle/battle-renderer-utils"
+import type { CanvasPaletteRole } from "@/render/shared/canvas-palette"
+import { hex, rgba } from "@/render/shared/canvas-palette"
+import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
 
 type EnemyRendererInput = {
-  enemy: BattleRenderState["enemies"][number]
+  enemy: EnemyRenderState
   timeMs: number
   renderState: BattleRenderState
+  renderOptions: BattleEnemyRenderOptions
+}
+
+type BattleEnemyRenderOptions = {
+  reduceFlashing: boolean
+  lowFrameRateMode: boolean
 }
 
 const BATTLE_ENEMY_RENDERERS: Record<
   string,
   (ctx: CanvasRenderingContext2D, input: EnemyRendererInput) => void
 > = {
-  vis_enemy_a1: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
-  vis_enemy_scout: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
-  vis_enemy_a2: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
-  vis_enemy_standard: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
-  vis_enemy_heavy: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.heavy),
-  vis_enemy_c1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.c1),
-  vis_enemy_b1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.b1),
-  a1: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
-  a2: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
-  c1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.c1),
-  b1: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, ENEMY_BOSS_VISUAL_PROFILES.b1),
-  enemy_scout: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a1),
-  enemy_standard: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
-  enemy_heavy: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.heavy),
-  default: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, ENEMY_VISUAL_PROFILES.a2),
-}
-
-type CircleEnemyProfile = {
-  accent: string
-  glow: string
-  outerOrbitScale: number   // r2 = r * outerOrbitScale (見た目の外周)
-  innerOrbitScale: number   // r1 = r * innerOrbitScale
-  iconSize: number
-  seedOffset: number
-}
-
-type CircleBossProfile = {
-  accent: string
-  secondary: string
-  glow: string
-  outerOrbitScale: number
-  innerOrbitScale: number
-  iconSize: number
-  iconCount: number          // 外周に並ぶダイヤアイコン数
-  midOrbitScale: number      // 中間の追加リング
-  seedOffset: number
-}
-
-const ENEMY_VISUAL_PROFILES: Record<string, CircleEnemyProfile> = {
-  a1: {
-    accent: "#ffc9a2",
-    glow: "rgba(255, 178, 116, 0.7)",
-    outerOrbitScale: PHI * PHI,    // 約 2.618
-    innerOrbitScale: PHI,          // 約 1.618
-    iconSize: 3,
-    seedOffset: 11,
-  },
-  a2: {
-    accent: "#ffd7a8",
-    glow: "rgba(255, 198, 130, 0.7)",
-    outerOrbitScale: PHI * PHI * 1.05,
-    innerOrbitScale: PHI * 1.05,
-    iconSize: 3.2,
-    seedOffset: 23,
-  },
-  heavy: {
-    accent: "#ffb16f",
-    glow: "rgba(255, 151, 82, 0.78)",
-    outerOrbitScale: PHI * PHI * 1.12,
-    innerOrbitScale: PHI * 1.12,
-    iconSize: 3.6,
-    seedOffset: 37,
-  },
-}
-
-const ENEMY_BOSS_VISUAL_PROFILES: Record<string, CircleBossProfile> = {
-  c1: {
-    accent: "#ffbc83",
-    secondary: "#fff0c4",
-    glow: "rgba(255, 172, 104, 0.86)",
-    outerOrbitScale: 2.35,
-    innerOrbitScale: 1.55,
-    midOrbitScale: 1.95,
-    iconSize: 3.6,
-    iconCount: 3,
-    seedOffset: 101,
-  },
-  b1: {
-    accent: "#ff976f",
-    secondary: "#ffe0a8",
-    glow: "rgba(255, 117, 86, 0.94)",
-    outerOrbitScale: 2.7,
-    innerOrbitScale: 1.7,
-    midOrbitScale: 2.18,
-    iconSize: 4,
-    iconCount: 4,
-    seedOffset: 211,
-  },
+  circleSignal: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, input.renderOptions),
+  shardCore: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, input.renderOptions),
+  bossLattice: (ctx, input) => drawCircleBossEnemy(ctx, input.enemy, input.timeMs, input.renderOptions),
+  default: (ctx, input) => drawCircleEnemy(ctx, input.enemy, input.timeMs, input.renderOptions),
 }
 
 export function drawEnemy(
   ctx: CanvasRenderingContext2D,
-  enemy: BattleRenderState["enemies"][number],
+  enemy: EnemyRenderState,
   t: number,
   renderState: BattleRenderState,
+  renderOptions: BattleEnemyRenderOptions,
 ) {
   const renderer = resolveBattleRenderer(
     BATTLE_ENEMY_RENDERERS,
-    buildEntityRendererKeys({
-      visualPresetId: enemy.visualPresetId,
-      legacyEntityId: enemy.enemyId,
-      missionId: renderState.missionId,
-    }),
+    enemy.visual.rendererKind,
+    { category: "enemy", presetId: enemy.visualPresetId },
   )
-  renderer(ctx, { enemy, timeMs: t, renderState })
+  renderer(ctx, { enemy, timeMs: t, renderState, renderOptions })
+}
+
+function readPaletteRole(enemy: EnemyRenderState): CanvasPaletteRole {
+  return resolvePaletteRole(enemy.visual.paletteRole, "enemyNoise")
 }
 
 function drawCircleEnemy(
   ctx: CanvasRenderingContext2D,
-  enemy: BattleRenderState["enemies"][number],
+  enemy: EnemyRenderState,
   t: number,
-  profile: CircleEnemyProfile,
+  renderOptions: BattleEnemyRenderOptions,
 ) {
   const { x, y } = enemy.position
   const r = enemy.radius
   const hpRatio = Math.max(0, enemy.hp / Math.max(1, enemy.maxHp))
-  const baseColor = enemy.burning ? "#ffaf61" : profile.accent
-  const glowIntensity = 0.3 + hpRatio * 0.5
+  // burning は被弾直後の警告色。preset の paletteRole に上書きはせず、表現用 role を上乗せします。
+  const baseRole: CanvasPaletteRole = enemy.burning ? "residualWarmth" : readPaletteRole(enemy)
+  const presetGlow = clamp01(enemy.visual.glowIntensity ?? 0.5)
+  const orbitScale = Math.max(0.4, enemy.visual.orbitScale ?? 1)
+  const glyphCount = Math.max(1, enemy.visual.glyphCount ?? 1)
+  const motion = readEnemyMotionProfile(enemy.visual.motionProfile)
+  const glowIntensity = clamp01(0.3 + hpRatio * 0.5) * (0.6 + presetGlow * 0.6)
 
-  const seed = hashString(enemy.enemyInstanceId) + profile.seedOffset
-  const rotSpeed1 = 0.0008 + (seed % 5) * 0.0001
-  const rotSpeed2 = 0.0005 + (seed % 3) * 0.00008
-  const rot1 = t * rotSpeed1
-  const rot2 = -t * rotSpeed2
+  const seed = hashString(enemy.enemyInstanceId)
+  const iconSize = 3 + (presetGlow - 0.5) * 1.4
+  const bodyPath = readEnemyCirclePath(enemy, baseRole, r, renderOptions)
+  const glyphPath = readEnemyDiamondPath(enemy, baseRole, iconSize, renderOptions)
+  // motionProfile は同じ rendererKind 内で動きだけを変えるための preset 値です。
+  // enemyId ではなく content preset が回転速度と揺れ幅を決めます。
+  const wobble = Math.sin(t * 0.0024 + seed) * motion.wobble
+  const rotSpeed1 = (0.0008 + (seed % 5) * 0.0001) * motion.orbitSpeed
+  const rotSpeed2 = (0.0005 + (seed % 3) * 0.00008) * motion.counterSpeed
+  const rot1 = t * rotSpeed1 + wobble
+  const rot2 = -t * rotSpeed2 - wobble * 0.5
 
   ctx.save()
-  ctx.shadowColor = profile.glow
+  ctx.shadowColor = rgba(baseRole, 0.32 + presetGlow * 0.4)
   ctx.shadowBlur = 6 * glowIntensity
 
-  // orbit 2 — wide arc with gap (見た目用の外周)
-  const r2 = r * profile.outerOrbitScale
-  ctx.strokeStyle = baseColor
+  // orbit 2 — wide arc with gap. orbitScale は preset で外周拡縮。
+  const r2 = r * (PHI * PHI) * orbitScale
+  ctx.strokeStyle = hex(baseRole)
   ctx.globalAlpha = 0.25 * glowIntensity
   ctx.lineWidth = 1
-  const gapAngle = 25 * Math.PI / 180
+  const gapAngle = (25 * Math.PI) / 180
   ctx.beginPath()
   ctx.arc(x, y, r2, rot2 + gapAngle, rot2 + TAU - gapAngle)
   ctx.stroke()
 
-  // diamond icon on orbit 2
-  const iconAngle = rot2 + Math.PI
-  const ix = x + Math.cos(iconAngle) * r2
-  const iy = y + Math.sin(iconAngle) * r2
-  const iconSize = profile.iconSize
+  // glyph icons on orbit 2 — preset.glyphCount を反映。
   ctx.globalAlpha = 0.6 * glowIntensity
-  ctx.fillStyle = baseColor
-  ctx.beginPath()
-  ctx.moveTo(ix, iy - iconSize)
-  ctx.lineTo(ix + iconSize, iy)
-  ctx.lineTo(ix, iy + iconSize)
-  ctx.lineTo(ix - iconSize, iy)
-  ctx.closePath()
-  ctx.fill()
+  ctx.fillStyle = hex(baseRole)
+  for (let i = 0; i < glyphCount; i += 1) {
+    const a = rot2 + (TAU / glyphCount) * i + Math.PI / glyphCount
+    const ix = x + Math.cos(a) * r2
+    const iy = y + Math.sin(a) * r2
+    ctx.save()
+    ctx.translate(ix, iy)
+    ctx.fill(glyphPath)
+    ctx.restore()
+  }
 
   // orbit 1 — partial arc
-  const r1 = r * profile.innerOrbitScale
-  ctx.strokeStyle = baseColor
+  const r1 = r * PHI * orbitScale
+  ctx.strokeStyle = hex(baseRole)
   ctx.globalAlpha = 0.4 * glowIntensity
   ctx.lineWidth = 1.5
   ctx.beginPath()
@@ -182,22 +117,24 @@ function drawCircleEnemy(
 
   // center body
   ctx.globalAlpha = 0.15 * glowIntensity
-  ctx.fillStyle = baseColor
-  ctx.beginPath()
-  ctx.arc(x, y, r, 0, TAU)
-  ctx.fill()
+  ctx.fillStyle = hex(baseRole)
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.fill(bodyPath)
+  ctx.restore()
 
   ctx.globalAlpha = 0.8
-  ctx.strokeStyle = baseColor
+  ctx.strokeStyle = hex(baseRole)
   ctx.lineWidth = 1.8
-  ctx.beginPath()
-  ctx.arc(x, y, r, 0, TAU)
-  ctx.stroke()
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.stroke(bodyPath)
+  ctx.restore()
 
-  // hp depleted indicator — inner ring fades
+  // hp depleted indicator — 被弾フィードバックのみ threatNoise を使う。
   if (hpRatio < 1) {
     ctx.globalAlpha = 0.3 * (1 - hpRatio)
-    ctx.strokeStyle = "#ff5a6e"
+    ctx.strokeStyle = hex("threatNoise")
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.arc(x, y, r * 0.6, 0, TAU * (1 - hpRatio))
@@ -209,64 +146,69 @@ function drawCircleEnemy(
 
 function drawCircleBossEnemy(
   ctx: CanvasRenderingContext2D,
-  enemy: BattleRenderState["enemies"][number],
+  enemy: EnemyRenderState,
   t: number,
-  profile: CircleBossProfile,
+  renderOptions: BattleEnemyRenderOptions,
 ) {
   const { x, y } = enemy.position
   const r = enemy.radius
   const hpRatio = Math.max(0, enemy.hp / Math.max(1, enemy.maxHp))
-  const baseColor = enemy.burning ? "#ffaf61" : profile.accent
-  const glowIntensity = 0.36 + hpRatio * 0.54
+  const baseRole: CanvasPaletteRole = enemy.burning ? "residualWarmth" : readPaletteRole(enemy)
+  const presetGlow = clamp01(enemy.visual.glowIntensity ?? 0.7)
+  const orbitScale = Math.max(0.4, enemy.visual.orbitScale ?? 1.5)
+  const glyphCount = Math.max(2, enemy.visual.glyphCount ?? 4)
+  const motion = readEnemyMotionProfile(enemy.visual.motionProfile)
+  const glowIntensity = clamp01(0.36 + hpRatio * 0.54) * (0.6 + presetGlow * 0.6)
 
-  const seed = hashString(enemy.enemyInstanceId) + profile.seedOffset
-  const rot1 = t * (0.0006 + (seed % 5) * 0.00008)
-  const rot2 = -t * (0.00042 + (seed % 3) * 0.00006)
-  const rot3 = t * 0.00028
+  const seed = hashString(enemy.enemyInstanceId)
+  const iconSize = 3.2 + presetGlow * 1.2
+  const bodyPath = readEnemyCirclePath(enemy, baseRole, r, renderOptions)
+  const glyphPath = readEnemyDiamondPath(enemy, baseRole, iconSize, renderOptions)
+  // boss 系も motionProfile を共有して、preset 変更だけで圧力の速度差を出します。
+  const wobble = Math.sin(t * 0.0018 + seed) * motion.wobble
+  const rot1 = t * (0.0006 + (seed % 5) * 0.00008) * motion.orbitSpeed + wobble
+  const rot2 = -t * (0.00042 + (seed % 3) * 0.00006) * motion.counterSpeed
+  const rot3 = t * 0.00028 * motion.innerSpeed - wobble * 0.35
 
   ctx.save()
-  ctx.shadowColor = profile.glow
+  ctx.shadowColor = rgba(baseRole, 0.4 + presetGlow * 0.4)
   ctx.shadowBlur = 11 * glowIntensity
 
-  // outer orbit — full arc with gap, larger radius
-  const r2 = r * profile.outerOrbitScale
-  ctx.strokeStyle = baseColor
+  // outer orbit — wider radius for boss
+  const r2 = r * (PHI * PHI) * orbitScale
+  ctx.strokeStyle = hex(baseRole)
   ctx.globalAlpha = 0.26 * glowIntensity
   ctx.lineWidth = 1.1
-  const gapAngle = 22 * Math.PI / 180
+  const gapAngle = (22 * Math.PI) / 180
   ctx.beginPath()
   ctx.arc(x, y, r2, rot2 + gapAngle, rot2 + TAU - gapAngle)
   ctx.stroke()
 
-  // orbital diamond icons (multiple, evenly spaced)
-  const iconSize = profile.iconSize
+  // orbital glyph icons (preset.glyphCount 並列)
   ctx.globalAlpha = 0.7 * glowIntensity
-  ctx.fillStyle = baseColor
-  for (let i = 0; i < profile.iconCount; i++) {
-    const a = rot2 + (TAU / profile.iconCount) * i + Math.PI / profile.iconCount
+  ctx.fillStyle = hex(baseRole)
+  for (let i = 0; i < glyphCount; i++) {
+    const a = rot2 + (TAU / glyphCount) * i + Math.PI / glyphCount
     const ix = x + Math.cos(a) * r2
     const iy = y + Math.sin(a) * r2
-    ctx.beginPath()
-    ctx.moveTo(ix, iy - iconSize)
-    ctx.lineTo(ix + iconSize, iy)
-    ctx.lineTo(ix, iy + iconSize)
-    ctx.lineTo(ix - iconSize, iy)
-    ctx.closePath()
-    ctx.fill()
+    ctx.save()
+    ctx.translate(ix, iy)
+    ctx.fill(glyphPath)
+    ctx.restore()
   }
 
-  // mid orbit — counter-rotating thin ring
-  const rMid = r * profile.midOrbitScale
+  // mid orbit — counter-rotating thin ring (warmth で対比)
+  const rMid = r * PHI * 1.2 * orbitScale
   ctx.globalAlpha = 0.22 * glowIntensity
-  ctx.strokeStyle = profile.secondary
+  ctx.strokeStyle = rgba("residualWarmth", 0.75)
   ctx.lineWidth = 0.8
   ctx.beginPath()
   ctx.arc(x, y, rMid, rot3 + 0.4, rot3 + TAU - 0.4)
   ctx.stroke()
 
   // inner orbit — partial arc
-  const r1 = r * profile.innerOrbitScale
-  ctx.strokeStyle = baseColor
+  const r1 = r * PHI * orbitScale
+  ctx.strokeStyle = hex(baseRole)
   ctx.globalAlpha = 0.45 * glowIntensity
   ctx.lineWidth = 1.5
   ctx.beginPath()
@@ -275,28 +217,30 @@ function drawCircleBossEnemy(
 
   // center body
   ctx.globalAlpha = 0.16 * glowIntensity
-  ctx.fillStyle = baseColor
-  ctx.beginPath()
-  ctx.arc(x, y, r, 0, TAU)
-  ctx.fill()
+  ctx.fillStyle = hex(baseRole)
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.fill(bodyPath)
+  ctx.restore()
 
   ctx.globalAlpha = 0.85
-  ctx.strokeStyle = baseColor
+  ctx.strokeStyle = hex(baseRole)
   ctx.lineWidth = 1.9
-  ctx.beginPath()
-  ctx.arc(x, y, r, 0, TAU)
-  ctx.stroke()
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.stroke(bodyPath)
+  ctx.restore()
 
-  // core highlight (boss は中心が一段明るい)
+  // boss は中心が一段明るい (warmth role)
   ctx.globalAlpha = 0.7
-  ctx.fillStyle = profile.secondary
+  ctx.fillStyle = hex("residualWarmth")
   ctx.beginPath()
   ctx.arc(x, y, r * 0.22, 0, TAU)
   ctx.fill()
 
   if (hpRatio < 1) {
     ctx.globalAlpha = 0.34 * (1 - hpRatio)
-    ctx.strokeStyle = "#ff5a6e"
+    ctx.strokeStyle = hex("threatNoise")
     ctx.lineWidth = 1.2
     ctx.beginPath()
     ctx.arc(x, y, r * 0.6, 0, TAU * (1 - hpRatio))
@@ -304,4 +248,105 @@ function drawCircleBossEnemy(
   }
 
   ctx.restore()
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function readEnemyCirclePath(
+  enemy: EnemyRenderState,
+  role: CanvasPaletteRole,
+  radius: number,
+  renderOptions: BattleEnemyRenderOptions,
+): Path2D {
+  return readCachedCanvasPath(
+    {
+      rendererKind: enemy.visual.rendererKind,
+      visualPresetId: enemy.visualPresetId,
+      paletteRole: role,
+      shape: "enemy-circle",
+      shapeParams: [radius, enemy.visual.orbitScale ?? 1, enemy.visual.glowIntensity ?? 0.5],
+      reduceFlashing: renderOptions.reduceFlashing,
+      lowFrameRateMode: renderOptions.lowFrameRateMode,
+    },
+    () => {
+      const path = new Path2D()
+      path.arc(0, 0, radius, 0, TAU)
+      return path
+    },
+  )
+}
+
+function readEnemyDiamondPath(
+  enemy: EnemyRenderState,
+  role: CanvasPaletteRole,
+  size: number,
+  renderOptions: BattleEnemyRenderOptions,
+): Path2D {
+  return readCachedCanvasPath(
+    {
+      rendererKind: enemy.visual.rendererKind,
+      visualPresetId: enemy.visualPresetId,
+      paletteRole: role,
+      shape: "enemy-glyph-diamond",
+      shapeParams: [size, enemy.visual.glyphCount ?? 1],
+      reduceFlashing: renderOptions.reduceFlashing,
+      lowFrameRateMode: renderOptions.lowFrameRateMode,
+    },
+    () => {
+      const path = new Path2D()
+      path.moveTo(0, -size)
+      path.lineTo(size, 0)
+      path.lineTo(0, size)
+      path.lineTo(-size, 0)
+      path.closePath()
+      return path
+    },
+  )
+}
+
+function readEnemyMotionProfile(profile: string | undefined): {
+  orbitSpeed: number
+  counterSpeed: number
+  innerSpeed: number
+  wobble: number
+} {
+  switch (profile) {
+    case "prototypeOrbit":
+      return { orbitSpeed: 1.18, counterSpeed: 0.92, innerSpeed: 1.08, wobble: 0.08 }
+    case "weightedOrbit":
+      return { orbitSpeed: 0.72, counterSpeed: 0.62, innerSpeed: 0.8, wobble: 0.03 }
+    case "pressureOrbit":
+      return { orbitSpeed: 1.05, counterSpeed: 1.28, innerSpeed: 1.2, wobble: 0.06 }
+    case "bossLattice":
+      return { orbitSpeed: 0.88, counterSpeed: 1.34, innerSpeed: 1.48, wobble: 0.04 }
+    case "slowOrbit":
+    default:
+      return { orbitSpeed: 1, counterSpeed: 1, innerSpeed: 1, wobble: 0.04 }
+  }
+}
+
+const SUPPORTED_ROLES: ReadonlySet<CanvasPaletteRole> = new Set([
+  "voidBase",
+  "voidRaised",
+  "voidDepth",
+  "panel",
+  "lineSubtle",
+  "lineStrong",
+  "signalPrimary",
+  "signalPrimaryDim",
+  "signalReadable",
+  "signalSecondary",
+  "signalMuted",
+  "residualWarmth",
+  "restoration",
+  "threatNoise",
+  "playerSignal",
+  "enemyNoise",
+  "enemyPrototype",
+])
+
+function resolvePaletteRole(value: string, fallback: CanvasPaletteRole): CanvasPaletteRole {
+  return SUPPORTED_ROLES.has(value as CanvasPaletteRole) ? (value as CanvasPaletteRole) : fallback
 }

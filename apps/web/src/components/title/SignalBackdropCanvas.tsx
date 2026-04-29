@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 import type { DisplayOptions } from "@/app/display-options"
+import { drawArtificialGrid, drawSignalPulse, type SharedEffectOptions } from "@/render/shared/effects"
 
 type SignalBackdropCanvasProps = {
   className?: string
@@ -60,8 +61,9 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
     window.addEventListener("resize", resize)
 
     const particles: Particle[] = []
+    const particleScale = displayOptions?.lowFrameRateMode ? 0.48 : 1
 
-    for (let i = 0; i < 160; i += 1) {
+    for (let i = 0; i < Math.round(160 * particleScale); i += 1) {
       particles.push({
         x: Math.random() * size.width,
         y: Math.random() * size.height,
@@ -73,7 +75,7 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
       })
     }
 
-    for (let i = 0; i < 55; i += 1) {
+    for (let i = 0; i < Math.round(55 * particleScale); i += 1) {
       particles.push({
         x: Math.random() * size.width,
         y: Math.random() * size.height,
@@ -85,7 +87,7 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
       })
     }
 
-    for (let i = 0; i < 10; i += 1) {
+    for (let i = 0; i < Math.max(3, Math.round(10 * particleScale)); i += 1) {
       particles.push({
         x: Math.random() * size.width,
         y: Math.random() * size.height,
@@ -97,7 +99,7 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
       })
     }
 
-    for (let i = 0; i < 30; i += 1) {
+    for (let i = 0; i < Math.round(30 * particleScale); i += 1) {
       particles.push({
         x: Math.random() * size.width,
         y: Math.random() * size.height,
@@ -109,7 +111,7 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
       })
     }
 
-    for (let i = 0; i < 12; i += 1) {
+    for (let i = 0; i < Math.max(4, Math.round(12 * particleScale)); i += 1) {
       particles.push({
         x: Math.random() * size.width,
         y: Math.random() * size.height,
@@ -148,6 +150,16 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
       lastDrawAt = t
       const w = size.width
       const h = size.height
+      const reduceFlashing = displayOptions?.reduceFlashing ?? false
+      const lowFrameRateMode = displayOptions?.lowFrameRateMode ?? false
+      const sharedOptions: SharedEffectOptions = {
+        paletteRole: "signalPrimary",
+        reduceFlashing,
+        lowFrameRateMode,
+        nowMs: t,
+        intensity: reduceFlashing ? 0.58 : 0.82,
+        semantic: "scan",
+      }
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
       context.clearRect(0, 0, w, h)
 
@@ -188,7 +200,7 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
           }
           if (particle.x < -20) particle.x = w + 20
           if (particle.x > w + 20) particle.x = -20
-          const flicker = Math.random() < 0.015 ? 0.4 : 1
+          const flicker = reduceFlashing ? 1 : Math.random() < 0.015 ? 0.4 : 1
           context.fillStyle = `rgba(93, 164, 209, ${particle.a * flicker})`
           context.fillRect(particle.x, particle.y, particle.len, 1.5)
           continue
@@ -290,17 +302,14 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
           const maxRadius = w * source.maxRadiusRatio
           const radius = 36 + progress * maxRadius
           const alpha = (1 - progress) * 0.085
-          context.beginPath()
-          context.arc(
-            source.x * w,
-            source.y * h,
+          drawSignalPulse(context, {
+            ...sharedOptions,
+            paletteRole: source.id === 2 ? "signalReadable" : "signalPrimary",
+            origin: { x: source.x * w, y: source.y * h },
             radius,
-            Math.PI * (0.14 + ringIndex * 0.08),
-            Math.PI * (1.58 + ringIndex * 0.08),
-          )
-          context.strokeStyle = `rgba(${source.tint}, ${alpha.toFixed(3)})`
-          context.lineWidth = 1.2 + (1 - progress) * 0.9
-          context.stroke()
+            progress,
+            intensity: alpha * 12,
+          })
         }
       }
 
@@ -313,13 +322,15 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
         const radius = 28 + eased * maxRadius
         const edgeAlpha = (1 - progress) * 0.08
 
-        // 中央パネル背後でも見えるよう、title の中心付近専用の低速波紋を重ねる。
-        // 画面全体の走査波とは別に、ロゴ周辺の「受信感」を少しだけ足す。
-        context.beginPath()
-        context.arc(centerX, centerY, radius, Math.PI * 0.1, Math.PI * 1.9)
-        context.strokeStyle = `rgba(${ripple.tint}, ${edgeAlpha.toFixed(3)})`
-        context.lineWidth = 1.4 + (1 - progress) * 0.8
-        context.stroke()
+        // 中央パネル背後の低速波紋も shared pulse に寄せ、表示設定を同じ入口で受けます。
+        drawSignalPulse(context, {
+          ...sharedOptions,
+          paletteRole: ripple.tint === "170, 220, 245" ? "signalReadable" : "signalPrimary",
+          origin: { x: centerX, y: centerY },
+          radius,
+          progress,
+          intensity: edgeAlpha * 10,
+        })
 
         const glow = context.createRadialGradient(centerX, centerY, radius * 0.55, centerX, centerY, radius * 1.2)
         glow.addColorStop(0, "rgba(170, 220, 245, 0)")
@@ -377,7 +388,7 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
 
       for (const band of panelBands) {
         const progress = ((t + band.phaseOffsetMs) % band.intervalMs) / band.intervalMs
-        const pulse = 0.55 + 0.45 * Math.sin((t + band.phaseOffsetMs) * 0.00022)
+        const pulse = reduceFlashing ? 0.68 : 0.55 + 0.45 * Math.sin((t + band.phaseOffsetMs) * 0.00022)
         const centerX = w * (0.5 + Math.sin((t + band.phaseOffsetMs) * 0.00015) * 0.04)
         const centerY = h * band.centerYRatio + Math.sin((t + band.phaseOffsetMs) * 0.00031) * h * 0.015
         const bandWidth = w * band.widthRatio
@@ -411,6 +422,14 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
 
         context.restore()
       }
+
+      drawArtificialGrid(context, {
+        ...sharedOptions,
+        width: w,
+        height: h,
+        spacing: 96,
+        intensity: 0.12,
+      })
 
       // 低い地平線に残った通信設備の反応を描く。
       // 背景専用の装飾なので、明滅は長周期にして操作対象の UI より目立たせない。
@@ -491,13 +510,13 @@ export function SignalBackdropCanvas({ className, displayOptions }: SignalBackdr
         }
       }
 
-      if (Math.random() < 0.01) {
+      if (!reduceFlashing && Math.random() < 0.01) {
         const sy = Math.random() * h
         context.fillStyle = `rgba(93, 164, 209, ${0.03 + Math.random() * 0.04})`
         context.fillRect(0, sy, w, 1 + Math.random() * 2)
       }
 
-      if (Math.random() < 0.003) {
+      if (!reduceFlashing && Math.random() < 0.003) {
         const ty = Math.random() * h
         const tw = 60 + Math.random() * 200
         const tx = Math.random() * w

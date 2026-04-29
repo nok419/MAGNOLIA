@@ -1,4 +1,5 @@
 import type { Rect } from "@magnolia/game-session"
+import { worldToCanvasPoint } from "@/render/shared/coordinates"
 
 export function drawBackground(
   ctx: CanvasRenderingContext2D,
@@ -91,8 +92,8 @@ export function drawFogGrid(
       }
       const worldX = worldBounds.x + xi * cellWorldW
       const worldY = worldBounds.y + yi * cellWorldH
-      const topLeft = worldToCanvas(viewport, W, H, pad, worldX, worldY)
-      const bottomRight = worldToCanvas(
+      const topLeft = toCanvasPoint(viewport, W, H, pad, worldX, worldY)
+      const bottomRight = toCanvasPoint(
         viewport,
         W,
         H,
@@ -113,8 +114,11 @@ export function drawFogGrid(
   })
 }
 
-function worldToCanvas(bounds: Rect, W: number, H: number, pad: number, wx: number, wy: number) {
-  const rx = (wx - bounds.x) / Math.max(1, bounds.width)
-  const ry = (wy - bounds.y) / Math.max(1, bounds.height)
-  return { x: pad + rx * (W - pad * 2), y: pad + ry * (H - pad * 2) }
+function toCanvasPoint(bounds: Rect, W: number, H: number, pad: number, wx: number, wy: number) {
+  return worldToCanvasPoint({
+    bounds,
+    size: { width: W, height: H },
+    padding: pad,
+    worldPosition: { x: wx, y: wy },
+  })
 }

@@ -1,3 +1,5 @@
+import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
+
 const PHI_INV = 1 / 1.618033988749895
 const TAU = Math.PI * 2
 
@@ -124,6 +126,7 @@ export function drawTransmissionMarker(
     timeMs: number
     variant?: CanvasMarkerVariant
     selected?: boolean
+    lowFrameRateMode?: boolean
   },
 ) {
   const variant = MARKER_VARIANTS[input.variant ?? "explore"]
@@ -157,7 +160,7 @@ export function drawTransmissionMarker(
   // ── 残響リング (通信マーカーの「電波」感) ──
   // 2 本のリングを 0.5 周期ずらし、常に 1 本は広がりつつあり、
   // もう 1 本は消えゆく形にする。mini では省略。
-  if (variant.shadowScale > 0.4) {
+  if (variant.shadowScale > 0.4 && !input.lowFrameRateMode) {
     const echoPeriodMs = 2800
     const echoSeed = ((input.x * 0.013 + input.y * 0.011) % 1 + 1) % 1
     for (let e = 0; e < 2; e++) {
@@ -221,19 +224,27 @@ export function drawTransmissionMarker(
 
   ctx.globalAlpha = baseAlpha
   ctx.fillStyle = `rgba(247, 251, 255, ${theme.fillAlpha.toFixed(3)})`
-  drawDiamondPath(ctx, input.x, input.y, input.size)
-  ctx.fill()
+  const markerPath = readTransmissionMarkerPath(input.size, input.state, input.lowFrameRateMode ?? false)
+  ctx.save()
+  ctx.translate(input.x, input.y)
+  ctx.fill(markerPath)
+  ctx.restore()
 
   ctx.strokeStyle = theme.accent
   ctx.lineWidth = Math.max(0.9, 1.35 * variant.lineScale)
-  drawDiamondPath(ctx, input.x, input.y, input.size)
-  ctx.stroke()
+  ctx.save()
+  ctx.translate(input.x, input.y)
+  ctx.stroke(markerPath)
+  ctx.restore()
 
   ctx.shadowBlur = 0
   ctx.strokeStyle = "rgba(247, 251, 255, 0.82)"
   ctx.lineWidth = Math.max(0.7, 0.9 * variant.lineScale)
-  drawDiamondPath(ctx, input.x, input.y, input.size * 0.56)
-  ctx.stroke()
+  const innerPath = readTransmissionMarkerPath(input.size * 0.56, `${input.state}:inner`, input.lowFrameRateMode ?? false)
+  ctx.save()
+  ctx.translate(input.x, input.y)
+  ctx.stroke(innerPath)
+  ctx.restore()
 
   ctx.fillStyle = theme.core
   ctx.globalAlpha = baseAlpha * pulse
@@ -263,6 +274,7 @@ export function drawCollectibleMarker(
     timeMs: number
     variant?: CanvasMarkerVariant
     selected?: boolean
+    lowFrameRateMode?: boolean
   },
 ) {
   const variant = MARKER_VARIANTS[input.variant ?? "explore"]
@@ -308,7 +320,7 @@ export function drawCollectibleMarker(
   // ── 漂うモート (崩壊都市の塵・信号ノイズの可視化) ──
   // 位置座標ハッシュをシードに、周回する 3 粒の微光。マーカーごとに
   // 位相がずれるため密集しても整列しない。mini では省略。
-  if (variant.shadowScale > 0.4) {
+  if (variant.shadowScale > 0.4 && !input.lowFrameRateMode) {
     for (let i = 0; i < 3; i++) {
       const seed = input.x * 0.031 + input.y * 0.027 + i * 2.1
       const orbitDir = i % 2 === 0 ? 1 : -1
@@ -332,10 +344,12 @@ export function drawCollectibleMarker(
   ctx.fillStyle = `rgba(${theme.haloRgb}, ${(theme.shellAlpha * pulse).toFixed(3)})`
   ctx.strokeStyle = theme.accent
   ctx.lineWidth = Math.max(0.85, 1.25 * variant.lineScale)
-  drawCollectibleShell(ctx, theme.glyph, input.x, input.y, input.size)
-  ctx.fill()
-  drawCollectibleShell(ctx, theme.glyph, input.x, input.y, input.size)
-  ctx.stroke()
+  const shellPath = readCollectibleShellPath(theme.glyph, input.size, input.lowFrameRateMode ?? false)
+  ctx.save()
+  ctx.translate(input.x, input.y)
+  ctx.fill(shellPath)
+  ctx.stroke(shellPath)
+  ctx.restore()
 
   ctx.shadowBlur = 0
   ctx.strokeStyle = "rgba(247, 251, 255, 0.9)"
@@ -366,37 +380,47 @@ function resolveCollectibleMarkerKind(
   return kind
 }
 
-function drawCollectibleShell(
-  ctx: CanvasRenderingContext2D,
+function readCollectibleShellPath(
   glyph: CollectibleMarkerTheme["glyph"],
-  x: number,
-  y: number,
   size: number,
-) {
-  switch (glyph) {
-    case "equipment":
-      ctx.beginPath()
-      ctx.moveTo(x, y - size)
-      ctx.lineTo(x + size * 0.82, y - size * 0.18)
-      ctx.lineTo(x + size * 0.62, y + size * 0.92)
-      ctx.lineTo(x - size * 0.62, y + size * 0.92)
-      ctx.lineTo(x - size * 0.82, y - size * 0.18)
-      ctx.closePath()
-      return
-    case "resource":
-      ctx.beginPath()
-      ctx.arc(x, y, size * 0.9, 0, TAU)
-      return
-    case "investigation":
-      ctx.beginPath()
-      ctx.moveTo(x - size * 0.68, y - size * 0.9)
-      ctx.lineTo(x + size * 0.48, y - size * 0.9)
-      ctx.lineTo(x + size * 0.92, y - size * 0.48)
-      ctx.lineTo(x + size * 0.92, y + size * 0.9)
-      ctx.lineTo(x - size * 0.68, y + size * 0.9)
-      ctx.closePath()
-      return
-  }
+  lowFrameRateMode: boolean,
+): Path2D {
+  return readCachedCanvasPath(
+    {
+      rendererKind: "marker",
+      visualPresetId: `collectible:${glyph}`,
+      paletteRole: "signalPrimary",
+      shape: "collectible-shell",
+      shapeParams: [glyph, size],
+      reduceFlashing: false,
+      lowFrameRateMode,
+    },
+    () => {
+      const path = new Path2D()
+      switch (glyph) {
+        case "equipment":
+          path.moveTo(0, -size)
+          path.lineTo(size * 0.82, -size * 0.18)
+          path.lineTo(size * 0.62, size * 0.92)
+          path.lineTo(-size * 0.62, size * 0.92)
+          path.lineTo(-size * 0.82, -size * 0.18)
+          path.closePath()
+          break
+        case "resource":
+          path.arc(0, 0, size * 0.9, 0, TAU)
+          break
+        case "investigation":
+          path.moveTo(-size * 0.68, -size * 0.9)
+          path.lineTo(size * 0.48, -size * 0.9)
+          path.lineTo(size * 0.92, -size * 0.48)
+          path.lineTo(size * 0.92, size * 0.9)
+          path.lineTo(-size * 0.68, size * 0.9)
+          path.closePath()
+          break
+      }
+      return path
+    },
+  )
 }
 
 function drawCollectibleGlyph(
@@ -460,16 +484,29 @@ function drawCollectibleGlyph(
   }
 }
 
-function drawDiamondPath(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
+function readTransmissionMarkerPath(
   radius: number,
-) {
-  ctx.beginPath()
-  ctx.moveTo(x, y - radius)
-  ctx.lineTo(x + radius * PHI_INV, y)
-  ctx.lineTo(x, y + radius)
-  ctx.lineTo(x - radius * PHI_INV, y)
-  ctx.closePath()
+  stateKey: string,
+  lowFrameRateMode: boolean,
+): Path2D {
+  return readCachedCanvasPath(
+    {
+      rendererKind: "marker",
+      visualPresetId: `transmission:${stateKey}`,
+      paletteRole: "signalReadable",
+      shape: "transmission-diamond",
+      shapeParams: [radius, PHI_INV],
+      reduceFlashing: false,
+      lowFrameRateMode,
+    },
+    () => {
+      const path = new Path2D()
+      path.moveTo(0, -radius)
+      path.lineTo(radius * PHI_INV, 0)
+      path.lineTo(0, radius)
+      path.lineTo(-radius * PHI_INV, 0)
+      path.closePath()
+      return path
+    },
+  )
 }

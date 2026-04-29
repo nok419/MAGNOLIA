@@ -458,11 +458,18 @@
     /* パネル全体の淡い垂直グラデ */
     linear-gradient(180deg, rgba(8, 17, 32, 0.94), rgba(4, 10, 22, 0.96));
   padding: 28px 34px 24px;
-  border-left: 1px solid var(--mg-border);
   position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+.equip-detail.common-panel {
+  border-radius: 0;
+}
+.equip-detail__surface {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Corner decorators — 二重括弧 + 内側の短い tick で強化 */

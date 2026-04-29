@@ -41,6 +41,7 @@ export function BattleCanvas({ renderState, battleEvents = [], transparentBg, sh
       transparentBg,
       shipVariant,
       reduceFlashing: displayOptions.reduceFlashing,
+      lowFrameRateMode: displayOptions.lowFrameRateMode,
     })
   }, [battleEvents, displayOptions, renderState, shipVariant])
 

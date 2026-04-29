@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
 import type {
-  ArchiveAccessState,
+  ArchiveViewModel,
   ContentBundle,
+  EquipmentPanelViewModel,
   EquipmentSlot,
-  FeatureAccessState,
-  ProfileAggregate,
+  MenuViewModel,
   SaveSlotId,
   SaveSlotRow,
   SettingsRow,
@@ -20,13 +20,12 @@ import { SettingsPanel } from "@/screens/menu/SettingsPanel"
 type MenuTab = "equipment" | "archive" | "settings"
 
 type MenuScreenProps = {
+  menuViewModel: MenuViewModel
   content: ContentBundle
-  profile: ProfileAggregate | null
+  equipmentViewModel?: EquipmentPanelViewModel
+  archiveViewModel?: ArchiveViewModel
   settings: SettingsRow
   saveSlots: SaveSlotRow[]
-  featureAccess: FeatureAccessState
-  archiveAccess?: ArchiveAccessState
-  selectedTransmissionId?: string
   initialTab?: MenuTab
   unseenEquipmentIds: string[]
   onMarkEquipmentSeen: (equipmentIds: string[]) => void
@@ -46,13 +45,12 @@ type MenuScreenProps = {
 }
 
 export function MenuScreen({
+  menuViewModel,
   content,
-  profile,
+  equipmentViewModel,
+  archiveViewModel,
   settings,
   saveSlots,
-  featureAccess,
-  archiveAccess,
-  selectedTransmissionId,
   initialTab,
   unseenEquipmentIds,
   onMarkEquipmentSeen,
@@ -71,13 +69,8 @@ export function MenuScreen({
   displayOptions,
 }: MenuScreenProps) {
   // この画面は UI 合成だけを担当し、装備判定や保存判定は props で受け取った結果をそのまま使います。
-  const hasEquipment = Boolean(profile) && featureAccess.canOpenEquipment
-  const hasArchive = Boolean(profile) && featureAccess.canOpenArchive
-
-  const tabs: MenuTab[] = []
-  if (hasEquipment) tabs.push("equipment")
-  if (hasArchive) tabs.push("archive")
-  tabs.push("settings")
+  const availableTabModels = menuViewModel.tabs.filter((tab) => tab.available)
+  const tabs = availableTabModels.map((tab) => tab.tab)
 
   const defaultTab = initialTab && tabs.includes(initialTab) ? initialTab : tabs[0]
   const [activeTab, setActiveTab] = useState<MenuTab>(defaultTab)
@@ -114,16 +107,20 @@ export function MenuScreen({
 
       {/* tab bar */}
       <nav className="menu-tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={`menu-tab ${activeTab === tab ? "menu-tab--active" : ""}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+        {availableTabModels.map((tabModel) => {
+          const tab = tabModel.tab
+          return (
+            <button
+              key={tab}
+              type="button"
+              className={`menu-tab ${activeTab === tab ? "menu-tab--active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+              {tabModel.badgeCount > 0 ? <span className="menu-tab__badge">{tabModel.badgeCount}</span> : null}
+            </button>
+          )
+        })}
         <span style={{ flex: 1 }} />
         <button type="button" className="menu-tab menu-tab--back" onClick={onBack}>
           esc: close
@@ -132,10 +129,9 @@ export function MenuScreen({
 
       {/* tab content */}
       <div className="menu-content">
-        {activeTab === "equipment" && profile ? (
+        {activeTab === "equipment" && equipmentViewModel ? (
           <EquipmentPanel
-            content={content}
-            profile={profile}
+            viewModel={equipmentViewModel}
             selectedCategory={selectedCategory}
             selectedEquipmentId={selectedEquipmentId}
             onSelectCategory={setSelectedCategory}
@@ -148,20 +144,16 @@ export function MenuScreen({
             unseenEquipmentIds={unseenEquipmentIds}
             onMarkEquipmentSeen={onMarkEquipmentSeen}
           />
-        ) : activeTab === "archive" && profile && archiveAccess ? (
+        ) : activeTab === "archive" && archiveViewModel ? (
           <ArchivePanel
-            areas={content.areas}
-            transmissions={content.transmissions}
-            profile={profile}
-            archiveAccess={archiveAccess}
-            selectedTransmissionId={selectedTransmissionId}
+            viewModel={archiveViewModel}
             onSelectTransmission={onSelectTransmission}
           />
         ) : (
           <SettingsPanel
             settings={settings}
             saveSlots={saveSlots}
-            canSave={Boolean(profile)}
+            canSave={menuViewModel.canSave}
             onOpenKeyVisual={(variant) => setKeyVisualVariant(variant)}
             onSetVolume={onSetVolume}
             onSetDifficulty={onSetDifficulty}
@@ -177,6 +169,7 @@ export function MenuScreen({
           variant={keyVisualVariant}
           onClose={() => setKeyVisualVariant(null)}
           displayOptions={displayOptions}
+          content={content}
         />
       )}
     </main>

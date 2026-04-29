@@ -22,12 +22,19 @@ export function TransitionPresentationLayer({
       ? "CONNECTING"
       : "TRANSITION"
   const sourceFrame = activeEvent.request.sourceFrame
-  const sourceStyle: CSSProperties | undefined = sourceFrame
-    ? {
-        ["--transition-source-x" as keyof CSSProperties]: `${sourceFrame.screenAnchor.x}px`,
-        ["--transition-source-y" as keyof CSSProperties]: `${sourceFrame.screenAnchor.y}px`,
-      }
-    : undefined
+  const transitionDurationMs = Math.max(240, activeEvent.durationMs)
+  const sourceStyle: CSSProperties = {
+    ["--transition-duration-ms" as keyof CSSProperties]: `${transitionDurationMs}ms`,
+    ["--transition-sweep-duration-ms" as keyof CSSProperties]: `${Math.round(transitionDurationMs * 0.74)}ms`,
+    ["--transition-line-duration-ms" as keyof CSSProperties]: `${Math.round(transitionDurationMs * 0.52)}ms`,
+    ["--transition-source-duration-ms" as keyof CSSProperties]: `${Math.round(transitionDurationMs * 0.5)}ms`,
+    ...(sourceFrame
+      ? {
+          ["--transition-source-x" as keyof CSSProperties]: `${sourceFrame.screenAnchor.x}px`,
+          ["--transition-source-y" as keyof CSSProperties]: `${sourceFrame.screenAnchor.y}px`,
+        }
+      : {}),
+  }
 
   return (
     <div

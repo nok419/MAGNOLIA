@@ -16,7 +16,7 @@ import type {
   TimedPresentationRequest,
 } from "@/app/presentation/presentation-state"
 import type { DisplayOptions } from "@/app/display-options"
-import { ExploreCanvas, type ExploreOverlayFrame } from "@/components/ExploreCanvas"
+import { ExploreCanvas, type ExploreOverlayFrame } from "@/render/explore/ExploreCanvas"
 import {
   InteractionPromptCallout,
   type InteractionPromptPlacement,

@@ -1,4 +1,4 @@
-import type { ShipVariant } from "@magnolia/contracts"
+import type { ShipVariant, TranscriptSpan } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
 import type { ReactNode } from "react"
 import type { DisplayOptions } from "@/app/display-options"
@@ -6,8 +6,9 @@ import type {
   BattlePresentationRequest,
   TimedPresentationRequest,
 } from "@/app/presentation/presentation-state"
-import { BattleCanvas } from "@/components/BattleCanvas"
+import { BattleCanvas } from "@/render/battle/BattleCanvas"
 import { ActionButton } from "@/components/ActionButton"
+import { Meter, PanelFrame } from "@/components/common"
 
 type BattleScreenProps = {
   renderState: BattleRenderState
@@ -18,9 +19,10 @@ type BattleScreenProps = {
 }
 
 export function BattleScreen({ renderState, battleEvents, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
-  const progress = renderState.missionDurationMs > 0
-    ? Math.max(0, Math.min(1, renderState.elapsedMs / renderState.missionDurationMs))
-    : 0
+  const progress =
+    renderState.missionDurationMs > 0
+      ? Math.max(0, Math.min(1, renderState.elapsedMs / renderState.missionDurationMs))
+      : 0
   const progressPercent = Math.round(progress * 100)
   const remainingSeconds = Math.ceil(Math.max(0, renderState.missionDurationMs - renderState.elapsedMs) / 1000)
   const resultViewModel = renderState.resultViewModel
@@ -28,6 +30,10 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
   const resultTranscriptPreview = resultViewModel?.transcriptPreview ?? []
   const subtitleEventTone = readSubtitleEventTone(battleEvents, renderState.elapsedMs)
   const resultRestored = hasActiveBattleEvent(battleEvents, renderState.elapsedMs, "battle.fragment.recovered")
+  const listeningStability = computeListeningStability(renderState.noiseLevel, renderState.hearingThreshold)
+  const protectedRatio = clamp01(renderState.currentChunkProtectedRatio)
+  const recentlyLost = renderState.newlyLostRange != null
+  const recentlyRecovered = renderState.newlyRecoveredRange != null
 
   return (
     <main className="battle-screen">
@@ -41,32 +47,51 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
       </div>
 
       <div className="battle-screen__sidebar">
-        {/* 進行度はキャンバス外へ置き、表示幅が狭い環境でも見切れないようにする。 */}
-        <section className="battle-mission-panel" aria-label="mission progress">
-          <div className="battle-mission-panel__header">
-            <span>mission</span>
-            <span>{progressPercent}%</span>
+        <PanelFrame title="mission" className="battle-mission-panel" bodyClassName="battle-mission-panel__body">
+          <div className="battle-mission-panel__content" aria-label="mission progress">
+            <div className="battle-mission-panel__header">
+              <span>mission</span>
+              <span>{progressPercent}%</span>
+            </div>
+            <div
+              className="battle-mission-panel__meter"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progressPercent}
+            >
+              <span
+                className="battle-mission-panel__fill"
+                style={{ transform: `scaleX(${progress})` }}
+              />
+            </div>
+            <div className="battle-mission-panel__meta">
+              <span>remain</span>
+              <span>{formatMissionTime(remainingSeconds)}</span>
+            </div>
+            <div className="battle-mission-panel__meters">
+              <Meter
+                label="聴取安定"
+                value={listeningStability}
+                tone={listeningStability < 0.34 ? "danger" : "signal"}
+              />
+              <Meter
+                label="解析進行"
+                value={renderState.analysisRate}
+                tone="warm"
+              />
+            </div>
           </div>
-          <div
-            className="battle-mission-panel__meter"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progressPercent}
-          >
-            <span
-              className="battle-mission-panel__fill"
-              style={{ transform: `scaleX(${progress})` }}
-            />
-          </div>
-          <div className="battle-mission-panel__meta">
-            <span>remain</span>
-            <span>{formatMissionTime(remainingSeconds)}</span>
-          </div>
-        </section>
+        </PanelFrame>
 
         {renderState.activeSubtitle ? (
-          <div className={`battle-subtitle-panel ${subtitleEventTone ? `battle-subtitle-panel--${subtitleEventTone}` : ""}`}>
+          <PanelFrame
+            title="protected words"
+            className={`battle-subtitle-panel ${subtitleEventTone ? `battle-subtitle-panel--${subtitleEventTone}` : ""} ${
+              recentlyLost ? "battle-subtitle-panel--lost" : ""
+            } ${recentlyRecovered ? "battle-subtitle-panel--recovered" : ""}`}
+            bodyClassName="battle-subtitle-panel__body"
+          >
             {renderState.activeSubtitle.speakerLabel ? (
               <p className="battle-subtitle-panel__speaker">
                 {renderState.activeSubtitle.speakerLabel}
@@ -88,93 +113,106 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
                 reduceFlashing: displayOptions.reduceFlashing,
               })}
             </p>
-          </div>
+            {/* 守れた割合は下線の連続度で示す。点滅ではなく長さで読み取れるようにする。 */}
+            <div
+              className="battle-subtitle-panel__underline"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(protectedRatio * 100)}
+              aria-label="守れた割合"
+            >
+              {renderSubtitleProtectionSegments(renderState.activeSubtitle.protectedSpans)}
+              {renderSubtitleDamageSegments(renderState.activeSubtitle.damagedSpans)}
+            </div>
+          </PanelFrame>
         ) : (
-          <div className={`battle-subtitle-panel ${subtitleEventTone ? `battle-subtitle-panel--${subtitleEventTone}` : ""}`}>
+          <PanelFrame
+            title="protected words"
+            className={`battle-subtitle-panel ${subtitleEventTone ? `battle-subtitle-panel--${subtitleEventTone}` : ""}`}
+            bodyClassName="battle-subtitle-panel__body"
+          >
             <p className="battle-subtitle-panel__speaker">standby</p>
             <p className="battle-subtitle-panel__text muted-text">
               waiting for signal...
             </p>
-          </div>
+          </PanelFrame>
         )}
 
         {resultViewModel ? null : (
-          <div className="battle-help-panel">
-            <p>move — wasd</p>
-            <p>main — left click</p>
-            <p>sub — click 2</p>
-            <p>focus — shift</p>
-            <ActionButton tone="ghost" onClick={onReturnToExplore}>
-              return to explore
-            </ActionButton>
-          </div>
+          <PanelFrame title="control hint">
+            <div className="battle-help-panel">
+              <p>move — wasd</p>
+              <p>main — left click</p>
+              <p>sub — click 2</p>
+              <p>focus — shift</p>
+              <ActionButton tone="ghost" onClick={onReturnToExplore}>
+                return to explore
+              </ActionButton>
+            </div>
+          </PanelFrame>
         )}
       </div>
 
       {resultViewModel ? (
         <div className="battle-result-overlay">
           <div className="battle-result-overlay__backdrop" />
-          <section className="battle-result-overlay__panel">
-            <p className="battle-result-overlay__eyebrow">mission complete</p>
-            {resultTranscriptPreview.length > 0 ? (
-              <div
-                className={`battle-result-transcript ${resultRestored ? "battle-result-transcript--restored" : ""}`}
-                aria-label="restored transcript preview"
-              >
-                {resultTranscriptPreview.map((chunk) => (
-                  <p key={chunk.chunkId} className={chunk.audible ? "" : "battle-result-transcript__damaged"}>
-                    {chunk.text}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-            <div className="battle-result-overlay__stats">
-              <ResultMetric
-                label="解析率"
-                value={`${Math.round(resultViewModel.analysisRate * 100)}%`}
-              />
-              <ResultMetric
-                label="復元率"
-                value={`${Math.round(resultViewModel.restorationRate * 100)}%`}
-              />
-              <ResultMetric
-                label="自己修復ポイント"
-                value={`+${resultViewModel.selfRepairPointsEarned}`}
-              />
-              <ResultMetric
-                label="新規聴取"
-                value={`+${Math.round(resultViewModel.newHeardRangeMs / 100) / 10}s`}
-              />
-            </div>
-
-            {grantedEquipment.length > 0 ? (
-              <div className="battle-result-overlay__rewards battle-result-overlay__rewards--highlight">
-                <div className="battle-result-rewards__banner" aria-hidden="true">
-                  <span className="battle-result-rewards__diamond">◆</span>
-                  <span className="battle-result-rewards__banner-label">NEW EQUIPMENT ACQUIRED</span>
-                  <span className="battle-result-rewards__diamond">◆</span>
-                </div>
-                <ul className="battle-result-overlay__reward-list battle-result-overlay__reward-list--highlight">
-                  {grantedEquipment.map((equipment) => (
-                    <li key={equipment.equipmentId}>
-                      <span className="battle-result-reward__mark" aria-hidden="true">▸</span>
-                      <span className="battle-result-reward__name">{equipment.name}</span>
-                      <span className="battle-result-reward__slot">
-                        {equipment.slotLabel}
-                      </span>
-                    </li>
+          <div className="battle-result-overlay__panel">
+            <PanelFrame tone="warm" title="mission complete">
+              {resultTranscriptPreview.length > 0 ? (
+                <div
+                  className={`battle-result-transcript ${resultRestored ? "battle-result-transcript--restored" : ""}`}
+                  aria-label="restored transcript preview"
+                >
+                  {resultTranscriptPreview.map((chunk) => (
+                    <p key={chunk.chunkId} className={chunk.audible ? "" : "battle-result-transcript__damaged"}>
+                      {chunk.text}
+                    </p>
                   ))}
-                </ul>
-                <p className="battle-result-rewards__hint">
-                  <kbd className="battle-result-rewards__hint-key">E</kbd>
-                  を押して装備画面から装着してください
-                </p>
+                </div>
+              ) : null}
+              <div className="battle-result-overlay__stats">
+                <Meter label="解析率" value={resultViewModel.analysisRate} tone="warm" />
+                <Meter label="復元率" value={resultViewModel.restorationRate} tone="signal" />
+                <ResultMetric
+                  label="自己修復ポイント"
+                  value={`+${resultViewModel.selfRepairPointsEarned}`}
+                />
+                <ResultMetric
+                  label="新規聴取"
+                  value={`+${Math.round(resultViewModel.newHeardRangeMs / 100) / 10}s`}
+                />
               </div>
-            ) : null}
-            <ActionButton onClick={onReturnToExplore}>
-              return to explore
-            </ActionButton>
-          </section>
+
+              {grantedEquipment.length > 0 ? (
+                <div className="battle-result-overlay__rewards battle-result-overlay__rewards--highlight">
+                  <div className="battle-result-rewards__banner" aria-hidden="true">
+                    <span className="battle-result-rewards__diamond">◆</span>
+                    <span className="battle-result-rewards__banner-label">NEW EQUIPMENT ACQUIRED</span>
+                    <span className="battle-result-rewards__diamond">◆</span>
+                  </div>
+                  <ul className="battle-result-overlay__reward-list battle-result-overlay__reward-list--highlight">
+                    {grantedEquipment.map((equipment) => (
+                      <li key={equipment.equipmentId}>
+                        <span className="battle-result-reward__mark" aria-hidden="true">▸</span>
+                        <span className="battle-result-reward__name">{equipment.name}</span>
+                        <span className="battle-result-reward__slot">
+                          {equipment.slotLabel}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="battle-result-rewards__hint">
+                    <kbd className="battle-result-rewards__hint-key">E</kbd>
+                    を押して装備画面から装着してください
+                  </p>
+                </div>
+              ) : null}
+              <ActionButton onClick={onReturnToExplore}>
+                return to explore
+              </ActionButton>
+            </PanelFrame>
+          </div>
         </div>
       ) : null}
     </main>
@@ -184,12 +222,13 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
 function readSubtitleEventTone(
   events: TimedPresentationRequest<BattlePresentationRequest>[],
   elapsedMs: number,
-): "hit" | "noise" | "clear" | "recovered" | null {
+): "hit" | "noise" | "clear" | "recovered" | "protect" | "tutorial" | null {
   const active = events
     .filter((event) => event.expiresAtMs > elapsedMs)
     .sort((a, b) => b.startedAtMs - a.startedAtMs)[0]
   switch (active?.cueId) {
     case "battle.player.hit":
+    case "battle.subtitle.damage":
       return "hit"
     case "battle.noise.peak":
       return "noise"
@@ -198,9 +237,24 @@ function readSubtitleEventTone(
       return "clear"
     case "battle.fragment.recovered":
       return "recovered"
+    case "battle.mission.beat":
+      return readMissionBeatSubtitleTone(active.intentTag)
     default:
       return null
   }
+}
+
+function readMissionBeatSubtitleTone(intentTag: string): "protect" | "tutorial" | "clear" | null {
+  if (intentTag.includes("protect") || intentTag.includes("fragment")) {
+    return "protect"
+  }
+  if (intentTag.startsWith("tutorial") || intentTag.includes("confirmation")) {
+    return "tutorial"
+  }
+  if (intentTag.includes("answer") || intentTag.includes("route")) {
+    return "clear"
+  }
+  return null
 }
 
 function hasActiveBattleEvent(
@@ -209,6 +263,19 @@ function hasActiveBattleEvent(
   cueId: BattlePresentationRequest["cueId"],
 ): boolean {
   return events.some((event) => event.cueId === cueId && event.expiresAtMs > elapsedMs)
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  return Math.max(0, Math.min(1, value))
+}
+
+function computeListeningStability(noiseLevel: number, hearingThreshold: number): number {
+  // 聴取安定 = 1 - (noiseLevel / hearingThreshold)。閾値を超えるほど 0 に近づき、字幕欠損が起きやすい状態を表します。
+  const ratio = noiseLevel / Math.max(0.001, hearingThreshold)
+  return clamp01(1 - ratio)
 }
 
 function renderSubtitleText(input: {
@@ -221,30 +288,67 @@ function renderSubtitleText(input: {
     return null
   }
   if (subtitle.audible) {
-    return subtitle.text
+    return renderSubtitleGraphemes({
+      text: subtitle.text,
+      protectedSpans: subtitle.protectedSpans,
+      damagedSpans: subtitle.damagedSpans,
+      severity: 0,
+      seed: `${subtitle.transmissionId}:${subtitle.chunkId}:audible`,
+      reduceFlashing: input.reduceFlashing,
+    })
   }
 
   const severity = readSubtitleCorruptionSeverity(subtitle.noiseLevel, subtitle.hearingThreshold)
+  // reduceFlashing 時は frame を固定し、欠損 mask を点滅させない。
   const frame = input.reduceFlashing ? 0 : Math.floor(input.elapsedMs / 140)
-  const glyphs = splitGraphemes(subtitle.text)
   const seed = `${subtitle.transmissionId}:${subtitle.chunkId}:${frame}`
 
+  return renderSubtitleGraphemes({
+    text: subtitle.text,
+    protectedSpans: subtitle.protectedSpans,
+    damagedSpans: subtitle.damagedSpans,
+    severity,
+    seed,
+    reduceFlashing: input.reduceFlashing,
+  })
+}
+
+function renderSubtitleGraphemes(input: {
+  text: string
+  protectedSpans: TranscriptSpan[]
+  damagedSpans: TranscriptSpan[]
+  severity: number
+  seed: string
+  reduceFlashing: boolean
+}): ReactNode {
+  const glyphs = splitGraphemes(input.text)
+  const total = Math.max(1, glyphs.length)
   return glyphs.map((glyph, index) => {
     if (/\s/u.test(glyph)) {
       return glyph
     }
-    const roll = seededUnit(`${seed}:${index}`)
-    const threshold = 0.12 + severity * 0.74
-    if (roll > threshold) {
-      return glyph
+    const positionRatio = (index + 0.5) / total
+    const protectedHere = isRatioInsideAnySpan(positionRatio, input.protectedSpans)
+    const damagedHere = isRatioInsideAnySpan(positionRatio, input.damagedSpans)
+    if (!damagedHere) {
+      return (
+        <span
+          key={`${index}:${glyph}`}
+          className={protectedHere ? "subtitle-safe" : undefined}
+        >
+          {glyph}
+        </span>
+      )
     }
 
-    const hardMask = input.reduceFlashing || roll < severity * 0.5
+    const roll = seededUnit(`${input.seed}:${index}`)
+    // damagedSpans は session が確定した欠損範囲です。UI 側では範囲だけを見て mask 種別を決めます。
+    const hardMask = input.reduceFlashing || roll < Math.max(0.42, input.severity * 0.5)
     const replacement = hardMask
       ? "█"
-      : roll < severity * 0.74
+      : roll < Math.max(0.64, input.severity * 0.74)
         ? "░"
-        : GLITCH_GLYPHS[Math.floor(seededUnit(`${seed}:g:${index}`) * GLITCH_GLYPHS.length)] ?? "…"
+        : GLITCH_GLYPHS[Math.floor(seededUnit(`${input.seed}:g:${index}`) * GLITCH_GLYPHS.length)] ?? "…"
 
     return (
       <span
@@ -256,6 +360,36 @@ function renderSubtitleText(input: {
       </span>
     )
   })
+}
+
+function renderSubtitleProtectionSegments(spans: TranscriptSpan[]): ReactNode {
+  return spans.map((span, index) => (
+    <span
+      key={`safe:${index}:${span.startRatio}:${span.endRatio}`}
+      className="battle-subtitle-panel__underline-segment battle-subtitle-panel__underline-segment--safe"
+      style={{
+        left: `${clamp01(span.startRatio) * 100}%`,
+        width: `${Math.max(0, clamp01(span.endRatio) - clamp01(span.startRatio)) * 100}%`,
+      }}
+    />
+  ))
+}
+
+function renderSubtitleDamageSegments(spans: TranscriptSpan[]): ReactNode {
+  return spans.map((span, index) => (
+    <span
+      key={`damage:${index}:${span.startRatio}:${span.endRatio}`}
+      className="battle-subtitle-panel__underline-segment battle-subtitle-panel__underline-segment--damage"
+      style={{
+        left: `${clamp01(span.startRatio) * 100}%`,
+        width: `${Math.max(0, clamp01(span.endRatio) - clamp01(span.startRatio)) * 100}%`,
+      }}
+    />
+  ))
+}
+
+function isRatioInsideAnySpan(ratio: number, spans: TranscriptSpan[]): boolean {
+  return spans.some((span) => ratio >= span.startRatio && ratio <= span.endRatio)
 }
 
 const GLITCH_GLYPHS = ["…", "▧", "░", "ノ", "ヰ", "�"]

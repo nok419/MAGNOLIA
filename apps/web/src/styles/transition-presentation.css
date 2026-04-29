@@ -7,7 +7,7 @@
   pointer-events: auto;
   background: rgba(3, 7, 10, 0.86);
   color: #d8fff3;
-  animation: transition-presentation-fade 900ms ease-out both;
+  animation: transition-presentation-fade var(--transition-duration-ms, 900ms) ease-out both;
 }
 
 .transition-presentation__field {
@@ -22,7 +22,7 @@
       transparent 1px,
       transparent 16px
     );
-  animation: transition-presentation-sweep 1100ms ease-out both;
+  animation: transition-presentation-sweep var(--transition-sweep-duration-ms, 1100ms) ease-out both;
 }
 
 .transition-presentation__source {
@@ -35,7 +35,7 @@
   transform: translate(-50%, -50%);
   box-shadow: 0 0 24px rgba(86, 255, 211, 0.46);
   pointer-events: none;
-  animation: transition-presentation-source 760ms ease-out both;
+  animation: transition-presentation-source var(--transition-source-duration-ms, 760ms) ease-out both;
 }
 
 .transition-presentation__panel {
@@ -59,7 +59,7 @@
   height: 2px;
   transform-origin: left;
   background: linear-gradient(90deg, #d8fff3, rgba(216, 255, 243, 0));
-  animation: transition-presentation-line 760ms ease-out both;
+  animation: transition-presentation-line var(--transition-line-duration-ms, 760ms) ease-out both;
 }
 
 .transition-presentation--reduced,

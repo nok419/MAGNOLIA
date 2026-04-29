@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react"
 import type {
-  ContentBundle,
+  EquipmentPanelViewModel,
   EquipmentSlot,
-  ProfileAggregate,
   ShipVariant,
 } from "@magnolia/contracts"
 import { SHIP_VARIANTS } from "@magnolia/contracts"
@@ -11,8 +10,7 @@ import { drawShip } from "@/app/ship-renderer"
 const TAU = Math.PI * 2
 
 type ShipStatusPanelProps = {
-  content: ContentBundle
-  profile: ProfileAggregate
+  viewModel: EquipmentPanelViewModel
   selectedCategory: EquipmentSlot
   onSelectCategory: (slot: EquipmentSlot) => void
   shipVariant: ShipVariant
@@ -96,15 +94,17 @@ function drawStatusShip(
 }
 
 export function ShipStatusPanel({
-  content,
-  profile,
+  viewModel,
   selectedCategory,
   onSelectCategory,
   shipVariant,
   onSelectShipVariant,
 }: ShipStatusPanelProps) {
   const shipCanvasRef = useRef<HTMLCanvasElement>(null)
-  const equipped = profile.profile.equipped
+  const equipped = viewModel.equipped
+  const visibleNameById = new Map(
+    viewModel.catalog.items.map((item) => [item.equipmentId, item.visibleName]),
+  )
 
   // 最新のバリアントを ref で保持し、rAF ループを作り直さず描画だけ更新します。
   const variantRef = useRef(shipVariant)
@@ -153,7 +153,7 @@ export function ShipStatusPanel({
       </div>
       <div className="equip-ship-status__slots">
         {slots.map((slot) => {
-          const eqName = slot.id ? (content.equipment[slot.id]?.name ?? "---") : "---"
+          const eqName = slot.id ? (visibleNameById.get(slot.id) ?? "---") : "---"
           const isActive = slot.key === selectedCategory
           return (
             <button

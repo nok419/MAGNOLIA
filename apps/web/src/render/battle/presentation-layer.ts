@@ -3,6 +3,9 @@ import type {
   BattlePresentationRequest,
   TimedPresentationRequest,
 } from "@/app/presentation/presentation-state"
+import { rgba } from "@/render/shared/canvas-palette"
+import { drawResidualFragment } from "@/render/shared/effects/residual-fragment"
+import { drawThreatNoiseField } from "@/render/shared/effects/threat-noise-field"
 
 type PresentationLayerInput = {
   renderState: BattleRenderState
@@ -33,6 +36,15 @@ export function drawBattlePresentationLayer(
           reduceFlashing: input.reduceFlashing,
         })
         break
+      case "battle.subtitle.damage":
+        drawPlayerHit(ctx, {
+          x: input.renderState.player.position.x,
+          y: input.renderState.player.position.y,
+          player: input.renderState.player.position,
+          progress,
+          reduceFlashing: input.reduceFlashing,
+        })
+        break
       case "battle.noise.peak":
         drawNoisePeak(ctx, { progress, reduceFlashing: input.reduceFlashing })
         break
@@ -46,6 +58,14 @@ export function drawBattlePresentationLayer(
       case "battle.fragment.recovered":
         drawFragmentRecovered(ctx, { progress })
         break
+      case "battle.mission.beat":
+        drawMissionBeat(ctx, {
+          progress,
+          intentTag: event.intentTag,
+          hasFragmentWindow: Boolean(event.fragmentWindow),
+          reduceFlashing: input.reduceFlashing,
+        })
+        break
       case "battle.noiseSource.clear":
         drawNoiseSourceClear(ctx, {
           x: event.worldPosition.x,
@@ -58,6 +78,79 @@ export function drawBattlePresentationLayer(
         break
     }
   }
+}
+
+function drawMissionBeat(
+  ctx: CanvasRenderingContext2D,
+  input: {
+    progress: number
+    intentTag: string
+    hasFragmentWindow: boolean
+    reduceFlashing: boolean
+  },
+) {
+  const fade = 1 - input.progress
+  const tone = readMissionBeatTone(input.intentTag, input.hasFragmentWindow)
+  const alpha = input.reduceFlashing ? fade * 0.18 : fade * 0.3
+
+  ctx.save()
+  ctx.globalCompositeOperation = "lighter"
+  if (tone === "protect") {
+    ctx.strokeStyle = rgba("restoration", alpha)
+    ctx.lineWidth = 1.4
+    ctx.beginPath()
+    ctx.moveTo(70, 98)
+    ctx.lineTo(410, 98)
+    ctx.stroke()
+    ctx.strokeStyle = rgba("residualWarmth", alpha * 0.8)
+    ctx.beginPath()
+    ctx.arc(240, 98, 18 + input.progress * 48, -Math.PI * 0.08, Math.PI * 1.08)
+    ctx.stroke()
+  } else if (tone === "tutorial") {
+    ctx.strokeStyle = rgba("signalReadable", alpha)
+    ctx.lineWidth = 1
+    for (let index = 0; index < 3; index += 1) {
+      const x = 96 + index * 44 + input.progress * 22
+      ctx.beginPath()
+      ctx.moveTo(x, 118)
+      ctx.lineTo(x + 18, 118)
+      ctx.stroke()
+    }
+  } else {
+    const y = tone === "kana" ? 76 : tone === "takumi" ? 92 : 108
+    ctx.strokeStyle = tone === "misaki"
+      ? rgba("residualWarmth", alpha)
+      : rgba("signalReadable", alpha)
+    ctx.lineWidth = 1.1
+    ctx.beginPath()
+    ctx.moveTo(84, y)
+    ctx.quadraticCurveTo(180, y - 10 + input.progress * 8, 300, y)
+    ctx.quadraticCurveTo(380, y + 8 - input.progress * 6, 430, y)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function readMissionBeatTone(
+  intentTag: string,
+  hasFragmentWindow: boolean,
+): "protect" | "tutorial" | "kana" | "takumi" | "misaki" | "generic" {
+  if (intentTag.includes("protect") || hasFragmentWindow) {
+    return "protect"
+  }
+  if (intentTag.startsWith("tutorial") || intentTag.includes("confirmation")) {
+    return "tutorial"
+  }
+  if (intentTag.startsWith("kana")) {
+    return "kana"
+  }
+  if (intentTag.startsWith("takumi")) {
+    return "takumi"
+  }
+  if (intentTag.startsWith("misaki")) {
+    return "misaki"
+  }
+  return "generic"
 }
 
 function drawPlayerHit(
@@ -102,19 +195,19 @@ function drawNoisePeak(
   input: { progress: number; reduceFlashing: boolean },
 ) {
   const fade = 1 - input.progress
-  const scanAlpha = input.reduceFlashing ? 0.07 * fade : 0.12 * fade
 
   ctx.save()
-  ctx.fillStyle = `rgba(24, 7, 14, ${0.2 * fade})`
-  ctx.fillRect(0, 0, 480, 520)
-  ctx.strokeStyle = `rgba(255, 156, 176, ${scanAlpha})`
-  ctx.lineWidth = 1
-  for (let y = 18; y < 520; y += input.reduceFlashing ? 28 : 18) {
-    ctx.beginPath()
-    ctx.moveTo(0, y + input.progress * 16)
-    ctx.lineTo(480, y + input.progress * 6)
-    ctx.stroke()
-  }
+  drawThreatNoiseField(ctx, {
+    width: 480,
+    height: 520,
+    phase: input.progress,
+    paletteRole: "threatNoise",
+    reduceFlashing: input.reduceFlashing,
+    lowFrameRateMode: false,
+    nowMs: 0,
+    intensity: fade,
+    semantic: "hazard",
+  })
   ctx.restore()
 }
 
@@ -153,6 +246,17 @@ function drawFragmentRecovered(ctx: CanvasRenderingContext2D, input: { progress:
     ctx.lineTo(64 + input.progress * 340, y + Math.sin(input.progress * TAU + index) * 2)
     ctx.stroke()
   }
+  drawResidualFragment(ctx, {
+    origin: { x: 64 + input.progress * 340, y: 102 },
+    progress: input.progress,
+    size: 7,
+    paletteRole: "residualWarmth",
+    reduceFlashing: false,
+    lowFrameRateMode: false,
+    nowMs: 0,
+    intensity: fade,
+    semantic: "fragment",
+  })
   ctx.restore()
 }
 

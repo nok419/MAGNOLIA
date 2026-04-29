@@ -1,7 +1,6 @@
 import type { ShipVariant } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
 import { drawShip } from "@/app/ship-renderer"
-import { resolveBattleRenderer } from "@/render/battle/battle-renderer-utils"
 
 type PlayerShipRendererInput = {
   x: number
@@ -19,26 +18,12 @@ const BATTLE_PLAYER_SHIP_RENDERERS: Record<
     drawDefaultPlayerShip(ctx, input.x, input.y, input.invincible, input.shipVariant, input.renderState.elapsedMs),
 }
 
-function buildShipRendererKeys(renderState: BattleRenderState) {
-  return [
-    renderState.equippedMainId ? `mission:${renderState.missionId}:main:${renderState.equippedMainId}` : undefined,
-    renderState.equippedMainId ? `main:${renderState.equippedMainId}` : undefined,
-    renderState.equippedSubId ? `mission:${renderState.missionId}:sub:${renderState.equippedSubId}` : undefined,
-    renderState.equippedSubId ? `sub:${renderState.equippedSubId}` : undefined,
-    `mission:${renderState.missionId}`,
-    "default",
-  ]
-}
-
 export function drawPlayerShip(
   ctx: CanvasRenderingContext2D,
   renderState: BattleRenderState,
   shipVariant: ShipVariant,
 ) {
-  const renderer = resolveBattleRenderer(
-    BATTLE_PLAYER_SHIP_RENDERERS,
-    buildShipRendererKeys(renderState),
-  )
+  const renderer = BATTLE_PLAYER_SHIP_RENDERERS.default
   renderer(ctx, {
     x: renderState.player.position.x,
     y: renderState.player.position.y,

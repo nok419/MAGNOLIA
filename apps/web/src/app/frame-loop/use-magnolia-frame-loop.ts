@@ -91,6 +91,7 @@ export function useMagnoliaFrameLoop({
       }
 
       if (snapshot.screen === "explore" && appState.equipmentModalNodeId) {
+        input.syncButtonEdges(settings)
         return
       }
 
