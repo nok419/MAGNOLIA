@@ -11,6 +11,7 @@ import { PresentationOverlay } from "@/components/PresentationOverlay"
 import { EquipmentModal } from "@/components/EquipmentModal"
 import { applyAudioSettings } from "@/app/audio-controller"
 import { resolveDisplayOptions } from "@/app/display-options"
+import { TransitionPresentationLayer } from "@/app/TransitionPresentationLayer"
 import { useMagnoliaApp } from "@/app/use-magnolia-app"
 
 export function App() {
@@ -168,6 +169,10 @@ export function App() {
   return (
     <div className={appClassName}>
       {screen}
+      <TransitionPresentationLayer
+        requests={app.transitionPresentationRequests}
+        displayOptions={displayOptions}
+      />
       {app.activeOverlayPresentation ? (
         <PresentationOverlay
           presentation={app.activeOverlayPresentation}

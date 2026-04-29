@@ -26,11 +26,17 @@ test("session owns collectible domain events and exposes a drain boundary", () =
 test("presentation requests outside overlay are retained for renderers", () => {
   const appStateSource = readProjectFile("apps/web/src/app/app-state.ts")
   const presentationQueueSource = readProjectFile("apps/web/src/app/presentation-queue.ts")
+  const appSource = readProjectFile("apps/web/src/app/App.tsx")
+  const transitionLayerSource = readProjectFile("apps/web/src/app/TransitionPresentationLayer.tsx")
 
   assert.match(appStateSource, /activeNonOverlayPresentations:\s*TimedPresentationRequest\[\]/)
   assert.match(presentationQueueSource, /activeNonOverlayPresentations/)
   assert.match(presentationQueueSource, /function\s+mergeNonOverlayPresentations/)
   assert.match(presentationQueueSource, /request\.channel\s*!==\s*OVERLAY_CHANNEL/)
+  assert.match(appSource, /<TransitionPresentationLayer/)
+  assert.match(appSource, /transitionPresentationRequests/)
+  assert.match(transitionLayerSource, /transmission\.connect\.sequence/)
+  assert.match(transitionLayerSource, /warp\.transition\.sequence/)
 })
 
 test("frame loop and equipment hint selection stay outside the app facade", () => {

@@ -15,6 +15,26 @@ test("current gameplay content passes validation", () => {
   assert.match(result.stdout, /content validation passed/)
 })
 
+test("starter pulse shot and silent wave cooldown remain playable", () => {
+  const pulseEffect = loadGameplayJson("equipment/effects/eff_main_pulse.json")
+  const pulseEquipment = loadGameplayJson("equipment/eq_main_pulse.json")
+  const silentWaveEffect = loadGameplayJson("equipment/effects/eff_sub_silent_wave.json")
+  const silentWaveEquipment = loadGameplayJson("equipment/eq_sub_silent_wave.json")
+
+  assert.ok(pulseEffect.params.damage > 0, "pulse shot damage must not be zero")
+  for (const levelParams of pulseEquipment.levelParams) {
+    assert.ok(
+      levelParams.effectOverrides.damage > 0,
+      `pulse shot damage must not be zero at level ${levelParams.level}`,
+    )
+  }
+
+  // Keep the menu-facing value and runtime value aligned so the recast display matches combat.
+  assert.equal(silentWaveEquipment.active.cooldownMs, silentWaveEffect.params.cooldownMs)
+  assert.ok(silentWaveEffect.params.cooldownMs > 0)
+  assert.ok(silentWaveEffect.params.cooldownMs <= 10000)
+})
+
 test("invalid fixture reports a missing mission reference", () => {
   const fixtureDir = path.join(
     "tools",
@@ -73,6 +93,12 @@ function runValidator(args = []) {
     cwd: rootDir,
     encoding: "utf8",
   })
+}
+
+function loadGameplayJson(relativePath) {
+  return JSON.parse(
+    fs.readFileSync(path.join(rootDir, "content", "gameplay", relativePath), "utf8"),
+  )
 }
 
 function copyCurrentGameplayFixture(t) {

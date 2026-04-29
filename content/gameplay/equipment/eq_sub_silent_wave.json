@@ -7,7 +7,7 @@
   "description": "前方に円形の静音域を射出する。範囲内では可視ノイズの消去、ノイズ源への継続干渉、磁気災害の無効化が得られるが、main の発振間隔が伸びる。",
   "flavorText": "短い沈黙を作る波。そこに残った言葉を拾い直す。",
   "active": {
-    "cooldownMs": 12000,
+    "cooldownMs": 9000,
     "stock": 1,
     "inputAction": "fireSub"
   },

@@ -27,7 +27,7 @@
       "level": 1,
       "selfRepairPointCost": 0,
       "effectOverrides": {
-        "damage": 0,
+        "damage": 10,
         "cadenceMs": 120,
         "shotCount": 3,
         "spreadDeg": 28,
@@ -43,7 +43,7 @@
       "level": 2,
       "selfRepairPointCost": 100,
       "effectOverrides": {
-        "damage": 0,
+        "damage": 12,
         "cadenceMs": 110,
         "shotCount": 3,
         "spreadDeg": 30,
@@ -59,7 +59,7 @@
       "level": 3,
       "selfRepairPointCost": 180,
       "effectOverrides": {
-        "damage": 0,
+        "damage": 14,
         "cadenceMs": 100,
         "shotCount": 3,
         "spreadDeg": 32,
