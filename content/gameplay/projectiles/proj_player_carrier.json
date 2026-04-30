@@ -1,7 +1,7 @@
 {
   "projectileId": "proj_player_carrier",
   "side": "player",
-  "damage": 15,
+  "damage": 36,
   "noiseDamage": 0,
   "speed": 600,
   "lifetimeMs": 2000,

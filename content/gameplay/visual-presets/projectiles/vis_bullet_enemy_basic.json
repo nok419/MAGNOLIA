@@ -2,6 +2,7 @@
   "presetId": "vis_bullet_enemy_basic",
   "category": "projectile",
   "rendererKind": "orb",
+  "bodyKind": "noiseOrb",
   "paletteRole": "enemyNoise",
   "trailKind": "shortSignal",
   "auraKind": "soft",

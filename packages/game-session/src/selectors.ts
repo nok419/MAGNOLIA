@@ -3,6 +3,7 @@ import {
 } from "@magnolia/contracts"
 import type {
   ArchiveAccessState,
+  ArchiveViewModel,
   AreaId,
   AreaMaster,
   AreaProgressRow,
@@ -11,15 +12,18 @@ import type {
   ContentBundle,
   EffectSpec,
   EquipmentId,
+  EquipmentCatalogViewModel,
   EquipmentMaster,
+  EquipmentSlot,
   FeatureAccessState,
+  MenuViewModel,
   MissionId,
   MissionMaster,
   MissionReplaySeed,
   MissionState,
   ProfileAggregate,
   ProfileRow,
-  TimeRange,
+  SubsystemIndex,
   TranscriptChunk,
   TranscriptSpan,
   TransmissionId,
@@ -34,6 +38,7 @@ import { evaluateCondition } from "./conditions"
 import type { ResolvedEquipmentBinding, ResolvedLoadout } from "./equipment-runtime"
 import {
   hasUnlockedTransmissionMetadata,
+  hasVisibleArchiveContent,
   isTransmissionSignalIdentified,
   mergeRanges,
   mergeTranscriptSpans,
@@ -96,6 +101,266 @@ export function selectEquipmentHint(input: {
 
 function isEquipmentId(value: EquipmentId | null | undefined): value is EquipmentId {
   return typeof value === "string" && value.length > 0
+}
+
+export type EquipmentAvailabilityInput = {
+  equipmentId: EquipmentId
+  equipment?: EquipmentMaster
+  profile: ProfileRow | null
+  featureAccess: FeatureAccessState
+}
+
+export function resolveEquipmentPurchaseState(input: EquipmentAvailabilityInput): {
+  canPurchase: boolean
+  purchaseCost?: number
+  lockedReasonLabel?: string
+} {
+  const equipment = input.equipment
+  const profile = input.profile
+  if (!profile) {
+    return { canPurchase: false, lockedReasonLabel: "プロファイルが読み込まれていません" }
+  }
+  if (!equipment) {
+    return { canPurchase: false, lockedReasonLabel: "装備定義がありません" }
+  }
+  if (equipment.unlockSource.kind !== "purchase") {
+    return { canPurchase: false, lockedReasonLabel: "購入対象ではありません" }
+  }
+
+  const purchaseCost = equipment.unlockSource.selfRepairPointCost
+  if (!input.featureAccess.visibleEquipmentIds.includes(input.equipmentId)) {
+    return { canPurchase: false, purchaseCost, lockedReasonLabel: "まだ表示条件を満たしていません" }
+  }
+  if (profile.ownedEquipmentIds.includes(input.equipmentId)) {
+    return { canPurchase: false, purchaseCost, lockedReasonLabel: "入手済みです" }
+  }
+  if (profile.selfRepairPoints < purchaseCost) {
+    return { canPurchase: false, purchaseCost, lockedReasonLabel: "自己修復ポイントが不足しています" }
+  }
+  return { canPurchase: true, purchaseCost }
+}
+
+export function resolveEquipmentUpgradeState(input: EquipmentAvailabilityInput): {
+  canUpgrade: boolean
+  upgradeCost?: number
+  lockedReasonLabel?: string
+} {
+  const equipment = input.equipment
+  const profile = input.profile
+  if (!profile) {
+    return { canUpgrade: false, lockedReasonLabel: "プロファイルが読み込まれていません" }
+  }
+  if (!equipment) {
+    return { canUpgrade: false, lockedReasonLabel: "装備定義がありません" }
+  }
+  if (!profile.ownedEquipmentIds.includes(input.equipmentId)) {
+    return { canUpgrade: false, lockedReasonLabel: "未入手です" }
+  }
+
+  const currentLevel = profile.equipmentLevels[input.equipmentId] ?? 0
+  if (currentLevel < 1) {
+    return { canUpgrade: false, lockedReasonLabel: "装備レベルが未初期化です" }
+  }
+  if (currentLevel >= equipment.maxLevel) {
+    return { canUpgrade: false, lockedReasonLabel: "最大レベルです" }
+  }
+
+  const nextParams = equipment.levelParams.find((level) => level.level === currentLevel + 1)
+  const upgradeCost = nextParams?.selfRepairPointCost
+  if (!nextParams || upgradeCost === undefined) {
+    return { canUpgrade: false, lockedReasonLabel: "次レベルの定義がありません" }
+  }
+  if (profile.selfRepairPoints < upgradeCost) {
+    return { canUpgrade: false, upgradeCost, lockedReasonLabel: "自己修復ポイントが不足しています" }
+  }
+  return { canUpgrade: true, upgradeCost }
+}
+
+export function resolveEquipmentEquipState(input: {
+  equipmentId: EquipmentId
+  slot: EquipmentSlot
+  subsystemIndex?: SubsystemIndex
+  equipment?: EquipmentMaster
+  profile: ProfileRow | null
+}): {
+  canEquip: boolean
+  lockedReasonLabel?: string
+} {
+  const equipment = input.equipment
+  const profile = input.profile
+  if (!profile) {
+    return { canEquip: false, lockedReasonLabel: "プロファイルが読み込まれていません" }
+  }
+  if (!equipment) {
+    return { canEquip: false, lockedReasonLabel: "装備定義がありません" }
+  }
+  if (!profile.ownedEquipmentIds.includes(input.equipmentId)) {
+    return { canEquip: false, lockedReasonLabel: "未入手です" }
+  }
+  if (equipment.slot !== input.slot) {
+    return { canEquip: false, lockedReasonLabel: "装備スロットが一致しません" }
+  }
+  if (input.slot === "subsystem") {
+    if (input.subsystemIndex !== 0 && input.subsystemIndex !== 1) {
+      return { canEquip: false, lockedReasonLabel: "サブシステム枠が不正です" }
+    }
+    if (profile.equipped.subsystems[input.subsystemIndex] === input.equipmentId) {
+      return { canEquip: false, lockedReasonLabel: "装備中です" }
+    }
+    return { canEquip: true }
+  }
+  if (profile.equipped[input.slot] === input.equipmentId) {
+    return { canEquip: false, lockedReasonLabel: "装備中です" }
+  }
+  return { canEquip: true }
+}
+
+export function buildEquipmentCatalogViewModel(input: {
+  equipment: Record<EquipmentId, EquipmentMaster>
+  profile: ProfileRow | null
+  featureAccess: FeatureAccessState
+}): EquipmentCatalogViewModel {
+  const profile = input.profile
+  const equipped = profile?.equipped ?? {
+    main: undefined,
+    sub: undefined,
+    os: undefined,
+    subsystems: [null, null],
+  }
+  const ownedIds = new Set(profile?.ownedEquipmentIds ?? [])
+
+  return {
+    screen: "equipment",
+    selfRepairPoints: profile?.selfRepairPoints ?? 0,
+    equipped,
+    items: Object.values(input.equipment)
+      .filter((equipment) => input.featureAccess.visibleEquipmentIds.includes(equipment.equipmentId))
+      .sort((left, right) => left.slot.localeCompare(right.slot) || left.name.localeCompare(right.name, "ja"))
+      .map((equipment) => {
+        const owned = ownedIds.has(equipment.equipmentId)
+        const masked = !owned && equipment.unlockSource.kind !== "purchase"
+        const purchase = resolveEquipmentPurchaseState({
+          equipmentId: equipment.equipmentId,
+          equipment,
+          profile,
+          featureAccess: input.featureAccess,
+        })
+        const upgrade = resolveEquipmentUpgradeState({
+          equipmentId: equipment.equipmentId,
+          equipment,
+          profile,
+          featureAccess: input.featureAccess,
+        })
+        const equippedState = readEquippedSlot(equipped, equipment.equipmentId)
+        const equipTargets = buildEquipTargets({
+          equipmentId: equipment.equipmentId,
+          slot: equipment.slot,
+          equipped,
+          equipment,
+          profile,
+        })
+        return {
+          equipmentId: equipment.equipmentId,
+          slot: equipment.slot,
+          visibleName: masked ? "???" : equipment.name,
+          visibleDescription: masked ? "詳細不明" : equipment.description,
+          flavorText: masked ? undefined : equipment.flavorText,
+          masked,
+          owned,
+          equippedSlot: equippedState.slot,
+          subsystemIndex: equippedState.subsystemIndex,
+          currentLevel: profile?.equipmentLevels[equipment.equipmentId] ?? 0,
+          maxLevel: equipment.maxLevel,
+          canPurchase: purchase.canPurchase,
+          purchaseCost: purchase.purchaseCost,
+          canUpgrade: upgrade.canUpgrade,
+          upgradeCost: upgrade.upgradeCost,
+          canEquip: equipTargets.some((target) => target.canEquip),
+          equipTargets,
+          lockedReasonLabel: readFirstReason([
+            purchase.lockedReasonLabel,
+            upgrade.lockedReasonLabel,
+            ...equipTargets.map((target) => target.lockedReasonLabel),
+          ]),
+        }
+      }),
+  }
+}
+
+function buildEquipTargets(input: {
+  equipmentId: EquipmentId
+  slot: EquipmentSlot
+  equipped: ProfileRow["equipped"]
+  equipment: EquipmentMaster
+  profile: ProfileRow | null
+}): EquipmentCatalogViewModel["items"][number]["equipTargets"] {
+  if (input.slot === "subsystem") {
+    return ([0, 1] as const).map((subsystemIndex) => {
+      const state = resolveEquipmentEquipState({
+        equipmentId: input.equipmentId,
+        slot: input.slot,
+        subsystemIndex,
+        equipment: input.equipment,
+        profile: input.profile,
+      })
+      return {
+        slot: input.slot,
+        subsystemIndex,
+        label: `subsystem ${subsystemIndex + 1}`,
+        equipped: input.equipped.subsystems[subsystemIndex] === input.equipmentId,
+        canEquip: state.canEquip,
+        lockedReasonLabel: state.lockedReasonLabel,
+      }
+    })
+  }
+
+  const state = resolveEquipmentEquipState({
+    equipmentId: input.equipmentId,
+    slot: input.slot,
+    equipment: input.equipment,
+    profile: input.profile,
+  })
+  return [{
+    slot: input.slot,
+    label: input.slot,
+    equipped: input.equipped[input.slot] === input.equipmentId,
+    canEquip: state.canEquip,
+    lockedReasonLabel: state.lockedReasonLabel,
+  }]
+}
+
+export function buildMenuViewModel(input: {
+  profile: ProfileRow | null
+  featureAccess: FeatureAccessState
+  unreadEquipmentCount: number
+  unreadArchiveCount: number
+}): MenuViewModel {
+  const hasProfile = Boolean(input.profile)
+  return {
+    screen: "menu",
+    canSave: hasProfile,
+    canReturnToTitle: true,
+    tabs: [
+      {
+        tab: "equipment",
+        available: hasProfile && input.featureAccess.canOpenEquipment,
+        badgeCount: input.unreadEquipmentCount,
+        unread: input.unreadEquipmentCount > 0,
+      },
+      {
+        tab: "archive",
+        available: hasProfile && input.featureAccess.canOpenArchive,
+        badgeCount: input.unreadArchiveCount,
+        unread: input.unreadArchiveCount > 0,
+      },
+      {
+        tab: "settings",
+        available: true,
+        badgeCount: 0,
+        unread: false,
+      },
+    ],
+  }
 }
 
 export function buildFeatureAccessState(input: {
@@ -253,7 +518,9 @@ export function buildWorldMapVisibilityState(input: {
     .filter((node) => isWorldNodeVisible(node.visibilityConditionId, input))
     .filter(
       (node) =>
-        visibleCellSet.has(toWorldCellKey(node.x, node.y)) || extraNodeIds.has(node.nodeId),
+        visibleCellSet.has(toWorldCellKey(node.x, node.y)) ||
+        extraNodeIds.has(node.nodeId) ||
+        input.profile.identifiedNodeIds.includes(node.nodeId),
     )
     .map((node) => node.nodeId)
 
@@ -325,6 +592,72 @@ export function buildArchiveAccessState(input: {
   }
 }
 
+export function buildArchiveViewModel(input: {
+  areas: Record<AreaId, AreaMaster>
+  transmissions: Record<TransmissionId, TransmissionMaster>
+  transmissionProgress: Record<TransmissionId, TransmissionProgressRow>
+  transcriptChunks: Record<TranscriptChunk["chunkId"], TranscriptChunk>
+  selectedTransmissionId?: TransmissionId
+}): ArchiveViewModel {
+  const entries = Object.values(input.transmissions)
+    .flatMap((transmission) => {
+      const progress = input.transmissionProgress[transmission.transmissionId]
+      if (!progress || !hasVisibleArchiveContent(progress)) {
+        return []
+      }
+      const chunks = transmission.transcriptChunkIds
+        .map((chunkId) => input.transcriptChunks[chunkId])
+        .filter((chunk): chunk is TranscriptChunk => Boolean(chunk))
+      const access = buildArchiveAccessState({
+        areaId: transmission.areaId,
+        transmissionId: transmission.transmissionId,
+        profile: {
+          profileId: progress.profileId,
+          slotId: 1,
+          schemaVersion: 1,
+          createdAt: "",
+          updatedAt: "",
+          difficulty: "calm",
+          currentAreaId: transmission.areaId,
+          playerPosition: { x: 0, y: 0 },
+          equipped: { subsystems: [null, null] },
+          ownedEquipmentIds: [],
+          equipmentLevels: {},
+          selfRepairPoints: 0,
+          collectedNodeIds: [],
+          identifiedNodeIds: [],
+          unlockedFlags: [],
+          clearedMissionIds: [],
+        },
+        transmission,
+        transmissionProgress: progress,
+        chunks,
+      })
+      const metadata = access.metadataUnlocked
+      const area = input.areas[transmission.areaId]
+      return [{
+        areaId: transmission.areaId,
+        areaName: area?.name ?? transmission.areaId,
+        transmissionId: transmission.transmissionId,
+        title: metadata.title ? transmission.title : "???",
+        sender: metadata.sender ? transmission.sender : "???",
+        recipient: metadata.recipient ? transmission.recipient : "???",
+        sentAt: metadata.sentAt ? transmission.sentAt : "???",
+        metadataUnlocked: metadata,
+        unread: false,
+        selected: input.selectedTransmissionId === transmission.transmissionId,
+        chunks: access.transcriptView,
+      }]
+    })
+    .sort((left, right) => left.areaName.localeCompare(right.areaName, "ja") || left.title.localeCompare(right.title, "ja"))
+
+  return {
+    screen: "archive",
+    selectedTransmissionId: input.selectedTransmissionId,
+    entries,
+  }
+}
+
 export function buildTranscriptViewChunks(
   chunks: TranscriptChunk[],
   restoredSpans: TranscriptSpan[],
@@ -376,6 +709,35 @@ function maskTranscriptChunkText(
         : "█"
     })
     .join("")
+}
+
+function readEquippedSlot(
+  equipped: {
+    main?: EquipmentId
+    sub?: EquipmentId
+    os?: EquipmentId
+    subsystems: [EquipmentId | null, EquipmentId | null]
+  },
+  equipmentId: EquipmentId,
+): { slot?: EquipmentSlot; subsystemIndex?: SubsystemIndex } {
+  if (equipped.main === equipmentId) {
+    return { slot: "main" }
+  }
+  if (equipped.sub === equipmentId) {
+    return { slot: "sub" }
+  }
+  if (equipped.os === equipmentId) {
+    return { slot: "os" }
+  }
+  const subsystemIndex = equipped.subsystems.findIndex((id) => id === equipmentId)
+  if (subsystemIndex === 0 || subsystemIndex === 1) {
+    return { slot: "subsystem", subsystemIndex: subsystemIndex as SubsystemIndex }
+  }
+  return {}
+}
+
+function readFirstReason(reasons: Array<string | undefined>): string | undefined {
+  return reasons.find((reason) => typeof reason === "string" && reason.length > 0)
 }
 
 export function createMissionReplaySeed(input: {
@@ -626,10 +988,4 @@ function createEmptyTransmissionProgress(
     transcriptSpans: [],
     metadataUnlocked: createEmptyMetadataUnlocked(),
   }
-}
-
-function isChunkHeard(chunk: TranscriptChunk, heardRanges: TimeRange[]): boolean {
-  return heardRanges.some(
-    (range) => range.startMs <= chunk.startMs && range.endMs >= chunk.endMs,
-  )
 }

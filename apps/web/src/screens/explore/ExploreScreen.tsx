@@ -97,7 +97,6 @@ export function ExploreScreen({
       : undefined
   const [waveformFrame, setWaveformFrame] = useState(0)
   const [overlayFrame, setOverlayFrame] = useState<ExploreOverlayFrame | null>(null)
-  const [hasSeenFirstScan, setHasSeenFirstScan] = useState(false)
 
   const handleOverlayFrame = useCallback((nextFrame: ExploreOverlayFrame) => {
     setOverlayFrame((currentFrame) =>
@@ -117,13 +116,6 @@ export function ExploreScreen({
     return () => window.clearInterval(timerId)
   }, [canShowStrengthMeter, presentation.hidesHud])
 
-  useEffect(() => {
-    // 初回だけ scan の実行を促し、scan pulse が生成されたら誘導を閉じます。
-    if (renderState.scanPulses.length > 0) {
-      setHasSeenFirstScan(true)
-    }
-  }, [renderState.scanPulses.length])
-
   // Background Music（BGM）同期前の仮プロファイルです。低速の包絡線と短いピークを分け、
   // 実波形へ差し替える際も User Interface（UI）側の距離スケールを変えずに済むようにします。
   const waveformBars = useMemo(() => {
@@ -142,9 +134,9 @@ export function ExploreScreen({
   const scanCooldownPct = Math.round(Math.max(0, Math.min(1, renderState.scanCooldownRatio ?? 1)) * 100)
   const movementModeLabel = readMovementModeLabel(renderState.movementMode)
   const canShowPrompts = presentation.kind === "none"
-  const shouldShowScanHint = canShowPrompts && overlayFrame !== null && !hasSeenFirstScan
+  const shouldShowScanHint = canShowPrompts && overlayFrame !== null && renderState.shouldShowScanHint
   const shipPromptPlacement = overlayFrame
-    ? resolveInteractionPromptPlacement(overlayFrame.playerPoint, overlayFrame.width, overlayFrame.height)
+    ? resolveInteractionPromptPlacement(overlayFrame.playerPoint, overlayFrame.width)
     : "right-up"
 
   const handleCanvasClick = useCallback(
@@ -343,21 +335,23 @@ export function ExploreScreen({
       ) : null}
 
       <section className={`ehud ehud--help${hudTransitionClass}`} style={hudTransitionStyle}>
-        <p>move — wasd / arrows</p>
-        <p>connect — enter / click</p>
-        <p>scan — r / click 2</p>
-        <p>equipment — e</p>
-        <p>map — m</p>
+        <ControlHelpRow label="move" keys={["WASD", "arrows"]} />
+        <ControlHelpRow label="connect" keys={["Enter", "click"]} />
+        {renderState.shouldShowScanHint ? (
+          <ControlHelpRow label="scan" keys={["Space", "click 2"]} />
+        ) : null}
+        <ControlHelpRow label="equipment" keys={["E"]} />
+        <ControlHelpRow label="map" keys={["M"]} />
       </section>
 
       {shouldShowScanHint ? (
         <InteractionPromptCallout
           anchor={overlayFrame.playerPoint}
-          placement="left-down"
-          keyLabel="R / click 2"
+          placement={shipPromptPlacement}
+          keyLabel={["Space", "click 2"]}
           label="scan"
-          tone="cyan"
-          ariaLabel="R または click 2 でスキャンを出します"
+          tone="warm"
+          ariaLabel="Space または click 2 でスキャンを出します"
         />
       ) : null}
 
@@ -383,6 +377,21 @@ export function ExploreScreen({
         </div>
       ) : null}
     </main>
+  )
+}
+
+function ControlHelpRow({ label, keys }: { label: string; keys: readonly string[] }) {
+  return (
+    <p className="ehud-help__row">
+      <span className="ehud-help__label">{label}</span>
+      <span className="ehud-help__keys" aria-label={keys.join(" or ")}>
+        {keys.map((keyLabel) => (
+          <kbd key={keyLabel} className="ehud-help__key">
+            {keyLabel}
+          </kbd>
+        ))}
+      </span>
+    </p>
   )
 }
 
@@ -484,7 +493,6 @@ function worldToOverlayPoint(
 function resolveInteractionPromptPlacement(
   anchor: { x: number; y: number },
   width: number,
-  height: number,
 ): InteractionPromptPlacement {
   const horizontal = anchor.x > width - 260 ? "left" : "right"
   const vertical = anchor.y < 130 ? "down" : "up"

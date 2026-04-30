@@ -8,10 +8,12 @@ import { MenuScreen } from "@/screens/menu/MenuScreen"
 import { MagnoliaLogo } from "@/components/title/MagnoliaLogo"
 import { PresentationOverlay } from "@/components/PresentationOverlay"
 import { EquipmentModal } from "@/components/EquipmentModal"
+import { IdleAutoSaveOverlay } from "@/components/IdleAutoSaveOverlay"
 import { applyAudioSettings } from "@/app/audio-controller"
 import { resolveDisplayOptions } from "@/app/display-options"
 import { TransitionPresentationLayer } from "@/app/presentation/TransitionPresentationLayer"
 import { useMagnoliaApp } from "@/app/use-magnolia-app"
+import { initializeGameAudio } from "@/audio"
 
 export function App() {
   const app = useMagnoliaApp()
@@ -22,6 +24,10 @@ export function App() {
       app.settings?.reduceFlashing,
     ],
   )
+  useEffect(() => {
+    initializeGameAudio()
+  }, [])
+
   useEffect(() => {
     if (!app.settings) {
       return
@@ -44,7 +50,7 @@ export function App() {
   let screen: ReactNode = null
 
   switch (app.screen) {
-    // タイトルとスロット選択は同一コンポーネントでシームレスに切り替えます。
+    // タイトルとスロット選択は同一コンポーネントで扱い、画面責務を増やしません。
     case "title":
     case "slotSelect":
       screen = (
@@ -183,6 +189,9 @@ export function App() {
           onDismiss={app.dismissEquipmentModal}
         />
       )}
+      {app.idleAutoSave ? (
+        <IdleAutoSaveOverlay state={app.idleAutoSave} />
+      ) : null}
     </div>
   )
 }

@@ -4,6 +4,8 @@
 担当: 担当者C
 主な対象: `apps/web/src/components/ExploreCanvas.tsx`, `apps/web/src/screens/explore/ExploreScreen.tsx`, `apps/web/src/components/MiniMap.tsx`, `apps/web/src/screens/map/MapScreen.tsx`, 新設する `apps/web/src/render/explore/*`, `apps/web/src/render/map/*`, `apps/web/src/render/shared/*`
 
+注記: この文書は閉じたレビュー履歴です。現行のコードマップは `docs/02_開発体制とディレクトリ構成.md`、データ契約は `docs/05_データ構造.md`、表示境界は `docs/08_表示と機能の境界.md`、design package は `docs/11_design_package/README.md` を参照してください。
+
 # 目的
 
 探索を「見えているアイコンへ移動する画面」から、「信号の反応を読み、通信の位置を絞る画面」へ寄せます。同時に、探索、地図、ミニマップが content 全量や独自 projection に依存しすぎている状態を修正します。

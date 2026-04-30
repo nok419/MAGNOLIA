@@ -51,15 +51,29 @@ export type InternalProjectileState = {
   trailExplosionTimerMs?: number
   trailExplosionRadius?: number
   trailExplosionDamageMultiplier?: number
+  trailExplosionAreaDamageMultiplier?: number
+  trailExplosionAreaDamageDurationMs?: number
+  trailExplosionClearsEnemyProjectiles?: boolean
   trailExplosionVisualProjectileId?: string
   explosiveRadius?: number
   burnDamagePerSec?: number
   burnDurationMs?: number
   detonationDelayMs?: number
   explosionDamageMultiplier?: number
+  explosionAreaDamageMultiplier?: number
+  explosionAreaDamageDurationMs?: number
+  explosionClearsEnemyProjectiles?: boolean
   explosionVisualProjectileId?: string
   nonColliding?: boolean
+  piercing?: boolean
+  hitEnemyInstanceIds?: string[]
   anchorToPlayer?: boolean
+  meleeSweepDamage?: number
+  meleeSweepRange?: number
+  meleeSweepArcDeg?: number
+  meleeSweepHitEnemyInstanceIds?: string[]
+  areaDamagePerSecond?: number
+  areaClearsEnemyProjectiles?: boolean
   inversePhaseVisual?: boolean
 }
 
@@ -128,6 +142,7 @@ export type InternalBattleState = {
   selfRepairPointsEarned: number
   cleared: boolean
   spawnedWaveIndexes: Set<number>
+  firedBeatIds: Set<string>
   playerPosition: Vector2
   mainCooldownMs: number
   mainMeleeCooldownMs: number
@@ -141,6 +156,8 @@ export type InternalBattleState = {
   activeResult?: MissionResult
   previousNoiseAudible: boolean
   lastFragmentSpawnedAtMs: number
+  newlyLostRange?: TimeRange
+  newlyRecoveredRange?: TimeRange
   previousSubPressed: boolean
   hazards: BattlefieldHazardState[]
 }

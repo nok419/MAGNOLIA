@@ -126,6 +126,20 @@
     }
   },
   {
+    "id": "battle.subtitle.damage",
+    "channel": "battle",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 320,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 320,
+      "motionScale": 0.35,
+      "flashEnabled": false
+    }
+  },
+  {
     "id": "battle.noise.peak",
     "channel": "battle",
     "renderer": "shared",
@@ -192,6 +206,20 @@
     "reduceFlashingVariant": {
       "defaultDurationMs": 400,
       "motionScale": 0.4,
+      "flashEnabled": false
+    }
+  },
+  {
+    "id": "battle.mission.beat",
+    "channel": "battle",
+    "renderer": "shared",
+    "blocking": false,
+    "skippable": true,
+    "defaultDurationMs": 600,
+    "maxFlashHz": 0,
+    "reduceFlashingVariant": {
+      "defaultDurationMs": 600,
+      "motionScale": 0.5,
       "flashEnabled": false
     }
   }

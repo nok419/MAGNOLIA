@@ -10,7 +10,7 @@ import {
   resolveBattleRenderer,
 } from "@/render/battle/battle-renderer-utils"
 import type { CanvasPaletteRole } from "@/render/shared/canvas-palette"
-import { gradientStop, hex, rgba } from "@/render/shared/canvas-palette"
+import { gradientStop, hex, resolveCanvasPaletteRole, rgba } from "@/render/shared/canvas-palette"
 import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
 
 export type BattleProjectileRenderEffect = "inversePhase" | "inversePhaseAura" | "meleeSweep"
@@ -34,8 +34,8 @@ const BATTLE_PLAYER_PROJECTILE_RENDERERS: Record<
   carrier: (ctx, input) => drawCarrierProjectile(ctx, input.projectile),
   lance: (ctx, input) => drawPulseMelee(ctx, input.projectile, input.timeMs),
   pulse: (ctx, input) => {
-    // pulse renderer は preset.radiusScale が大きい場合に carrier blast 形状へ振ります。
-    if ((input.projectile.visual.radiusScale ?? 1) > 1.1) {
+    // bodyKind は本体形状の正本です。radiusScale はサイズ調整だけに使います。
+    if (input.projectile.visual.bodyKind === "carrierBlast") {
       drawCarrierBlast(ctx, input.projectile, input.timeMs)
       return
     }
@@ -52,8 +52,8 @@ const BATTLE_ENEMY_PROJECTILE_RENDERERS: Record<
   lance: (ctx, input) => drawEnemyLanceProjectile(ctx, input.projectile, input.timeMs),
   pulse: (ctx, input) => drawBossCoreProjectile(ctx, input.projectile, input.timeMs),
   shard: (ctx, input) => {
-    // trailKind が brokenSignal の preset は鋭い菱形派生に振ります。
-    if (input.projectile.visual.trailKind === "brokenSignal") {
+    // bodyKind は本体形状、trailKind は軌跡だけを表します。
+    if (input.projectile.visual.bodyKind === "geoDiamond") {
       drawGeoDiamondProjectile(ctx, input.projectile, input.timeMs, input.renderOptions)
       return
     }
@@ -872,7 +872,7 @@ function drawSignalShardProjectile(
 }
 
 function readProjectileRole(p: ProjectileRenderState, fallback: CanvasPaletteRole): CanvasPaletteRole {
-  return resolvePaletteRole(p.visual.paletteRole, fallback)
+  return resolveCanvasPaletteRole(p.visual.paletteRole, fallback)
 }
 
 function readGlowIntensity(visual: ProjectileContentVisualPreset, fallback: number): number {
@@ -893,28 +893,4 @@ function readAuraScale(auraKind: string | undefined, base: number): number {
     default:
       return base
   }
-}
-
-const SUPPORTED_ROLES: ReadonlySet<CanvasPaletteRole> = new Set([
-  "voidBase",
-  "voidRaised",
-  "voidDepth",
-  "panel",
-  "lineSubtle",
-  "lineStrong",
-  "signalPrimary",
-  "signalPrimaryDim",
-  "signalReadable",
-  "signalSecondary",
-  "signalMuted",
-  "residualWarmth",
-  "restoration",
-  "threatNoise",
-  "playerSignal",
-  "enemyNoise",
-  "enemyPrototype",
-])
-
-function resolvePaletteRole(value: string, fallback: CanvasPaletteRole): CanvasPaletteRole {
-  return SUPPORTED_ROLES.has(value as CanvasPaletteRole) ? (value as CanvasPaletteRole) : fallback
 }

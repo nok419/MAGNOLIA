@@ -2,6 +2,7 @@
   "presetId": "vis_bullet_player_melee",
   "category": "projectile",
   "rendererKind": "lance",
+  "bodyKind": "lance",
   "paletteRole": "playerSignal",
   "trailKind": "arcSignal",
   "auraKind": "clear",

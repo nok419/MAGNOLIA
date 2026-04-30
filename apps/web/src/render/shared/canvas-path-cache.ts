@@ -15,13 +15,18 @@ export function readCachedCanvasPath(input: CanvasPathCacheInput, build: () => P
   const key = createCanvasPathCacheKey(input)
   const cached = pathCache.get(key)
   if (cached) {
+    pathCache.delete(key)
+    pathCache.set(key, cached)
     return cached
   }
 
   const path = build()
-  // Cache は preset 変更の取りこぼしを避けるため、描画種別と表示設定を key に含めて固定します。
+  // LRU で古い shape だけを落とし、frame 中の全消去による Path2D 再生成を避けます。
   if (pathCache.size >= MAX_PATH_CACHE_ENTRIES) {
-    pathCache.clear()
+    const oldestKey = pathCache.keys().next().value
+    if (oldestKey) {
+      pathCache.delete(oldestKey)
+    }
   }
   pathCache.set(key, path)
   return path

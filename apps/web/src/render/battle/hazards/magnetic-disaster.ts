@@ -1,30 +1,10 @@
 import type { HazardRenderState } from "@magnolia/game-session"
 import { TAU, easeOutCubic, hashString, seededRandom } from "@/render/battle/battle-renderer-utils"
 import type { CanvasPaletteRole } from "@/render/shared/canvas-palette"
-import { gradientStop, rgba } from "@/render/shared/canvas-palette"
+import { gradientStop, resolveCanvasPaletteRole, rgba } from "@/render/shared/canvas-palette"
 import { drawThreatNoiseField } from "@/render/shared/effects/threat-noise-field"
 
 export type MagneticDisasterHazardPreset = "magneticDisaster"
-
-const SUPPORTED_ROLES: ReadonlySet<CanvasPaletteRole> = new Set([
-  "voidBase",
-  "voidRaised",
-  "voidDepth",
-  "panel",
-  "lineSubtle",
-  "lineStrong",
-  "signalPrimary",
-  "signalPrimaryDim",
-  "signalReadable",
-  "signalSecondary",
-  "signalMuted",
-  "residualWarmth",
-  "restoration",
-  "threatNoise",
-  "playerSignal",
-  "enemyNoise",
-  "enemyPrototype",
-])
 
 export function drawHazard(
   ctx: CanvasRenderingContext2D,
@@ -481,5 +461,5 @@ function drawMagneticWarningRim(
 }
 
 function readHazardPaletteRole(value: string): CanvasPaletteRole {
-  return SUPPORTED_ROLES.has(value as CanvasPaletteRole) ? (value as CanvasPaletteRole) : "threatNoise"
+  return resolveCanvasPaletteRole(value, "threatNoise")
 }

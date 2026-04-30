@@ -17,3 +17,9 @@ export type SaveSlotSummary = {
   playTimeLabel: string
   isEmpty: boolean
 }
+
+export type IdleAutoSaveViewModel = {
+  status: "countdown" | "saving"
+  remainingSeconds: number
+  targetSlotId: 1 | 2 | 3
+}

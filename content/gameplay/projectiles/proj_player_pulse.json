@@ -1,7 +1,7 @@
 {
   "projectileId": "proj_player_pulse",
   "side": "player",
-  "damage": 10,
+  "damage": 9,
   "noiseDamage": 0,
   "speed": 400,
   "lifetimeMs": 3000,

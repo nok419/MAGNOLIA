@@ -2,6 +2,7 @@
   "presetId": "vis_bullet_player_pulse",
   "category": "projectile",
   "rendererKind": "pulse",
+  "bodyKind": "defaultPlayerPulse",
   "paletteRole": "playerSignal",
   "trailKind": "shortSignal",
   "auraKind": "clear",

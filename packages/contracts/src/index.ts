@@ -1,3 +1,4 @@
+export * from "./content-kinds"
 export * from "./explore-view"
 export * from "./game-types"
 export * from "./presentation-types"

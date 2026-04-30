@@ -1,4 +1,5 @@
 import path from "node:path"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import {
   addIssue,
   asArray,
@@ -40,6 +41,9 @@ export function validateReferenceRules(context: ValidationContext): void {
   validateMapReferences(context, indexes)
   validateConditionReferences(context, indexes)
   validateContentClassification(context, indexes)
+  validateActiveLifecycleReferences(context, indexes)
+  validateContentDirectoriesMatchDocs(context)
+  validateGeneratedManifestMatchesContentFiles(context)
 }
 
 function createIndexes(context: ValidationContext) {
@@ -220,6 +224,27 @@ function validateMissionReferences(context: ValidationContext, indexes: ReturnTy
         requireId(context, indexes.enemies, asString(entryRecord?.enemyId), "enemy", missionId, file.relativePath)
       }
     }
+    const hazardIds = new Set(
+      asArray(mission.hazards)
+        .map((hazard) => asString(asRecord(hazard)?.hazardId))
+        .filter((hazardId): hazardId is string => Boolean(hazardId)),
+    )
+    for (const beat of asArray(mission.beatEvents)) {
+      const beatRecord = asRecord(beat)
+      const beatId = asString(beatRecord?.beatId) ?? "(unknown beat)"
+      for (const chunkId of asArray(beatRecord?.transcriptChunkIds)) {
+        requireId(context, indexes.chunks, asString(chunkId), "transcript chunk", `${missionId}/${beatId}`, file.relativePath)
+      }
+      for (const enemyId of asArray(beatRecord?.relatedEnemyIds)) {
+        requireId(context, indexes.enemies, asString(enemyId), "enemy", `${missionId}/${beatId}`, file.relativePath)
+      }
+      for (const hazardIdValue of asArray(beatRecord?.relatedHazardIds)) {
+        const hazardId = asString(hazardIdValue)
+        if (hazardId && !hazardIds.has(hazardId)) {
+          addIssue(context, `Missing hazard '${hazardId}' referenced by ${missionId}/${beatId}.`, file.relativePath)
+        }
+      }
+    }
     for (const hazard of asArray(mission.hazards)) {
       const hazardRecord = asRecord(hazard)
       requireId(context, indexes.conditions, asString(hazardRecord?.visibilityConditionId), "condition", missionId, file.relativePath)
@@ -269,6 +294,10 @@ function validateEquipmentReferences(context: ValidationContext, indexes: Return
 
 function validateMapReferences(context: ValidationContext, indexes: ReturnType<typeof createIndexes>): void {
   const knownNodeIds = new Set<string>()
+  const areaVisibilityById = new Map<string, string | undefined>()
+  for (const [areaId, file] of indexes.areas) {
+    areaVisibilityById.set(areaId, asString(asRecord(file.data)?.visibilityConditionId))
+  }
   for (const [mapId, file] of indexes.maps) {
     const map = asRecord(file.data)
     if (!map) {
@@ -287,6 +316,13 @@ function validateMapReferences(context: ValidationContext, indexes: ReturnType<t
         requireId(context, indexes.transmissions, asString(nodeRecord?.transmissionId), "transmission", mapId, file.relativePath)
         requireId(context, indexes.equipment, asString(nodeRecord?.equipmentId), "equipment", mapId, file.relativePath)
         requireId(context, indexes.areas, asString(nodeRecord?.warpTargetAreaId), "target area", mapId, file.relativePath)
+        validateNodeVisibilityWithinArea(
+          context,
+          areaVisibilityById,
+          nodeRecord,
+          nodeId ?? "(unknown node)",
+          file.relativePath,
+        )
       }
     }
   }
@@ -299,6 +335,40 @@ function validateMapReferences(context: ValidationContext, indexes: ReturnType<t
       addIssue(context, `Missing map node '${nodeId}' referenced by ${equipmentId}.`, file.relativePath)
     }
   }
+}
+
+function validateNodeVisibilityWithinArea(
+  context: ValidationContext,
+  areaVisibilityById: Map<string, string | undefined>,
+  node: Record<string, unknown> | null,
+  nodeId: string,
+  file: string,
+): void {
+  const areaId = asString(node?.areaId)
+  if (!areaId) {
+    return
+  }
+
+  const areaVisibilityConditionId = areaVisibilityById.get(areaId)
+  const nodeVisibilityConditionId = asString(node?.visibilityConditionId)
+  if (!areaVisibilityConditionId || areaVisibilityConditionId === "cond_always") {
+    return
+  }
+
+  if (nodeVisibilityConditionId === areaVisibilityConditionId) {
+    return
+  }
+
+  if (node?.allowOutOfAreaHint === true) {
+    return
+  }
+
+  // 条件式の包含関係は一般化せず、ロック中エリアでは同じ条件か明示例外だけを許します。
+  addIssue(
+    context,
+    `Map node '${nodeId}' uses visibilityConditionId '${String(nodeVisibilityConditionId)}' broader than area '${areaId}' visibility '${areaVisibilityConditionId}'. Use the area condition or set allowOutOfAreaHint: true.`,
+    file,
+  )
 }
 
 function validateConditionReferences(context: ValidationContext, indexes: ReturnType<typeof createIndexes>): void {
@@ -361,4 +431,204 @@ function validateContentClassification(context: ValidationContext, indexes: Retu
       addIssue(context, `Content id '${id}' is not classified as active, prototype, or deprecated.`, classificationFile.relativePath)
     }
   }
+}
+
+function validateActiveLifecycleReferences(context: ValidationContext, indexes: ReturnType<typeof createIndexes>): void {
+  const classificationFile = context.store.files.find((file) => file.gameplayRelativePath === "content-classification.json")
+  const classification = classificationFile ? asRecord(classificationFile.data) : null
+  const active = classification ? asRecord(classification.active) : null
+  if (!classificationFile || !active) {
+    return
+  }
+
+  const activeMissions = readLifecycleSet(active, "missions")
+  const activeEnemies = readLifecycleSet(active, "enemies")
+  const activeBulletPatterns = readLifecycleSet(active, "bulletPatterns")
+  const activeProjectiles = readLifecycleSet(active, "projectiles")
+
+  for (const [kind, ids] of [
+    ["missions", activeMissions],
+    ["enemies", activeEnemies],
+    ["bulletPatterns", activeBulletPatterns],
+    ["projectiles", activeProjectiles],
+  ] as const) {
+    if (ids.size === 0) {
+      addIssue(context, `Active lifecycle must list at least one ${kind} id.`, classificationFile.relativePath)
+    }
+  }
+
+  for (const missionId of activeMissions) {
+    const file = indexes.missions.get(missionId)
+    const mission = file ? asRecord(file.data) : null
+    if (!file || !mission) {
+      continue
+    }
+    for (const wave of asArray(mission.waves)) {
+      const waveRecord = asRecord(wave)
+      for (const entry of asArray(waveRecord?.entries)) {
+        const enemyId = asString(asRecord(entry)?.enemyId)
+        if (enemyId && !activeEnemies.has(enemyId)) {
+          addIssue(context, `Active mission '${missionId}' references non-active enemy '${enemyId}'.`, file.relativePath)
+        }
+      }
+    }
+    for (const beat of asArray(mission.beatEvents)) {
+      const beatRecord = asRecord(beat)
+      const beatId = asString(beatRecord?.beatId) ?? "(unknown beat)"
+      for (const enemyIdValue of asArray(beatRecord?.relatedEnemyIds)) {
+        const enemyId = asString(enemyIdValue)
+        if (enemyId && !activeEnemies.has(enemyId)) {
+          addIssue(context, `Active mission beat '${missionId}/${beatId}' references non-active enemy '${enemyId}'.`, file.relativePath)
+        }
+      }
+    }
+  }
+
+  for (const enemyId of activeEnemies) {
+    const file = indexes.enemies.get(enemyId)
+    const enemy = file ? asRecord(file.data) : null
+    if (!file || !enemy) {
+      continue
+    }
+    for (const bulletPatternIdValue of asArray(enemy.bulletPatternIds)) {
+      const bulletPatternId = asString(bulletPatternIdValue)
+      if (bulletPatternId && !activeBulletPatterns.has(bulletPatternId)) {
+        addIssue(context, `Active enemy '${enemyId}' references non-active bullet pattern '${bulletPatternId}'.`, file.relativePath)
+      }
+    }
+  }
+
+  for (const bulletPatternId of activeBulletPatterns) {
+    const file = indexes.bulletPatterns.get(bulletPatternId)
+    const bulletPattern = file ? asRecord(file.data) : null
+    if (!file || !bulletPattern) {
+      continue
+    }
+    const projectileId = asString(bulletPattern.projectileId)
+    if (projectileId && !activeProjectiles.has(projectileId)) {
+      addIssue(context, `Active bullet pattern '${bulletPatternId}' references non-active projectile '${projectileId}'.`, file.relativePath)
+    }
+  }
+}
+
+function readLifecycleSet(bucket: Record<string, unknown>, key: string): Set<string> {
+  return new Set(
+    asArray(bucket[key])
+      .map((value) => asString(value))
+      .filter((value): value is string => Boolean(value)),
+  )
+}
+
+function validateContentDirectoriesMatchDocs(context: ValidationContext): void {
+  if (!context.store.usesDefaultGameplayDir) {
+    return
+  }
+
+  const docsPath = findDocsFileByNfcName(context.store.rootDir, "05_データ構造.md")
+  if (!existsSync(docsPath)) {
+    addIssue(context, "Missing docs/05_データ構造.md for content tree audit.", "docs")
+    return
+  }
+
+  const docs = readFileSync(docsPath, "utf8")
+  const documentedDirectories = new Set(
+    [...docs.matchAll(/content\/gameplay\/([A-Za-z0-9_./-]+)\/?/g)]
+      .map((match) => match[1]?.replace(/\/$/, ""))
+      .filter((entry): entry is string => Boolean(entry) && !entry.includes("*")),
+  )
+  const actualDirectories = new Set(
+    collectDirectories(context.store.gameplayDir)
+      .map((directory) => path.relative(context.store.gameplayDir, directory))
+      .filter(Boolean)
+      .filter((directory) => !["active", "prototypes", "deprecated"].includes(directory)),
+  )
+
+  for (const directory of actualDirectories) {
+    if (!documentedDirectories.has(directory)) {
+      addIssue(context, `Content directory '${directory}' exists but is not documented in docs/05_データ構造.md.`, "docs/05_データ構造.md")
+    }
+  }
+}
+
+function findDocsFileByNfcName(rootDir: string, expectedName: string): string {
+  const docsDir = path.join(rootDir, "docs")
+  const expectedPath = path.join(docsDir, expectedName)
+  if (existsSync(expectedPath)) {
+    return expectedPath
+  }
+  if (!existsSync(docsDir)) {
+    return expectedPath
+  }
+  const matchedName = readdirSync(docsDir).find((file) => file.normalize("NFC") === expectedName)
+  return matchedName ? path.join(docsDir, matchedName) : expectedPath
+}
+
+function validateGeneratedManifestMatchesContentFiles(context: ValidationContext): void {
+  if (!context.store.usesDefaultGameplayDir) {
+    return
+  }
+
+  const manifestPath = path.join(
+    context.store.rootDir,
+    "packages",
+    "persistence",
+    "src",
+    "generated",
+    "content-manifest.ts",
+  )
+  if (!existsSync(manifestPath)) {
+    addIssue(context, "Missing generated content manifest.", "packages/persistence/src/generated")
+    return
+  }
+
+  const manifestSource = readFileSync(manifestPath, "utf8")
+  const actualFiles = new Set(
+    context.store.files
+      .filter((file) => mustBeLoadedByContentBundle(file.gameplayRelativePath))
+      .map((file) => file.gameplayRelativePath.split(path.sep).join("/")),
+  )
+  const manifestFiles = new Set(
+    [...manifestSource.matchAll(/"\.\.\/\.\.\/\.\.\/\.\.\/content\/gameplay\/([^"]+\.json)"/g)]
+      .map((match) => match[1])
+      .filter((entry): entry is string => Boolean(entry)),
+  )
+
+  for (const file of context.store.files) {
+    if (!mustBeLoadedByContentBundle(file.gameplayRelativePath)) {
+      continue
+    }
+    const expectedImport = file.gameplayRelativePath.split(path.sep).join("/")
+    if (!manifestFiles.has(expectedImport)) {
+      addIssue(context, `Content file 'content/gameplay/${expectedImport}' is missing from generated manifest.`, "packages/persistence/src/generated/content-manifest.ts")
+    }
+  }
+
+  for (const manifestFile of manifestFiles) {
+    if (!actualFiles.has(manifestFile)) {
+      addIssue(context, `Generated manifest imports missing content file 'content/gameplay/${manifestFile}'.`, "packages/persistence/src/generated/content-manifest.ts")
+    }
+  }
+}
+
+function mustBeLoadedByContentBundle(gameplayRelativePath: string): boolean {
+  if (gameplayRelativePath === "migrated-id-map.json") {
+    return false
+  }
+  return gameplayRelativePath.endsWith(".json")
+}
+
+function collectDirectories(dir: string): string[] {
+  if (!existsSync(dir)) {
+    return []
+  }
+
+  const directories: string[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue
+    }
+    const entryPath = path.join(dir, entry.name)
+    directories.push(entryPath, ...collectDirectories(entryPath))
+  }
+  return directories
 }

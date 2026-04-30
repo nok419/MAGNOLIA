@@ -272,6 +272,12 @@ export function fireDefaultMainShot(input: {
         ),
         meleeDamage: readNumericParam(mainShotEffect, "meleeDamage", 8),
         meleeSpreadDeg: readNumericParam(mainShotEffect, "meleeSpreadDeg", 120),
+        meleeCollisionRange: readNumericParam(
+          mainShotEffect,
+          "meleeCollisionRange",
+          readNumericParam(mainShotEffect, "meleeRange", 80) * 1.8,
+        ),
+        meleeCollisionArcDeg: readNumericParam(mainShotEffect, "meleeCollisionArcDeg", 32),
         meleeShotCount: readNumericParam(mainShotEffect, "meleeShotCount", 5),
         meleeSequentialDelayMs: readNumericParam(mainShotEffect, "meleeSequentialDelayMs", 30),
         meleeSweepDurationMs: readNumericParam(mainShotEffect, "meleeSweepDurationMs", 560),
@@ -628,6 +634,19 @@ export const defaultEquipmentRuntimeRegistry: EquipmentRuntimeRegistry = {
               mainShotEffect,
               "explosionDamageMultiplier",
               0.75,
+            ),
+            explosionAreaDamageMultiplier: readNumericParam(
+              mainShotEffect,
+              "explosionAreaDamageMultiplier",
+              0,
+            ),
+            explosionAreaDamageDurationMs: readNumericParam(
+              mainShotEffect,
+              "explosionAreaDamageDurationMs",
+              0,
+            ),
+            explosionClearsEnemyProjectiles: Boolean(
+              mainShotEffect?.params?.explosionClearsEnemyProjectiles,
             ),
             explosionVisualProjectileId: String(
               mainShotEffect?.params?.explosionVisualProjectileId ??

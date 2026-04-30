@@ -534,3 +534,25 @@
   color: var(--mg-accent);
   box-shadow: 0 0 8px rgba(93, 164, 209, 0.15);
 }
+
+/* =========================================================
+   SCRAMBLE TEXT — ░▒▓█ シャッフル演出（useScrambleText）
+   - スクランブル文字だけほのかに発色させ、
+     完了後のテキスト本体は親要素の色を継承する。
+   - 親要素の color/font-family を尊重したいので、ここでは色相だけを与える。
+   ========================================================= */
+.scramble-text {
+  display: inline;
+  font-variant-ligatures: none;
+  /* 等幅で並ばない場合の桁ぶれを抑える */
+  font-feature-settings: "tnum" 1;
+}
+
+.scramble-text > span[aria-hidden="true"] {
+  color: inherit;
+}
+
+/* reduceFlashing 時はテキストシャドウを落として視覚負荷を下げる */
+.magnolia-app--reduce-flashing .scramble-text > span[aria-hidden="true"] {
+  text-shadow: none;
+}

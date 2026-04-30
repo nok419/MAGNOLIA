@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { ActionButton } from "@/components/ActionButton"
+import { ScrambleText } from "@/components/common"
 import { MagnoliaLogo } from "@/components/title/MagnoliaLogo"
 import { SignalBackdropCanvas } from "@/components/title/SignalBackdropCanvas"
 import { useMenuNavigation } from "@/hooks/useMenuNavigation"
@@ -97,13 +98,22 @@ export function TitleScreen({
       <div className="title-screen__backdrop" />
 
       <section className="title-screen__panel">
-        <p className="title-screen__eyebrow">transmission system</p>
+        <p className="title-screen__eyebrow">
+          <ScrambleText
+            text="transmission system"
+            reduceFlashing={displayOptions.reduceFlashing}
+          />
+        </p>
         <MagnoliaLogo />
 
         <div className="title-phases">
           <div className={`title-phase ${phase === "title" ? "title-phase--active" : ""}`}>
             <p className="title-screen__summary">
-              signal in the haze
+              <ScrambleText
+                text="signal in the haze"
+                trigger={phase}
+                reduceFlashing={displayOptions.reduceFlashing}
+              />
             </p>
             <nav className="title-screen__actions">
               {menuItems.map((item, i) => (
@@ -123,9 +133,15 @@ export function TitleScreen({
 
           <div className={`title-phase ${phase === "slotSelect" ? "title-phase--active" : ""}`}>
             <p className="title-screen__summary">
-              {slotSelectMode === "newGame"
-                ? "select save slot to initialize"
-                : "select data to resume"}
+              <ScrambleText
+                text={
+                  slotSelectMode === "newGame"
+                    ? "select save slot to initialize"
+                    : "select data to resume"
+                }
+                trigger={`${phase}:${slotSelectMode ?? ""}`}
+                reduceFlashing={displayOptions.reduceFlashing}
+              />
             </p>
             <div className="title-slots">
               {slots.map((slot) => {

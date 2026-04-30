@@ -2,13 +2,20 @@
   "name": "magnolia",
   "private": true,
   "scripts": {
+    "archive:release": "npm run build && node tools/create-release-artifact.mjs",
     "archive:source": "node tools/create-source-archive.mjs",
     "build": "tsc -b && npm run build --workspace @magnolia/web",
     "check": "tsc -b",
-    "content:validate": "tsc -p tools/content-validator/tsconfig.json && node tools/content-validator/dist/validate-content.js",
+    "ci": "npm run build && npm run content:validate && npm run style:audit && npm test",
+    "content:manifest": "node tools/generate-content-manifest.mjs",
+    "content:manifest:check": "node tools/generate-content-manifest.mjs --check",
+    "content:validate": "npm run content:manifest:check && tsc -p tools/content-validator/tsconfig.json && node tools/content-validator/dist/validate-content.js",
     "lint": "tsc -b --pretty false",
-    "test": "tsc -p tools/content-validator/tsconfig.json && node --test tests/*.test.mjs",
+    "source:audit": "node tools/source-audit.mjs",
+    "style:audit": "node tools/style-audit.mjs",
+    "test": "npm run typecheck && npm run content:validate && npm run source:audit && npm run unicode:filenames && node --test tests/*.test.mjs",
     "typecheck": "tsc -b",
+    "unicode:filenames": "node tools/unicode-filename-audit.mjs",
     "validate:content": "npm run content:validate"
   },
   "devDependencies": {

@@ -15,6 +15,7 @@ export type ContentFile = {
 export type ContentStore = {
   rootDir: string
   gameplayDir: string
+  usesDefaultGameplayDir: boolean
   files: ContentFile[]
   byGroup: Record<string, ContentFile[]>
 }
@@ -27,10 +28,15 @@ export type ValidationIssue = {
 export type ValidationContext = {
   store: ContentStore
   issues: ValidationIssue[]
+  warnings: ValidationIssue[]
 }
 
 export function addIssue(context: ValidationContext, message: string, file?: string): void {
   context.issues.push({ file, message })
+}
+
+export function addWarning(context: ValidationContext, message: string, file?: string): void {
+  context.warnings.push({ file, message })
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | null {
@@ -120,13 +126,15 @@ function groupFiles(files: readonly ContentFile[], gameplayDir: string): Record<
 
 function createStore(gameplayDirInput?: string): ContentStore {
   const rootDir = process.cwd()
+  const defaultGameplayDir = path.join(rootDir, "content", "gameplay")
   const gameplayDir = gameplayDirInput
     ? path.resolve(rootDir, gameplayDirInput)
-    : path.join(rootDir, "content", "gameplay")
+    : defaultGameplayDir
   const files = collectJsonFiles(gameplayDir, rootDir, gameplayDir)
   return {
     rootDir,
     gameplayDir,
+    usesDefaultGameplayDir: gameplayDir === defaultGameplayDir,
     files,
     byGroup: groupFiles(files, gameplayDir),
   }
@@ -135,12 +143,17 @@ function createStore(gameplayDirInput?: string): ContentStore {
 function main(): void {
   const options = readCliOptions(process.argv.slice(2))
   const store = createStore(options.gameplayDir)
-  const context: ValidationContext = { store, issues: [] }
+  const context: ValidationContext = { store, issues: [], warnings: [] }
 
   validateReferenceRules(context)
   validateTimingRules(context)
   validatePresetRules(context)
   validatePresentationCueRules(context)
+
+  for (const warning of context.warnings) {
+    const prefix = warning.file ? `${warning.file}: ` : ""
+    console.warn(`warning: ${prefix}${warning.message}`)
+  }
 
   if (context.issues.length > 0) {
     for (const issue of context.issues) {

@@ -7,6 +7,7 @@ import type {
   TimedPresentationRequest,
 } from "@/app/presentation/presentation-state"
 import { BATTLE_CANVAS_HEIGHT, BATTLE_CANVAS_WIDTH, drawBattleFrame } from "@/render/battle/draw-battle-frame"
+import { prepareDevicePixelCanvas } from "@/render/canvas-host/device-pixel-canvas"
 
 type BattleCanvasProps = {
   renderState: BattleRenderState
@@ -24,16 +25,17 @@ export function BattleCanvas({ renderState, battleEvents = [], transparentBg, sh
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const context = canvas.getContext("2d")
+    const context = prepareDevicePixelCanvas({
+      canvas,
+      width: BATTLE_CANVAS_WIDTH,
+      height: BATTLE_CANVAS_HEIGHT,
+      pixelRatio: displayOptions.canvasPixelRatio,
+    })
     if (!context) return
 
-    const dpr = displayOptions.canvasPixelRatio
-    canvas.width = BATTLE_CANVAS_WIDTH * dpr
-    canvas.height = BATTLE_CANVAS_HEIGHT * dpr
-    // 表示サイズは CSS 側で親レイアウトに追従させ、ここでは描画座標系だけを固定します。
+    // 表示サイズは CSS 側で親レイアウトに追従させるため、固定値は内部描画座標だけに使います。
     canvas.style.width = ""
     canvas.style.height = ""
-    context.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     drawBattleFrame(context, {
       renderState,

@@ -1,3 +1,14 @@
+import type {
+  BackgroundTheme,
+  BulletPatternKind,
+  EnemyBehaviorKind,
+  EnemyRendererKind,
+  HazardRendererKind,
+  HitboxShape,
+  ProjectileBodyKind,
+  ProjectileRendererKind,
+} from "./content-kinds"
+
 export type SaveSlotId = 1 | 2 | 3
 
 export type AreaId = string
@@ -74,6 +85,7 @@ export type TranscriptSpan = {
 export type BattleFragmentViewModel = {
   fragmentId: string
   chunkId: TranscriptChunkId
+  sourceChunkId?: TranscriptChunkId
   startRatio: number
   endRatio: number
   x: number
@@ -94,7 +106,14 @@ export type ExploreSignalHintViewModel = {
   strength: number
   confidence: number
   expiresAtMs?: number
-  detectedState?: "hint" | "ghost" | "identified"
+  /**
+   * `hint` は識別前の弱い反応です。確定した記録として map / minimap に残す段階は
+   * `identified` または `recorded` を使い、UI が content から正確座標を推測しない前提を保ちます。
+   */
+  detectedState?: "hint" | "ghost" | "identified" | "recorded"
+  lastScanAtMs?: number
+  isNewlyIdentified?: boolean
+  recorded?: boolean
 }
 
 export type ExploreScanPulseViewModel = {
@@ -197,6 +216,7 @@ export type AreaMapNode = {
   labelPosition?: Vector2
   minimapVisibleByDefault: boolean
   visibilityConditionId?: ConditionId
+  allowOutOfAreaHint?: boolean
 }
 
 export type TransmissionMapNode = {
@@ -210,6 +230,7 @@ export type TransmissionMapNode = {
   panelKind: "transmission"
   visibilityConditionId?: ConditionId
   accessConditionId?: ConditionId
+  allowOutOfAreaHint?: boolean
 }
 
 export type WarpMapNode = {
@@ -222,6 +243,7 @@ export type WarpMapNode = {
   interactionRadius: number
   visibilityConditionId?: ConditionId
   accessConditionId?: ConditionId
+  allowOutOfAreaHint?: boolean
 }
 
 export type CollectibleMapNode = {
@@ -235,6 +257,7 @@ export type CollectibleMapNode = {
   equipmentId?: EquipmentId
   interactionRadius: number
   visibilityConditionId?: ConditionId
+  allowOutOfAreaHint?: boolean
   visualHint: "glow"
 }
 
@@ -304,8 +327,20 @@ export type MissionMaster = {
   baseSelfRepairPoints: number
   repeatDecayRate: number
   waves: EnemyWave[]
+  beatEvents?: MissionBeatEvent[]
   hazards: BattlefieldHazardSpec[]
   clearCondition: "surviveUntilEnd"
+}
+
+export type MissionBeatEvent = {
+  beatId: string
+  atMs: number
+  durationMs: number
+  intentTag: string
+  transcriptChunkIds: TranscriptChunkId[]
+  relatedEnemyIds?: EnemyId[]
+  relatedHazardIds?: HazardId[]
+  fragmentWindow?: TimeRange
 }
 
 export type BattlefieldHazardSpec = {
@@ -363,7 +398,7 @@ export type EnemyArchetype = {
   hp: number
   collisionDamage: number
   analysisValue: number
-  behaviorKind: string
+  behaviorKind: EnemyBehaviorKind
   behaviorParams: Record<string, number | string | boolean>
   bulletPatternIds: BulletPatternId[]
   visualPresetId: VisualPresetId
@@ -374,7 +409,7 @@ export type EnemyArchetype = {
 
 export type BulletPattern = {
   bulletPatternId: BulletPatternId
-  patternKind: string
+  patternKind: BulletPatternKind
   projectileId: ProjectileId
   cadenceMs: number
   burstCount: number
@@ -398,7 +433,7 @@ export type ContentLifecycle = "active" | "prototype" | "deprecated"
 export type EnemyContentVisualPreset = {
   presetId: VisualPresetId
   category: "enemy"
-  rendererKind: "circleSignal" | "shardCore" | "bossLattice"
+  rendererKind: EnemyRendererKind
   paletteRole: string
   orbitScale?: number
   glyphCount?: number
@@ -410,7 +445,8 @@ export type EnemyContentVisualPreset = {
 export type ProjectileContentVisualPreset = {
   presetId: VisualPresetId
   category: "projectile"
-  rendererKind: "orb" | "shard" | "lance" | "pulse" | "carrier"
+  rendererKind: ProjectileRendererKind
+  bodyKind: ProjectileBodyKind
   paletteRole: string
   trailKind?: string
   auraKind?: string
@@ -424,7 +460,7 @@ export type ProjectileContentVisualPreset = {
 export type HazardContentVisualPreset = {
   presetId: VisualPresetId
   category: "hazard"
-  rendererKind: "magneticDisaster"
+  rendererKind: HazardRendererKind
   paletteRole: string
   glowIntensity?: number
   motionProfile?: string
@@ -439,7 +475,12 @@ export type ContentVisualPreset =
 export type ContentHitboxPreset = {
   presetId: HitboxPresetId
   category: "player" | "enemy" | "projectile" | "hazard"
-  shape: "circle" | "ellipse" | "rect" | "polygon"
+  /**
+   * フェーズ1では battle collision の通常経路を円半径に正規化する。
+   * circle は radius、ellipse は max(radiusX, radiusY)、rect は外接円半径、
+   * polygon は原点から各点への最大距離を使う。
+   */
+  shape: HitboxShape
   radius?: number
   radiusX?: number
   radiusY?: number
@@ -450,7 +491,7 @@ export type ContentHitboxPreset = {
 
 export type BackgroundPreset = {
   presetId: VisualPresetId
-  theme: "centralTower" | "broadcastFacility" | "voidField"
+  theme: BackgroundTheme
   residualWarmth: number
   structureDensity: number
   dustDensity: number
@@ -700,6 +741,7 @@ export type ProfileRow = {
   equipmentLevels: Partial<Record<EquipmentId, number>>
   selfRepairPoints: number
   collectedNodeIds: WorldMapNodeId[]
+  identifiedNodeIds: WorldMapNodeId[]
   unlockedFlags: string[]
   clearedMissionIds: MissionId[]
 }

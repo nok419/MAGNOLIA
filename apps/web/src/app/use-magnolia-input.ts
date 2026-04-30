@@ -12,7 +12,7 @@ const INTERACT_FALLBACK_CODES = ["Enter", "NumpadEnter"]
 const MAP_FALLBACK_CODES = ["KeyM"]
 const EQUIPMENT_FALLBACK_CODES = ["KeyE"]
 const DASH_FALLBACK_CODES = ["ShiftRight"]
-const SCAN_FALLBACK_CODES = ["KeyR"]
+const SCAN_FALLBACK_CODES = ["Space"]
 
 type MouseButtons = {
   left: boolean
@@ -41,12 +41,18 @@ export function useMagnoliaInput() {
   })
   const previousButtonsRef = useRef<Record<string, boolean>>({})
   const lastPointerPressRef = useRef<PointerPressStamp | null>(null)
+  const lastActivityAtRef = useRef(Date.now())
 
   useEffect(() => {
+    function markActivity(now = Date.now()) {
+      lastActivityAtRef.current = now
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
       if (shouldPreventDefaultForKey(event.code)) {
         event.preventDefault()
       }
+      markActivity()
       keyStateRef.current.add(event.code)
     }
 
@@ -54,6 +60,7 @@ export function useMagnoliaInput() {
       if (shouldPreventDefaultForKey(event.code)) {
         event.preventDefault()
       }
+      markActivity()
       keyStateRef.current.delete(event.code)
     }
 
@@ -81,6 +88,10 @@ export function useMagnoliaInput() {
   }, [])
 
   useEffect(() => {
+    function markActivity(now = Date.now()) {
+      lastActivityAtRef.current = now
+    }
+
     function syncMouseButtonsFromMask(buttons: number) {
       const nextLeft = (buttons & 1) !== 0
       const nextRight = (buttons & 2) !== 0
@@ -109,6 +120,7 @@ export function useMagnoliaInput() {
     }
 
     function handleMouseDown(event: MouseEvent) {
+      markActivity()
       if (event.buttons > 0) {
         syncMouseButtonsFromMask(event.buttons)
       } else {
@@ -117,10 +129,14 @@ export function useMagnoliaInput() {
     }
 
     function handleMouseUp(event: MouseEvent) {
+      markActivity()
       syncMouseButtonsFromMask(event.buttons)
     }
 
     function handleMouseMove(event: MouseEvent) {
+      if (event.buttons > 0) {
+        markActivity()
+      }
       syncMouseButtonsFromMask(event.buttons)
     }
 
@@ -128,6 +144,7 @@ export function useMagnoliaInput() {
       if (isDuplicatePointerPress(event, lastPointerPressRef.current)) {
         return
       }
+      markActivity()
       lastPointerPressRef.current = {
         pointerId: event.pointerId,
         button: event.button,
@@ -141,14 +158,19 @@ export function useMagnoliaInput() {
     }
 
     function handlePointerUp(event: PointerEvent) {
+      markActivity()
       syncMouseButtonsFromMask(event.buttons)
     }
 
     function handlePointerMove(event: PointerEvent) {
+      if (event.buttons > 0) {
+        markActivity()
+      }
       syncMouseButtonsFromMask(event.buttons)
     }
 
     function handlePointerCancel(event: PointerEvent) {
+      markActivity()
       syncMouseButtonsFromMask(event.buttons)
     }
 
@@ -186,6 +208,15 @@ export function useMagnoliaInput() {
   }, [])
 
   return {
+    getLastActivityAt(): number {
+      return lastActivityAtRef.current
+    },
+    markActivity(now = Date.now()): void {
+      lastActivityAtRef.current = now
+    },
+    hasActiveInput(): boolean {
+      return keyStateRef.current.size > 0 || mouseButtonsRef.current.left || mouseButtonsRef.current.right
+    },
     get mouseButtons(): MouseButtons {
       return mouseButtonsRef.current
     },

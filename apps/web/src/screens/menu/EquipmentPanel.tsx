@@ -464,7 +464,6 @@ function EquipmentArcList({
     <div className="equip-list equip-list--plain" ref={scrollRef}>
       {items.map((eq) => {
         const isOwn = eq.owned
-        const isMasked = eq.masked
         const isEq =
           equipped.main === eq.equipmentId ||
           equipped.sub === eq.equipmentId ||

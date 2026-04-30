@@ -2,6 +2,7 @@
   "presetId": "vis_bullet_enemy_petal",
   "category": "projectile",
   "rendererKind": "shard",
+  "bodyKind": "signalShard",
   "paletteRole": "enemyNoise",
   "trailKind": "shortSignal",
   "auraKind": "soft",

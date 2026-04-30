@@ -27,14 +27,16 @@
       "level": 1,
       "selfRepairPointCost": 0,
       "effectOverrides": {
-        "damage": 10,
+        "damage": 9,
         "cadenceMs": 120,
         "shotCount": 3,
         "spreadDeg": 28,
         "foldBendAfterMs": 130,
         "meleeRange": 92,
-        "meleeDamage": 22,
+        "meleeDamage": 72,
         "meleeSpreadDeg": 132,
+        "meleeCollisionRange": 166,
+        "meleeCollisionArcDeg": 32,
         "meleeSweepDurationMs": 660,
         "meleeCooldownMs": 920
       }
@@ -43,14 +45,16 @@
       "level": 2,
       "selfRepairPointCost": 100,
       "effectOverrides": {
-        "damage": 11,
+        "damage": 10,
         "cadenceMs": 110,
         "shotCount": 3,
         "spreadDeg": 30,
         "foldBendAfterMs": 125,
         "meleeRange": 108,
-        "meleeDamage": 28,
+        "meleeDamage": 84,
         "meleeSpreadDeg": 136,
+        "meleeCollisionRange": 194,
+        "meleeCollisionArcDeg": 34,
         "meleeSweepDurationMs": 640,
         "meleeCooldownMs": 840
       }
@@ -59,14 +63,16 @@
       "level": 3,
       "selfRepairPointCost": 180,
       "effectOverrides": {
-        "damage": 12,
+        "damage": 11,
         "cadenceMs": 100,
         "shotCount": 3,
         "spreadDeg": 32,
         "foldBendAfterMs": 120,
         "meleeRange": 124,
-        "meleeDamage": 34,
+        "meleeDamage": 96,
         "meleeSpreadDeg": 140,
+        "meleeCollisionRange": 223,
+        "meleeCollisionArcDeg": 36,
         "meleeSweepDurationMs": 620,
         "meleeCooldownMs": 760
       }

@@ -4,6 +4,8 @@
 担当: 担当者A
 主な対象: `apps/web/src/app`, `apps/web/src/app/App.tsx`, `apps/web/src/components/PresentationOverlay.tsx`, 新設する `apps/web/src/app/presentation/*`, `apps/web/src/app/frame-loop/*`
 
+注記: この文書は閉じたレビュー履歴です。現行のコードマップは `docs/02_開発体制とディレクトリ構成.md`、データ契約は `docs/05_データ構造.md`、表示境界は `docs/08_表示と機能の境界.md`、design package は `docs/11_design_package/README.md` を参照してください。
+
 # 目的
 
 2枚のレビューで共通している問題は、設計上は PresentationRequest と renderState / snapshot を中心に進める方針がある一方で、現行 Web 側が overlay 以外の presentation を落とし、さらに `use-magnolia-app.ts` が session 接続、frame loop、入力、画面遷移、popup、localStorage、UI 用イベント合成をまとめて抱えている点です。

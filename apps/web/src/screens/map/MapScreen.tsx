@@ -5,6 +5,9 @@ import type {
 } from "@magnolia/contracts"
 import type { DisplayOptions } from "@/app/display-options"
 import { ActionButton } from "@/components/ActionButton"
+import { prepareDevicePixelCanvas } from "@/render/canvas-host/device-pixel-canvas"
+import { useCanvasAnimationLoop } from "@/render/canvas-host/use-canvas-animation-loop"
+import { useObservedCanvasSize } from "@/render/canvas-host/use-canvas-size"
 import { expandRect } from "@/render/shared/coordinates"
 import type { WorldMapViewModel } from "@/view-models/map-view-model"
 import { drawMapCanvas, type MapHitTarget } from "@/render/map/map-renderer"
@@ -25,7 +28,7 @@ export function MapScreen({
   onOpenArchive,
 }: MapScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const sizeRef = useRef({ width: 0, height: 0 })
+  const sizeRef = useObservedCanvasSize(canvasRef)
   const hitTargetsRef = useRef<MapHitTarget[]>([])
 
   const [selectedAreaId, setSelectedAreaId] = useState<AreaId | undefined>(
@@ -40,25 +43,6 @@ export function MapScreen({
       setSelectedAreaId(viewModel.selectedAreaId)
     }
   }, [selectedAreaId, viewModel.areas, viewModel.selectedAreaId])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) {
-      return
-    }
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        sizeRef.current = {
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        }
-      }
-    })
-
-    resizeObserver.observe(canvas)
-    return () => resizeObserver.disconnect()
-  }, [])
 
   const selectedTransmission = selectedTransmissionId
     ? viewModel.transmissions.find((item) => item.transmissionId === selectedTransmissionId)
@@ -77,55 +61,35 @@ export function MapScreen({
     [selectedAreaId, viewModel.areas, viewModel.focusBounds],
   )
 
-  useEffect(() => {
+  useCanvasAnimationLoop((timeMs) => {
     const canvas = canvasRef.current
     if (!canvas) {
       return
     }
-    const ctx = canvas.getContext("2d")
+
+    const width = Math.max(320, sizeRef.current.width || canvas.clientWidth || 640)
+    const height = Math.max(320, sizeRef.current.height || canvas.clientHeight || 640)
+    const ctx = prepareDevicePixelCanvas({
+      canvas,
+      width,
+      height,
+      pixelRatio: displayOptions.canvasPixelRatio,
+    })
     if (!ctx) {
       return
     }
-    let frameId = 0
-    let running = true
-
-    // map 上のアイコンは設計チームが動きを足しやすいように、描画ループをここで維持します。
-    const drawFrame = (timeMs: number) => {
-      if (!running) {
-        return
-      }
-
-      const width = Math.max(320, sizeRef.current.width || canvas.clientWidth || 640)
-      const height = Math.max(320, sizeRef.current.height || canvas.clientHeight || 640)
-      const dpr = displayOptions.canvasPixelRatio
-      canvas.width = width * dpr
-      canvas.height = height * dpr
-      canvas.style.width = `${width}px`
-      canvas.style.height = `${height}px`
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.clearRect(0, 0, width, height)
-      const hitTargets = drawMapCanvas({
-        ctx,
-        width,
-        height,
-        timeMs,
-        focusBounds,
-        viewModel,
-        selectedAreaId,
-        selectedTransmissionId,
-        displayOptions,
-      })
-      hitTargetsRef.current = hitTargets
-
-      frameId = window.requestAnimationFrame(drawFrame)
-    }
-
-    frameId = window.requestAnimationFrame(drawFrame)
-    return () => {
-      running = false
-      window.cancelAnimationFrame(frameId)
-    }
+    ctx.clearRect(0, 0, width, height)
+    hitTargetsRef.current = drawMapCanvas({
+      ctx,
+      width,
+      height,
+      timeMs,
+      focusBounds,
+      viewModel,
+      selectedAreaId,
+      selectedTransmissionId,
+      displayOptions,
+    })
   }, [
     displayOptions,
     focusBounds,

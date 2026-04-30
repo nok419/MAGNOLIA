@@ -48,6 +48,7 @@ export function createInitialProfileAggregate(input: {
       equipmentLevels: Object.fromEntries(ownedEquipmentIds.map((equipmentId) => [equipmentId, 1])),
       selfRepairPoints: 0,
       collectedNodeIds: [],
+      identifiedNodeIds: [],
       unlockedFlags: [],
       clearedMissionIds: [],
     },

@@ -2,6 +2,8 @@
 
 mission 固有の見せ方は、Web 側の TypeScript 分岐ではなく content で表します。
 
+現在は `waves[].intentTag` に加えて、`MissionMaster.beatEvents` を使います。session は `beatEvents` の `atMs` を跨いだ時点で `battle.mission.beat` の `PresentationRequest` を出します。beat には本文 chunk、関連 enemy、関連 hazard、fragment window を入れ、Web 側は mission ID で分岐しません。
+
 # mission_good_morning
 
 - 0 から 7 秒: 起動、移動確認。wave は出さない。
@@ -24,3 +26,8 @@ duration は 90 秒を維持します。既存の本文が 85 秒まであるた
 # mission_evacuation
 
 本文は 55.7 秒まであるため、空白を埋める目的の敵追加はしません。壊れた公共放送として、`broken-public-broadcast-*`、`broadcast-collapse`、`fragment-recovery-window` を使い、後半は fragment 回収で一部が戻る前提にします。
+
+- 公共放送: `evac_public_broadcast`
+- 経路更新失敗: `evac_route_update_failed`
+- 残留者の声: `evac_remaining_voices`
+- 保護膜超過: `evac_protection_overload`

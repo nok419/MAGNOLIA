@@ -57,8 +57,8 @@
     {
       "type": "transmission",
       "nodeId": "node_tx_evacuation",
-      "x": 1368,
-      "y": -292,
+      "x": 1480,
+      "y": 120,
       "transmissionId": "tx_evacuation",
       "areaId": "area_broadcast_facility",
       "interactionRadius": 20,
@@ -138,7 +138,7 @@
       "collectibleKind": "hiddenEquipment",
       "equipmentId": "eq_subsystem_analysis_circuit",
       "interactionRadius": 18,
-      "visibilityConditionId": "cond_always",
+      "visibilityConditionId": "cond_mission_good_morning_cleared",
       "visualHint": "glow"
     },
     {

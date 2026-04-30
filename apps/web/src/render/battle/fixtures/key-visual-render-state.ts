@@ -1,16 +1,18 @@
 import type {
   BackgroundPreset,
   ContentBundle,
+  EffectSpec,
   ContentHitboxPreset,
   EnemyContentVisualPreset,
   HazardContentVisualPreset,
+  ProjectileSpec,
   ProjectileContentVisualPreset,
 } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
+import { PHI, TAU } from "../../shared/render-math"
 
 /* 黄金角 (137.508 deg) は弾幕配置だけに使う。runtime の敵挙動には接続しない。 */
-const TAU = Math.PI * 2
-const GOLDEN_ANGLE = TAU * (1 - 1 / 1.618033988749895)
+const GOLDEN_ANGLE = TAU * (1 - 1 / PHI)
 
 const KEY_VISUAL_PRESETS = {
   background: "bg_broadcast_facility",
@@ -19,6 +21,8 @@ const KEY_VISUAL_PRESETS = {
   enemyStandardHitbox: "hitbox_enemy_medium",
   projectileSmallHitbox: "hitbox_bullet_small",
   projectileMediumHitbox: "hitbox_bullet_medium",
+  playerPulseEffect: "eff_main_pulse",
+  playerPulseProjectile: "proj_player_pulse",
   enemyHeavyVisual: "vis_enemy_heavy",
   enemyStandardVisual: "vis_enemy_standard",
   playerPulseVisual: "vis_bullet_player_pulse",
@@ -36,6 +40,8 @@ type KeyVisualPresetSet = {
   enemyStandardHitbox: ContentHitboxPreset
   projectileSmallHitbox: ContentHitboxPreset
   projectileMediumHitbox: ContentHitboxPreset
+  playerPulseEffect: EffectSpec
+  playerPulseProjectile: ProjectileSpec
   enemyHeavyVisual: EnemyContentVisualPreset
   enemyStandardVisual: EnemyContentVisualPreset
   playerPulseVisual: ProjectileContentVisualPreset
@@ -103,7 +109,7 @@ export function buildKeyVisualRenderState(
     },
   ]
 
-  const playerProjectiles = kvShotColumn(cx, playerY - 36, elapsedMs, presets)
+  const playerProjectiles = kvPulseVolley(cx, playerY - 36, elapsedMs, presets)
   const bRot = elapsedMs * 0.0003
   const enemyProjectiles: BattleRenderState["projectiles"] = [
     ...kvGoldenSpiral(cx, bossY, 42, isW ? 82 : 95, isW ? 14 : 18, bRot * 1.2, "enemyBasic", "kv_b1", presets),
@@ -180,6 +186,8 @@ function readKeyVisualPresetSet(content: ContentBundle): KeyVisualPresetSet {
     enemyStandardHitbox: readHitboxPreset(content, KEY_VISUAL_PRESETS.enemyStandardHitbox, "enemy"),
     projectileSmallHitbox: readHitboxPreset(content, KEY_VISUAL_PRESETS.projectileSmallHitbox, "projectile"),
     projectileMediumHitbox: readHitboxPreset(content, KEY_VISUAL_PRESETS.projectileMediumHitbox, "projectile"),
+    playerPulseEffect: readEffectSpec(content, KEY_VISUAL_PRESETS.playerPulseEffect),
+    playerPulseProjectile: readProjectileSpec(content, KEY_VISUAL_PRESETS.playerPulseProjectile),
     enemyHeavyVisual: readVisualPreset(content, KEY_VISUAL_PRESETS.enemyHeavyVisual, "enemy"),
     enemyStandardVisual: readVisualPreset(content, KEY_VISUAL_PRESETS.enemyStandardVisual, "enemy"),
     playerPulseVisual: readVisualPreset(content, KEY_VISUAL_PRESETS.playerPulseVisual, "projectile"),
@@ -195,6 +203,22 @@ function readBackgroundPreset(content: ContentBundle, presetId: string): Backgro
     throw new Error(`[key-visual-fixture] missing background preset: ${presetId}`)
   }
   return preset
+}
+
+function readEffectSpec(content: ContentBundle, effectId: string): EffectSpec {
+  const effect = content.effects[effectId]
+  if (!effect) {
+    throw new Error(`[key-visual-fixture] missing effect: ${effectId}`)
+  }
+  return effect
+}
+
+function readProjectileSpec(content: ContentBundle, projectileId: string): ProjectileSpec {
+  const projectile = content.projectiles[projectileId]
+  if (!projectile) {
+    throw new Error(`[key-visual-fixture] missing projectile: ${projectileId}`)
+  }
+  return projectile
 }
 
 function readHitboxPreset(
@@ -236,24 +260,65 @@ function readVisualPreset(
   return preset
 }
 
-function kvShotColumn(
+function kvPulseVolley(
   baseX: number,
   baseY: number,
   t: number,
   presets: KeyVisualPresetSet,
 ): BattleRenderState["projectiles"] {
-  return Array.from({ length: 5 }, (_, i) => ({
-    projectileInstanceId: `kv_ps_${baseX}_${i}`,
-    projectileId: "kv_player_pulse",
-    visualPresetId: presets.playerPulseVisual.presetId,
-    visual: presets.playerPulseVisual,
-    hitboxPresetId: presets.projectileSmallHitbox.presetId,
-    hitbox: presets.projectileSmallHitbox,
-    side: "player" as const,
-    position: { x: baseX, y: baseY - i * 42 + (t * 0.12) % 42 },
-    velocity: { x: 0, y: -400 },
-    radius: 6,
-  }))
+  const count = Math.max(1, readEffectNumber(presets.playerPulseEffect, "shotCount", 3))
+  const spreadDeg = readEffectNumber(presets.playerPulseEffect, "spreadDeg", 28)
+  const speed = presets.playerPulseProjectile.speed
+  const foldSideProjectiles = Boolean(presets.playerPulseEffect.params?.foldSideProjectiles)
+  const travelPx = 58 + (t * 0.12) % 34
+  const bendAfterPx = Math.max(
+    0,
+    speed * readEffectNumber(presets.playerPulseEffect, "foldBendAfterMs", 130) / 1000,
+  )
+  const baseDirection = { x: 0, y: -1 }
+  const hitbox = presets.projectileSmallHitbox
+
+  // key visual は実ミッションではないため状態更新は持たないが、shotCount と spread は content 正本から読む。
+  return Array.from({ length: count }, (_, index) => {
+    const spreadOffset =
+      count === 1 ? 0 : ((index / (count - 1)) * spreadDeg - spreadDeg / 2) * (Math.PI / 180)
+    const preBendDirection = rotateVector(baseDirection, spreadOffset)
+    const direction =
+      foldSideProjectiles && Math.abs(spreadOffset) > 0.001 ? baseDirection : preBendDirection
+    const preBendTravel = Math.min(travelPx, bendAfterPx)
+    const postBendTravel = Math.max(0, travelPx - bendAfterPx)
+    const position = {
+      x: baseX + preBendDirection.x * preBendTravel + direction.x * postBendTravel,
+      y: baseY + preBendDirection.y * preBendTravel + direction.y * postBendTravel,
+    }
+
+    return {
+      projectileInstanceId: `kv_ps_${index}`,
+      projectileId: presets.playerPulseProjectile.projectileId,
+      visualPresetId: presets.playerPulseVisual.presetId,
+      visual: presets.playerPulseVisual,
+      hitboxPresetId: hitbox.presetId,
+      hitbox,
+      side: "player" as const,
+      position,
+      velocity: { x: direction.x * speed, y: direction.y * speed },
+      radius: hitbox.radius ?? 6,
+    }
+  })
+}
+
+function readEffectNumber(effect: EffectSpec, key: string, fallback: number): number {
+  const value = effect.params?.[key]
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback
+}
+
+function rotateVector(vector: { x: number; y: number }, radians: number): { x: number; y: number } {
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  return {
+    x: vector.x * cos - vector.y * sin,
+    y: vector.x * sin + vector.y * cos,
+  }
 }
 
 function kvGoldenSpiral(

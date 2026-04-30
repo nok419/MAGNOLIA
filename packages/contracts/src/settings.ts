@@ -36,7 +36,7 @@ export const DEFAULT_KEYBINDINGS: SettingsRow["keybindings"] = {
   fireMain: "MouseLeft",
   fireSub: "MouseRight",
   interact: "Enter",
-  scan: "KeyR",
+  scan: "Space",
   dash: "ShiftLeft",
   openMap: "KeyM",
   openArchive: "Digit1",
@@ -99,13 +99,12 @@ export function normalizeSettings(settings: SettingsRow | null | undefined): Set
         ...current,
         interact: DEFAULT_KEYBINDINGS.interact,
         openEquipment: DEFAULT_KEYBINDINGS.openEquipment,
-        scan: current.scan === "Space" ? DEFAULT_KEYBINDINGS.scan : current.scan,
+        scan: current.scan === "KeyR" ? DEFAULT_KEYBINDINGS.scan : current.scan,
       }
     : {
         ...current,
-        // スキャン追加直後の既定値は Space でした。保存済み設定がその旧既定値なら、
-        // 画面表示と同じ R に寄せ、意図的なカスタム設定だけ残します。
-        scan: current.scan === "Space" ? DEFAULT_KEYBINDINGS.scan : current.scan,
+        // 以前の既定値 R は Space に移行します。明示的なカスタム設定だけ残します。
+        scan: current.scan === "KeyR" ? DEFAULT_KEYBINDINGS.scan : current.scan,
       }
 
   const normalized: SettingsRow = {

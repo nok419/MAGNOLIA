@@ -27,7 +27,7 @@ import {
   type WorldMapViewModel,
 } from "@magnolia/game-session"
 import { createMagnoliaClient } from "@/app/magnolia-client"
-import type { SaveSlotSummary, SlotSelectMode } from "@/app/app-types"
+import type { IdleAutoSaveViewModel, SaveSlotSummary, SlotSelectMode } from "@/app/app-types"
 import {
   readExplorePresentationState,
   readPresentationDurationMs,
@@ -39,6 +39,11 @@ import {
   formatTimestamp,
 } from "@/app/display-helpers"
 import { useMagnoliaFrameLoop } from "@/app/frame-loop/use-magnolia-frame-loop"
+import {
+  createAudioEventAdapterState,
+  playSessionAudioEvents,
+} from "@/app/audio-event-adapter"
+import { audioEvents } from "@/audio"
 import {
   buildCollectiblePopups,
   createExplorePopup,
@@ -102,6 +107,16 @@ type ExploreInteractionContext = {
   sourceFrame: ExploreTransitionSourceFrame
 }
 
+const IDLE_AUTO_SAVE_WARNING_AFTER_MS = 50_000
+const IDLE_AUTO_SAVE_COUNTDOWN_MS = 10_000
+const IDLE_AUTO_SAVE_TICK_MS = 250
+
+type IdleAutoSaveCountdown = {
+  startedAt: number
+  deadlineAt: number
+  targetSlotId: SaveSlotId
+}
+
 export function useMagnoliaApp() {
   const input = useMagnoliaInput()
   const [state, setState] = useState<MagnoliaAppState>({
@@ -121,14 +136,81 @@ export function useMagnoliaApp() {
     equipmentModalNodeId: null,
     seenEquipmentIds: [],
   })
+  const [idleAutoSave, setIdleAutoSave] = useState<IdleAutoSaveViewModel | null>(null)
   const sessionRef = useRef<MagnoliaGameSession | null>(null)
   const lastFrameAtRef = useRef<number | null>(null)
   const frameHandleRef = useRef<number | null>(null)
   const stateRef = useRef(state)
+  const audioEventStateRef = useRef(createAudioEventAdapterState())
+  const idleCountdownRef = useRef<IdleAutoSaveCountdown | null>(null)
+  const idleAutoSavingRef = useRef(false)
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const session = sessionRef.current
+      const current = stateRef.current
+      const snapshot = current.snapshot
+
+      if (
+        !session ||
+        !snapshot ||
+        !current.profile ||
+        snapshot.screen === "title" ||
+        current.slotSelectMode
+      ) {
+        clearIdleAutoSaveCountdown()
+        input.markActivity(Date.now())
+        return
+      }
+
+      const now = Date.now()
+      if (input.hasActiveInput()) {
+        // 押しっぱなしの移動や攻撃は継続中の操作として扱い、無操作に入りません。
+        input.markActivity(now)
+      }
+
+      const countdown = idleCountdownRef.current
+      if (countdown) {
+        if (input.getLastActivityAt() > countdown.startedAt) {
+          clearIdleAutoSaveCountdown()
+          return
+        }
+        const remainingMs = countdown.deadlineAt - now
+        if (remainingMs <= 0) {
+          void completeIdleAutoSave(session)
+          return
+        }
+        setIdleAutoSave({
+          status: "countdown",
+          remainingSeconds: Math.max(1, Math.ceil(remainingMs / 1000)),
+          targetSlotId: countdown.targetSlotId,
+        })
+        return
+      }
+
+      if (now - input.getLastActivityAt() >= IDLE_AUTO_SAVE_WARNING_AFTER_MS) {
+        const targetSlotId = selectIdleAutoSaveSlot(snapshot.saveSlots.slots)
+        idleCountdownRef.current = {
+          startedAt: now,
+          deadlineAt: now + IDLE_AUTO_SAVE_COUNTDOWN_MS,
+          targetSlotId,
+        }
+        setIdleAutoSave({
+          status: "countdown",
+          remainingSeconds: Math.ceil(IDLE_AUTO_SAVE_COUNTDOWN_MS / 1000),
+          targetSlotId,
+        })
+      }
+    }, IDLE_AUTO_SAVE_TICK_MS)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
 
   useEffect(() => {
     const activePresentation = state.presentation.activeOverlay
@@ -307,6 +389,7 @@ export function useMagnoliaApp() {
     equipmentModalNodeId: state.equipmentModalNodeId,
     unseenEquipmentIds,
     shouldShowEquipmentHint,
+    idleAutoSave,
     saveSlots: buildSaveSlotSummaries(state.snapshot, state.content),
     markEquipmentSeen(equipmentIds: string[]) {
       if (equipmentIds.length === 0) {
@@ -320,12 +403,14 @@ export function useMagnoliaApp() {
       })
     },
     openSlotSelect(mode: SlotSelectMode) {
+      audioEvents.uiOpen()
       setState((current) => ({
         ...current,
         slotSelectMode: mode,
       }))
     },
     closeSlotSelect() {
+      audioEvents.uiClose()
       setState((current) => ({
         ...current,
         slotSelectMode: null,
@@ -344,11 +429,13 @@ export function useMagnoliaApp() {
           slotId,
           difficulty: session.getSettings().difficulty,
         })
+        audioEvents.newGameSelected()
       } else {
         await session.dispatch({
           type: "resumeSaveSlot",
           slotId,
         })
+        audioEvents.loadGameSelected()
       }
 
       setState((current) => ({
@@ -568,6 +655,43 @@ export function useMagnoliaApp() {
     },
   }
 
+  function clearIdleAutoSaveCountdown() {
+    idleCountdownRef.current = null
+    idleAutoSavingRef.current = false
+    setIdleAutoSave(null)
+  }
+
+  async function completeIdleAutoSave(session: MagnoliaGameSession) {
+    const countdown = idleCountdownRef.current
+    if (!countdown || idleAutoSavingRef.current) {
+      return
+    }
+
+    idleAutoSavingRef.current = true
+    setIdleAutoSave({
+      status: "saving",
+      remainingSeconds: 0,
+      targetSlotId: countdown.targetSlotId,
+    })
+
+    try {
+      await session.dispatch({ type: "saveToSlot", slotId: countdown.targetSlotId })
+      await session.dispatch({ type: "returnToTitle" })
+      idleCountdownRef.current = null
+      input.markActivity(Date.now())
+      syncFromSession(session)
+    } catch (error) {
+      idleCountdownRef.current = null
+      setState((current) => ({
+        ...current,
+        errorMessage: error instanceof Error ? error.message : "自動保存に失敗しました。",
+      }))
+    } finally {
+      idleAutoSavingRef.current = false
+      setIdleAutoSave(null)
+    }
+  }
+
   function syncFromSession(
     session: MagnoliaGameSession,
     incomingPresentationRequests: PresentationRequest[] = [],
@@ -583,6 +707,7 @@ export function useMagnoliaApp() {
       ],
       exploreInteractionContext,
     )
+    const domainEvents = [...queuedDomainEvents, ...incomingEvents]
 
     const snapshot = session.getSnapshot()
     const content = session.getContentBundle()
@@ -593,10 +718,18 @@ export function useMagnoliaApp() {
     const worldMapViewModel = session.getWorldMapViewModel()
     const battleRenderState = session.getBattleRenderState()
     const archiveSnapshot = session.getArchiveSnapshot()
-    const parsedPopups = buildCollectiblePopups([...queuedDomainEvents, ...incomingEvents], content)
+    const parsedPopups = buildCollectiblePopups(domainEvents, content)
     const now = Date.now()
 
     input.syncButtonEdges(settings)
+    // 音声は browser side effect なので、session ではなく Web adapter で意味イベントから変換します。
+    playSessionAudioEvents({
+      state: audioEventStateRef.current,
+      previousSnapshot: stateRef.current.snapshot,
+      nextSnapshot: snapshot,
+      presentationRequests,
+      domainEvents,
+    })
 
     startTransition(() => {
       setState((current) => {
@@ -678,15 +811,47 @@ function buildSaveSlotSummaries(
     return []
   }
 
-  return snapshot.saveSlots.slots.map((slot) => ({
-    slotId: slot.slotId,
-    label: slot.label,
-    updatedAt: formatTimestamp(slot.updatedAt),
-    currentAreaName:
-      slot.currentAreaId && content?.areas[slot.currentAreaId]
-        ? content.areas[slot.currentAreaId].name
-        : undefined,
-    playTimeLabel: formatPlayTime(slot.playTimeMs),
-    isEmpty: !slot.profileId,
-  }))
+  return snapshot.saveSlots.slots.map((slot) => {
+    const isEmpty = isTitleSaveSlotEmpty(slot)
+
+    return {
+      slotId: slot.slotId,
+      label: slot.label,
+      updatedAt: isEmpty ? undefined : formatTimestamp(slot.updatedAt),
+      currentAreaName:
+        !isEmpty && slot.currentAreaId && content?.areas[slot.currentAreaId]
+          ? content.areas[slot.currentAreaId].name
+          : undefined,
+      playTimeLabel: formatPlayTime(slot.playTimeMs),
+      isEmpty,
+    }
+  })
+}
+
+function isTitleSaveSlotEmpty(slot: RootSnapshot["saveSlots"]["slots"][number]): boolean {
+  // タイトルでは、作成直後でプレイ時間がないデータを続きから遊べるデータとして扱いません。
+  return !slot.profileId || slot.playTimeMs <= 0
+}
+
+function selectIdleAutoSaveSlot(
+  slots: RootSnapshot["saveSlots"]["slots"],
+): SaveSlotId {
+  const emptySlot = slots.find((slot) => isTitleSaveSlotEmpty(slot))
+  if (emptySlot) {
+    return emptySlot.slotId
+  }
+
+  // 空きがない場合は、要求通り最も古い updatedAt のスロットを自動保存先にします。
+  const oldestSlot = [...slots].sort(
+    (left, right) => readSlotUpdatedAtMs(left.updatedAt) - readSlotUpdatedAtMs(right.updatedAt),
+  )[0]
+  return oldestSlot?.slotId ?? 1
+}
+
+function readSlotUpdatedAtMs(updatedAt: string | undefined): number {
+  if (!updatedAt) {
+    return 0
+  }
+  const parsed = Date.parse(updatedAt)
+  return Number.isFinite(parsed) ? parsed : 0
 }

@@ -1,4 +1,6 @@
 import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
+import type { CanvasPaletteRole } from "@/render/shared/canvas-palette"
+import { rgba } from "@/render/shared/canvas-palette"
 
 const PHI_INV = 1 / 1.618033988749895
 const TAU = Math.PI * 2
@@ -23,6 +25,7 @@ type TransmissionMarkerTheme = {
   accent: string
   haloRgb: string
   core: string
+  satelliteRole: CanvasPaletteRole
   fillAlpha: number
   orbitAlpha: number
 }
@@ -63,6 +66,7 @@ const TRANSMISSION_MARKER_THEMES: Record<TransmissionMarkerState, TransmissionMa
     accent: "#7f96af",
     haloRgb: "127, 150, 175",
     core: "#d8e0eb",
+    satelliteRole: "threatNoise",
     fillAlpha: 0.08,
     orbitAlpha: 0.18,
   },
@@ -70,6 +74,7 @@ const TRANSMISSION_MARKER_THEMES: Record<TransmissionMarkerState, TransmissionMa
     accent: "#8fdcff",
     haloRgb: "143, 220, 255",
     core: "#f4fbff",
+    satelliteRole: "threatNoise",
     fillAlpha: 0.12,
     orbitAlpha: 0.24,
   },
@@ -77,6 +82,7 @@ const TRANSMISSION_MARKER_THEMES: Record<TransmissionMarkerState, TransmissionMa
     accent: "#d8e7f6",
     haloRgb: "216, 231, 246",
     core: "#ffffff",
+    satelliteRole: "threatNoise",
     fillAlpha: 0.15,
     orbitAlpha: 0.28,
   },
@@ -84,6 +90,7 @@ const TRANSMISSION_MARKER_THEMES: Record<TransmissionMarkerState, TransmissionMa
     accent: "#69d3ff",
     haloRgb: "105, 211, 255",
     core: "#ffffff",
+    satelliteRole: "signalReadable",
     fillAlpha: 0.18,
     orbitAlpha: 0.34,
   },
@@ -176,7 +183,9 @@ export function drawTransmissionMarker(
     }
   }
 
-  ctx.strokeStyle = `rgba(${theme.haloRgb}, ${(theme.orbitAlpha * pulse).toFixed(3)})`
+  const satelliteStroke = (alpha: number) => rgba(theme.satelliteRole, alpha)
+
+  ctx.strokeStyle = satelliteStroke(theme.orbitAlpha * pulse)
   ctx.lineWidth = Math.max(0.7, 1.05 * variant.lineScale)
   ctx.beginPath()
   ctx.arc(input.x, input.y, orbitRadius, rotation, rotation + Math.PI * 0.62)
@@ -185,7 +194,7 @@ export function drawTransmissionMarker(
   ctx.arc(input.x, input.y, orbitRadius, rotation + Math.PI, rotation + Math.PI + Math.PI * 0.48)
   ctx.stroke()
 
-  ctx.strokeStyle = `rgba(${theme.haloRgb}, ${(theme.orbitAlpha * 0.8).toFixed(3)})`
+  ctx.strokeStyle = satelliteStroke(theme.orbitAlpha * 0.8)
   ctx.lineWidth = Math.max(0.55, 0.8 * variant.lineScale)
   ctx.beginPath()
   ctx.arc(input.x, input.y, orbitRadius * 0.76, -rotation * 0.85, -rotation * 0.85 + Math.PI * 0.44)
@@ -197,8 +206,9 @@ export function drawTransmissionMarker(
     ctx.save()
     ctx.translate(sx, sy)
     ctx.rotate(satelliteAngle + Math.PI / 2)
-    ctx.strokeStyle = `rgba(${theme.haloRgb}, ${(0.34 * pulse).toFixed(3)})`
-    ctx.fillStyle = `rgba(${theme.haloRgb}, ${(0.12 * pulse).toFixed(3)})`
+    // ミッションの未クリア/クリアは中心アイコンではなく、周囲の衛星部だけで示します。
+    ctx.strokeStyle = satelliteStroke(0.34 * pulse)
+    ctx.fillStyle = satelliteStroke(0.12 * pulse)
     ctx.lineWidth = Math.max(0.55, 0.72 * variant.lineScale)
     ctx.beginPath()
     ctx.moveTo(0, -input.size * 0.28)

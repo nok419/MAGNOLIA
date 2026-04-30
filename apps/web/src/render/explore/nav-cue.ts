@@ -1,6 +1,5 @@
 
 import type { CollectibleMarkerKind } from "@/app/canvas-markers"
-import { TAU } from "@/render/explore/explore-render-utils"
 
 type NavCueKind = "equipment" | "item" | "mission" | "warp"
 
@@ -22,7 +21,7 @@ export function resolveCollectibleNavKind(
 const NAV_CUE_COLORS: Record<NavCueKind, { rgb: string }> = {
   equipment: { rgb: "158, 212, 255" }, // 柔らかい青
   item:      { rgb: "220, 230, 245" }, // ほんのり青白い白
-  mission:   { rgb: "255, 192, 137" }, // 琥珀色
+  mission:   { rgb: "255, 90, 110" }, // scan後のミッション方向と同じ赤
   warp:      { rgb: "240, 198, 116" }, // タン寄りの橙
 }
 

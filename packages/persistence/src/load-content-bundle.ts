@@ -1,254 +1,92 @@
-import type {
-  AreaMaster,
-  BackgroundPreset,
-  BulletPattern,
-  ConditionId,
-  ConditionSpec,
-  ContentBundle,
-  ContentHitboxPreset,
-  ContentLifecycle,
-  ContentVisualPreset,
-  EffectSpec,
-  EffectId,
-  EnemyArchetype,
-  EnemyId,
-  EquipmentId,
-  EquipmentMaster,
-  HitboxPresetId,
-  MapId,
-  MissionId,
-  MissionMaster,
-  ProjectileId,
-  ProjectileSpec,
-  PresentationCueSpec,
-  TranscriptChunk,
-  TranscriptChunkId,
-  TransmissionId,
-  TransmissionMaster,
-  VisualPresetId,
-  WorldMapLogic,
+import {
+  BULLET_PATTERN_KINDS,
+  ENEMY_BEHAVIOR_KINDS,
+  ENEMY_OVERRIDE_KEYS,
+  type AreaMaster,
+  type BackgroundPreset,
+  type BulletPattern,
+  type ConditionId,
+  type ConditionSpec,
+  type ContentBundle,
+  type ContentHitboxPreset,
+  type ContentLifecycle,
+  type ContentVisualPreset,
+  type EffectId,
+  type EffectSpec,
+  type EnemyArchetype,
+  type EnemyId,
+  type EquipmentId,
+  type EquipmentMaster,
+  type MapId,
+  type MissionId,
+  type MissionMaster,
+  type ProjectileId,
+  type ProjectileSpec,
+  type PresentationCueSpec,
+  type TranscriptChunk,
+  type TranscriptChunkId,
+  type TransmissionId,
+  type TransmissionMaster,
+  type WorldMapLogic,
 } from "@magnolia/contracts"
-import areaBroadcastFacilityJson from "../../../content/gameplay/areas/area_broadcast_facility.json"
-import areaCentralTowerJson from "../../../content/gameplay/areas/area_central_tower.json"
-import bgBroadcastFacilityJson from "../../../content/gameplay/background-presets/bg_broadcast_facility.json"
-import bgCentralTowerJson from "../../../content/gameplay/background-presets/bg_central_tower.json"
-import bpA2LanceSpreadJson from "../../../content/gameplay/bullet-patterns/bp_a2_lance_spread.json"
-import bpB1CoreBurstJson from "../../../content/gameplay/bullet-patterns/bp_b1_core_burst.json"
-import bpB1LanceStreamJson from "../../../content/gameplay/bullet-patterns/bp_b1_lance_stream.json"
-import bpC1PressureRingJson from "../../../content/gameplay/bullet-patterns/bp_c1_pressure_ring.json"
-import bpHeavyBurstJson from "../../../content/gameplay/bullet-patterns/bp_heavy_burst.json"
-import bpRadialBurstJson from "../../../content/gameplay/bullet-patterns/bp_radial_burst.json"
-import bpScoutSingleJson from "../../../content/gameplay/bullet-patterns/bp_scout_single.json"
-import bpSpiralStreamJson from "../../../content/gameplay/bullet-patterns/bp_spiral_stream.json"
-import bpStandardSpreadJson from "../../../content/gameplay/bullet-patterns/bp_standard_spread.json"
-import enemyA1Json from "../../../content/gameplay/enemies/a1.json"
-import enemyA2Json from "../../../content/gameplay/enemies/a2.json"
-import enemyB1Json from "../../../content/gameplay/enemies/b1.json"
-import enemyC1Json from "../../../content/gameplay/enemies/c1.json"
-import enemyHeavyJson from "../../../content/gameplay/enemies/enemy_heavy.json"
-import enemyScoutJson from "../../../content/gameplay/enemies/enemy_scout.json"
-import enemyStandardJson from "../../../content/gameplay/enemies/enemy_standard.json"
-import contentClassificationJson from "../../../content/gameplay/content-classification.json"
-import effMainCarrierJson from "../../../content/gameplay/equipment/effects/eff_main_carrier.json"
-import effMainPulseJson from "../../../content/gameplay/equipment/effects/eff_main_pulse.json"
-import effOsMagnoliaJson from "../../../content/gameplay/equipment/effects/eff_os_magnolia.json"
-import effSubNoiseCancellerJson from "../../../content/gameplay/equipment/effects/eff_sub_noise_canceller.json"
-import effSubSilentWaveJson from "../../../content/gameplay/equipment/effects/eff_sub_silent_wave.json"
-import effSubsystemAnalysisCircuitJson from "../../../content/gameplay/equipment/effects/eff_subsystem_analysis_circuit.json"
-import effSubsystemGuidedWaveJson from "../../../content/gameplay/equipment/effects/eff_subsystem_guided_wave.json"
-import effSubsystemInversePhaseJson from "../../../content/gameplay/equipment/effects/eff_subsystem_inverse_phase.json"
-import effSubsystemNoiseGateJson from "../../../content/gameplay/equipment/effects/eff_subsystem_noise_gate.json"
-import effSubsystemPrecisionControlJson from "../../../content/gameplay/equipment/effects/eff_subsystem_precision_control.json"
-import eqMainCarrierJson from "../../../content/gameplay/equipment/eq_main_carrier.json"
-import eqMainPulseJson from "../../../content/gameplay/equipment/eq_main_pulse.json"
-import eqOsBrokenJson from "../../../content/gameplay/equipment/eq_os_broken.json"
-import eqOsMagnoliaJson from "../../../content/gameplay/equipment/eq_os_magnolia.json"
-import eqSubNoiseCancellerJson from "../../../content/gameplay/equipment/eq_sub_noise_canceller.json"
-import eqSubSilentWaveJson from "../../../content/gameplay/equipment/eq_sub_silent_wave.json"
-import eqSubsystemAnalysisCircuitJson from "../../../content/gameplay/equipment/eq_subsystem_analysis_circuit.json"
-import eqSubsystemGuidedWaveJson from "../../../content/gameplay/equipment/eq_subsystem_guided_wave.json"
-import eqSubsystemInversePhaseJson from "../../../content/gameplay/equipment/eq_subsystem_inverse_phase.json"
-import eqSubsystemNoiseGateJson from "../../../content/gameplay/equipment/eq_subsystem_noise_gate.json"
-import eqSubsystemPrecisionControlJson from "../../../content/gameplay/equipment/eq_subsystem_precision_control.json"
-import worldMapDemoJson from "../../../content/gameplay/map-logic/world_map_demo.json"
-import missionGoodMorningJson from "../../../content/gameplay/missions/mission_good_morning.json"
-import missionWhereAreYouJson from "../../../content/gameplay/missions/mission_where_are_you.json"
-import missionEvacuationJson from "../../../content/gameplay/missions/mission_evacuation.json"
-import condAlwaysJson from "../../../content/gameplay/progression/conditions/cond_always.json"
-import condMissionGoodMorningClearedJson from "../../../content/gameplay/progression/conditions/cond_mission_good_morning_cleared.json"
-import hitboxEnemyLargeJson from "../../../content/gameplay/hitbox-presets/enemies/hitbox_enemy_large.json"
-import hitboxEnemyMediumJson from "../../../content/gameplay/hitbox-presets/enemies/hitbox_enemy_medium.json"
-import hitboxEnemySmallJson from "../../../content/gameplay/hitbox-presets/enemies/hitbox_enemy_small.json"
-import hitboxPlayerCoreJson from "../../../content/gameplay/hitbox-presets/player/hitbox_player_core.json"
-import hitboxBulletMediumJson from "../../../content/gameplay/hitbox-presets/projectiles/hitbox_bullet_medium.json"
-import hitboxBulletSmallJson from "../../../content/gameplay/hitbox-presets/projectiles/hitbox_bullet_small.json"
-import hitboxBulletThinJson from "../../../content/gameplay/hitbox-presets/projectiles/hitbox_bullet_thin.json"
-import presentationCuesJson from "../../../content/gameplay/presentation-cues.json"
-import projEnemyBasicJson from "../../../content/gameplay/projectiles/proj_enemy_basic.json"
-import projEnemyCoreJson from "../../../content/gameplay/projectiles/proj_enemy_core.json"
-import projEnemyGeoJson from "../../../content/gameplay/projectiles/proj_enemy_geo.json"
-import projEnemyLanceJson from "../../../content/gameplay/projectiles/proj_enemy_lance.json"
-import projEnemyPetalJson from "../../../content/gameplay/projectiles/proj_enemy_petal.json"
-import projPlayerCarrierJson from "../../../content/gameplay/projectiles/proj_player_carrier.json"
-import projPlayerCarrierBlastJson from "../../../content/gameplay/projectiles/proj_player_carrier_blast.json"
-import projPlayerPulseJson from "../../../content/gameplay/projectiles/proj_player_pulse.json"
-import projPlayerPulseMeleeJson from "../../../content/gameplay/projectiles/proj_player_pulse_melee.json"
-import txGoodMorningChunksJson from "../../../content/gameplay/transmissions/tx_good_morning.chunks.json"
-import txGoodMorningJson from "../../../content/gameplay/transmissions/tx_good_morning.json"
-import txWhereAreYouChunksJson from "../../../content/gameplay/transmissions/tx_where_are_you.chunks.json"
-import txWhereAreYouJson from "../../../content/gameplay/transmissions/tx_where_are_you.json"
-import txEvacuationChunksJson from "../../../content/gameplay/transmissions/tx_evacuation.chunks.json"
-import txEvacuationJson from "../../../content/gameplay/transmissions/tx_evacuation.json"
-import hazardMagneticDisasterGentleJson from "../../../content/gameplay/visual-presets/hazards/hazard_magnetic_disaster_gentle.json"
-import hazardMagneticDisasterStandardJson from "../../../content/gameplay/visual-presets/hazards/hazard_magnetic_disaster_standard.json"
-import visEnemyA1Json from "../../../content/gameplay/visual-presets/enemies/vis_enemy_a1.json"
-import visEnemyA2Json from "../../../content/gameplay/visual-presets/enemies/vis_enemy_a2.json"
-import visEnemyB1Json from "../../../content/gameplay/visual-presets/enemies/vis_enemy_b1.json"
-import visEnemyC1Json from "../../../content/gameplay/visual-presets/enemies/vis_enemy_c1.json"
-import visEnemyHeavyJson from "../../../content/gameplay/visual-presets/enemies/vis_enemy_heavy.json"
-import visEnemyScoutJson from "../../../content/gameplay/visual-presets/enemies/vis_enemy_scout.json"
-import visEnemyStandardJson from "../../../content/gameplay/visual-presets/enemies/vis_enemy_standard.json"
-import visBulletEnemyBasicJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_basic.json"
-import visBulletEnemyCoreJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_core.json"
-import visBulletEnemyGeoJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_geo.json"
-import visBulletEnemyLanceJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_lance.json"
-import visBulletEnemyPetalJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_enemy_petal.json"
-import visBulletPlayerCarrierJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_player_carrier.json"
-import visBulletPlayerCarrierBlastJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_player_carrier_blast.json"
-import visBulletPlayerMeleeJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_player_melee.json"
-import visBulletPlayerPulseJson from "../../../content/gameplay/visual-presets/projectiles/vis_bullet_player_pulse.json"
+import { contentManifest } from "./generated/content-manifest"
 import {
   createDefaultDifficultyModifiers,
-  createDefaultHitboxes,
   createDefaultPlayerShipSpec,
   createDefaultThemes,
-  createDefaultVisuals,
 } from "./defaults"
 
 let cachedBundle: ContentBundle | null = null
 // mission ごとの差は content 側の調整で吸収し、runtime へ専用分岐を増やし過ぎないための許可一覧です。
 // frontend / art チームが敵配置や hazard を触る時は、まずこの generic schema の範囲で表現します。
-const SUPPORTED_ENEMY_BEHAVIOR_KINDS = new Set(["straightDown", "zigzag", "slowDescent"])
-const SUPPORTED_BULLET_PATTERN_KINDS = new Set(["goldenStream", "radial", "spread"])
-const SUPPORTED_ENEMY_OVERRIDE_KEYS = new Set([
-  "speed",
-  "driftX",
-  "wobbleAmplitude",
-  "wobblePeriodMs",
-  "pauseAtY",
-  "pauseMs",
-])
+const SUPPORTED_ENEMY_BEHAVIOR_KINDS: ReadonlySet<string> = new Set(ENEMY_BEHAVIOR_KINDS)
+const SUPPORTED_BULLET_PATTERN_KINDS: ReadonlySet<string> = new Set(BULLET_PATTERN_KINDS)
+const SUPPORTED_ENEMY_OVERRIDE_KEYS: ReadonlySet<string> = new Set(ENEMY_OVERRIDE_KEYS)
 
 export function loadContentBundle(): ContentBundle {
   if (cachedBundle) {
     return cachedBundle
   }
 
-  // いまは content-tools 未導入のため、実データ JSON を明示 import して bundle を組み立てます。
-  // 生成済み bundle に切り替える時は、この関数の内部だけを差し替えれば済む構成に留めます。
-  const areas = [areaBroadcastFacilityJson, areaCentralTowerJson] as AreaMaster[]
-  const missions = [missionGoodMorningJson, missionWhereAreYouJson, missionEvacuationJson] as MissionMaster[]
-  const transmissions = [txGoodMorningJson, txWhereAreYouJson, txEvacuationJson] as TransmissionMaster[]
-  const transcriptChunks = [
-    ...(txGoodMorningChunksJson as TranscriptChunk[]),
-    ...(txWhereAreYouChunksJson as TranscriptChunk[]),
-    ...(txEvacuationChunksJson as TranscriptChunk[]),
-  ]
-  const mapLogic = [worldMapDemoJson as WorldMapLogic]
-  const enemies = [
-    enemyA1Json,
-    enemyA2Json,
-    enemyC1Json,
-    enemyB1Json,
-    enemyHeavyJson,
-    enemyScoutJson,
-    enemyStandardJson,
-  ] as EnemyArchetype[]
-  const bulletPatterns = [
-    bpA2LanceSpreadJson,
-    bpC1PressureRingJson,
-    bpB1CoreBurstJson,
-    bpB1LanceStreamJson,
-    bpHeavyBurstJson,
-    bpRadialBurstJson,
-    bpScoutSingleJson,
-    bpSpiralStreamJson,
-    bpStandardSpreadJson,
-  ] as BulletPattern[]
-  const projectiles = [
-    projEnemyBasicJson,
-    projEnemyCoreJson,
-    projEnemyGeoJson,
-    projEnemyLanceJson,
-    projEnemyPetalJson,
-    projPlayerCarrierJson,
-    projPlayerCarrierBlastJson,
-    projPlayerPulseJson,
-    projPlayerPulseMeleeJson,
-  ] as ProjectileSpec[]
-  const equipment = [
-    eqMainCarrierJson,
-    eqMainPulseJson,
-    eqOsBrokenJson,
-    eqOsMagnoliaJson,
-    eqSubNoiseCancellerJson,
-    eqSubSilentWaveJson,
-    eqSubsystemAnalysisCircuitJson,
-    eqSubsystemGuidedWaveJson,
-    eqSubsystemInversePhaseJson,
-    eqSubsystemNoiseGateJson,
-    eqSubsystemPrecisionControlJson,
-  ] as EquipmentMaster[]
-  const effects = [
-    effMainCarrierJson,
-    effMainPulseJson,
-    effOsMagnoliaJson,
-    effSubNoiseCancellerJson,
-    effSubSilentWaveJson,
-    effSubsystemAnalysisCircuitJson,
-    effSubsystemGuidedWaveJson,
-    effSubsystemInversePhaseJson,
-    effSubsystemNoiseGateJson,
-    effSubsystemPrecisionControlJson,
-  ] as EffectSpec[]
-  const conditions = [
-    condAlwaysJson,
-    condMissionGoodMorningClearedJson,
-  ] as ConditionSpec[]
-  const contentVisualPresets = [
-    visEnemyA1Json,
-    visEnemyA2Json,
-    visEnemyB1Json,
-    visEnemyC1Json,
-    visEnemyHeavyJson,
-    visEnemyScoutJson,
-    visEnemyStandardJson,
-    hazardMagneticDisasterGentleJson,
-    hazardMagneticDisasterStandardJson,
-    visBulletEnemyBasicJson,
-    visBulletEnemyCoreJson,
-    visBulletEnemyGeoJson,
-    visBulletEnemyLanceJson,
-    visBulletEnemyPetalJson,
-    visBulletPlayerCarrierJson,
-    visBulletPlayerCarrierBlastJson,
-    visBulletPlayerMeleeJson,
-    visBulletPlayerPulseJson,
-  ] as ContentVisualPreset[]
-  const contentHitboxPresets = [
-    hitboxEnemyLargeJson,
-    hitboxEnemyMediumJson,
-    hitboxEnemySmallJson,
-    hitboxPlayerCoreJson,
-    hitboxBulletMediumJson,
-    hitboxBulletSmallJson,
-    hitboxBulletThinJson,
-  ] as ContentHitboxPreset[]
-  const backgroundPresets = [
-    bgBroadcastFacilityJson,
-    bgCentralTowerJson,
-  ] as BackgroundPreset[]
-  const presentationCues = presentationCuesJson as PresentationCueSpec[]
+  const contentLifecycle =
+    contentManifest.contentClassification as Partial<Record<ContentLifecycle, Record<string, string[]>>>
+  // authoring 用 manifest は全 JSON を持ち、runtime bundle は active lifecycle のみを採用します。
+  // prototype / deprecated は validator で参照確認しつつ、通常の session 経路へ混ぜません。
+  const areas = manifestItems<AreaMaster>(contentManifest.areas)
+  const missions = filterActive(
+    manifestItems<MissionMaster>(contentManifest.missions),
+    "missions",
+    "missionId",
+    contentLifecycle,
+  )
+  const transmissions = manifestItems<TransmissionMaster>(contentManifest.transmissions)
+  const transcriptChunks = manifestItems<TranscriptChunk>(contentManifest.transcriptChunks)
+  const mapLogic = manifestItems<WorldMapLogic>(contentManifest.mapLogic)
+  const enemies = filterActive(
+    manifestItems<EnemyArchetype>(contentManifest.enemies),
+    "enemies",
+    "enemyId",
+    contentLifecycle,
+  )
+  const bulletPatterns = filterActive(
+    manifestItems<BulletPattern>(contentManifest.bulletPatterns),
+    "bulletPatterns",
+    "bulletPatternId",
+    contentLifecycle,
+  )
+  const projectiles = filterActive(
+    manifestItems<ProjectileSpec>(contentManifest.projectiles),
+    "projectiles",
+    "projectileId",
+    contentLifecycle,
+  )
+  const equipment = manifestItems<EquipmentMaster>(contentManifest.equipment)
+  const effects = manifestItems<EffectSpec>(contentManifest.effects)
+  const conditions = manifestItems<ConditionSpec>(contentManifest.conditions)
+  const contentVisualPresets = manifestItems<ContentVisualPreset>(contentManifest.visualPresets)
+  const contentHitboxPresets = manifestItems<ContentHitboxPreset>(contentManifest.hitboxPresets)
+  const backgroundPresets = manifestItems<BackgroundPreset>(contentManifest.backgroundPresets)
+  const presentationCues = manifestItems<PresentationCueSpec>(contentManifest.presentationCues)
 
   const bundle: ContentBundle = {
     playerShipSpec: createDefaultPlayerShipSpec(),
@@ -263,12 +101,10 @@ export function loadContentBundle(): ContentBundle {
     equipment: indexBy("equipmentId", equipment),
     effects: indexBy("effectId", effects),
     conditions: indexBy("conditionId", conditions),
-    visuals: createDefaultVisuals(collectVisualPresetIds(missions, enemies, projectiles)),
-    hitboxes: filterHitboxes(collectHitboxPresetIds(enemies, projectiles)),
     contentVisualPresets: indexBy("presetId", contentVisualPresets),
     contentHitboxPresets: indexBy("presetId", contentHitboxPresets),
     backgroundPresets: indexBy("presetId", backgroundPresets),
-    contentLifecycle: contentClassificationJson as Partial<Record<ContentLifecycle, Record<string, string[]>>>,
+    contentLifecycle,
     themes: createDefaultThemes(areas.map((area) => area.themeId)),
     presentationCues: indexBy("id", presentationCues),
     difficultyModifiers: createDefaultDifficultyModifiers(),
@@ -279,60 +115,25 @@ export function loadContentBundle(): ContentBundle {
   return bundle
 }
 
-function collectVisualPresetIds(
-  missions: MissionMaster[],
-  enemies: EnemyArchetype[],
-  projectiles: ProjectileSpec[],
-): VisualPresetId[] {
-  const ids = new Set<VisualPresetId>()
-
-  for (const mission of missions) {
-    ids.add(mission.backgroundPresetId)
-    for (const hazard of mission.hazards) {
-      ids.add(hazard.visualPresetId)
-    }
-  }
-
-  for (const enemy of enemies) {
-    ids.add(enemy.visualPresetId)
-  }
-
-  for (const projectile of projectiles) {
-    ids.add(projectile.visualPresetId)
-  }
-
-  return [...ids]
+function manifestItems<Item>(items: readonly unknown[]): Item[] {
+  return [...items] as Item[]
 }
 
-function collectHitboxPresetIds(
-  enemies: EnemyArchetype[],
-  projectiles: ProjectileSpec[],
-): HitboxPresetId[] {
-  const ids = new Set<HitboxPresetId>(["hitbox_player_core"])
-
-  for (const enemy of enemies) {
-    ids.add(enemy.hitboxPresetId)
+function filterActive<
+  Item extends Record<Key, string>,
+  Key extends keyof Item,
+>(
+  items: Item[],
+  lifecycleKey: string,
+  idKey: Key,
+  lifecycle: Partial<Record<ContentLifecycle, Record<string, string[]>>>,
+): Item[] {
+  const activeIds = new Set(lifecycle.active?.[lifecycleKey] ?? [])
+  if (activeIds.size === 0) {
+    throw new Error(`Missing active lifecycle entries for ${lifecycleKey}.`)
   }
 
-  for (const projectile of projectiles) {
-    ids.add(projectile.hitboxPresetId)
-  }
-
-  return [...ids]
-}
-
-function filterHitboxes(ids: HitboxPresetId[]) {
-  const hitboxes = createDefaultHitboxes()
-  const filtered: Record<string, (typeof hitboxes)[string]> = {}
-
-  for (const id of ids) {
-    const hitbox = hitboxes[id]
-    if (hitbox) {
-      filtered[id] = hitbox
-    }
-  }
-
-  return filtered
+  return items.filter((item) => activeIds.has(item[idKey]))
 }
 
 function validateBundle(bundle: ContentBundle): void {

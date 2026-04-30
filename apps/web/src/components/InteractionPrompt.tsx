@@ -70,7 +70,7 @@ export function InteractionPromptCallout({
   color,
 }: {
   anchor: { x: number; y: number }
-  keyLabel: string
+  keyLabel: PromptKeyLabel
   label: string
   ariaLabel: string
   placement?: InteractionPromptPlacement
@@ -170,7 +170,7 @@ export function InteractionPromptAnchor({
 }: {
   children: ReactNode
   show: boolean
-  keyLabel: string
+  keyLabel: PromptKeyLabel
   label: string
   ariaLabel: string
   placement?: InteractionPromptAnchorPlacement
@@ -208,18 +208,33 @@ function PromptFace({
   "aria-label": ariaLabel,
 }: {
   className: string
-  keyLabel: string
+  keyLabel: PromptKeyLabel
   label: string
   style?: CSSProperties
   role?: "note"
   "aria-label"?: string
 }) {
+  const keyLabels = readPromptKeyLabels(keyLabel)
+
   return (
     <span className={className} style={style} role={role} aria-label={ariaLabel}>
-      <kbd className="interaction-prompt__key">{keyLabel}</kbd>
+      <span className="interaction-prompt__keys">
+        {keyLabels.map((nextKeyLabel) => (
+          <kbd key={nextKeyLabel} className="interaction-prompt__key">
+            {nextKeyLabel}
+          </kbd>
+        ))}
+      </span>
       <span className="interaction-prompt__text">{label}</span>
     </span>
   )
+}
+
+type PromptKeyLabel = string | readonly string[]
+
+function readPromptKeyLabels(keyLabel: PromptKeyLabel): readonly string[] {
+  // 同時に複数の入力を案内する場合も、単一の長いキーではなく同じキー表示を並べます。
+  return typeof keyLabel === "string" ? [keyLabel] : keyLabel
 }
 
 function buildPromptColorStyle(color?: PromptColorOverrides): CSSProperties | undefined {

@@ -4,7 +4,7 @@
   "runtimeHandlerId": "weapon.main.carrier",
   "params": {
     "projectileId": "proj_player_carrier",
-    "damage": 15,
+    "damage": 36,
     "cadenceMs": 360,
     "lifetimeMs": 1800,
     "shotCount": 1,
@@ -13,7 +13,10 @@
     "trailExplosion": true,
     "explosionRadius": 30,
     "trailExplosionIntervalMs": 180,
-    "explosionDamageMultiplier": 0.75,
+    "explosionDamageMultiplier": 1,
+    "explosionAreaDamageMultiplier": 1,
+    "explosionAreaDamageDurationMs": 480,
+    "explosionClearsEnemyProjectiles": true,
     "explosionVisualProjectileId": "proj_player_carrier_blast"
   }
 }

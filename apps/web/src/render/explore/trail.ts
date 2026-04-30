@@ -1,7 +1,6 @@
 import type { Rect } from "@magnolia/game-session"
 import { worldToCanvasPoint } from "@/render/shared/coordinates"
-
-const TAU = Math.PI * 2
+import { TAU, lerpScalar, seededUnit } from "@/render/shared/render-math"
 
 export type ExploreTrailState = ReturnType<typeof createExploreTrailState>
 
@@ -543,13 +542,4 @@ function toCanvasPoint(bounds: Rect, W: number, H: number, pad: number, wx: numb
     padding: pad,
     worldPosition: { x: wx, y: wy },
   })
-}
-
-function lerpScalar(from: number, to: number, amount: number) {
-  return from + (to - from) * amount
-}
-
-function seededUnit(seed: number): number {
-  const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453
-  return value - Math.floor(value)
 }

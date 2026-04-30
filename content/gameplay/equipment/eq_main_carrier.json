@@ -28,7 +28,7 @@
       "level": 1,
       "selfRepairPointCost": 0,
       "effectOverrides": {
-        "damage": 15,
+        "damage": 36,
         "cadenceMs": 360,
         "lifetimeMs": 1800,
         "explosionRadius": 30,
@@ -39,7 +39,7 @@
       "level": 2,
       "selfRepairPointCost": 120,
       "effectOverrides": {
-        "damage": 18,
+        "damage": 42,
         "cadenceMs": 330,
         "lifetimeMs": 1850,
         "explosionRadius": 40,
@@ -50,7 +50,7 @@
       "level": 3,
       "selfRepairPointCost": 200,
       "effectOverrides": {
-        "damage": 21,
+        "damage": 48,
         "cadenceMs": 300,
         "lifetimeMs": 1900,
         "explosionRadius": 50,

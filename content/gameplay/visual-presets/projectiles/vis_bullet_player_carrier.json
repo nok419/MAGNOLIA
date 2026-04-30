@@ -2,6 +2,7 @@
   "presetId": "vis_bullet_player_carrier",
   "category": "projectile",
   "rendererKind": "carrier",
+  "bodyKind": "carrierBolt",
   "paletteRole": "playerSignal",
   "trailKind": "longSignal",
   "auraKind": "clear",

@@ -1,0 +1,346 @@
+{
+  "version": 1,
+  "source": "apps/web/src",
+  "excludes": [
+    "apps/web/src/render/shared/canvas-palette.ts",
+    "apps/web/src/styles/tokens.css"
+  ],
+  "generatedBy": "tools/style-audit.mjs",
+  "files": {
+    "apps/web/src/app/canvas-markers.ts": {
+      "count": 19,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "#7f96af",
+        "#d8e0eb",
+        "#8fdcff",
+        "#f4fbff",
+        "#d8e7f6",
+        "#ffffff",
+        "#69d3ff",
+        "#f0c674"
+      ]
+    },
+    "apps/web/src/components/KeyVisualModal.tsx": {
+      "count": 24,
+      "threatNoiseCandidates": 2,
+      "examples": [
+        "#000508",
+        "rgba(93, 164, 209, 0.03)",
+        "hsl(32, 78%, 68%)",
+        "hsl(32, 65%, 78%)",
+        "hsl(32, 82%, 76%)",
+        "hsl(40, 40%, 96%)",
+        "rgba(0,0,0,0)",
+        "rgba(0,0,0,0.5)"
+      ]
+    },
+    "apps/web/src/components/title/SignalBackdropCanvas.tsx": {
+      "count": 34,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(93, 164, 209, ${particle.a * flicker})",
+        "rgba(200, 230, 255, ${brightness})",
+        "rgba(140, 190, 240, ${brightness * 0.3})",
+        "rgba(130, 190, 240, ${particle.a * flicker})",
+        "rgba(180, 220, 255, ${particle.a})",
+        "rgba(180, 220, 255, 0)",
+        "rgba(80, 140, 200, ${(0.06 * horizonBreathe)",
+        "rgba(200, 160, 100, ${(0.015 * warmBreathe)"
+      ]
+    },
+    "apps/web/src/render/battle/backgrounds/background-renderer.ts": {
+      "count": 16,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "#080711",
+        "#08131b",
+        "#040810",
+        "rgba(174, 236, 255, ${0.03 + input.background.structureDensity * 0.05})",
+        "#0a0510",
+        "#060d1a",
+        "rgba(93, 164, 209, ${0.025 + input.background.structureDensity * 0.055})",
+        "rgba(140, 195, 255, ${0.025 + input.background.residualWarmth * 0.08})"
+      ]
+    },
+    "apps/web/src/render/battle/barrier.ts": {
+      "count": 15,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(60, 140, 255, 0.8)",
+        "rgba(40, 120, 255, 1)",
+        "rgba(80, 180, 255, 0.9)",
+        "rgba(104, 220, 255, 0.9)",
+        "rgba(104, 220, 255, 0.1)",
+        "rgba(80, 180, 255, ${shieldAlpha})",
+        "rgba(100, 200, 255, 0.5)",
+        "rgba(80, 170, 255, ${pulseAlpha})"
+      ]
+    },
+    "apps/web/src/render/battle/pickups.ts": {
+      "count": 4,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(93, 164, 209, 0.55)",
+        "#5da4d1",
+        "#d8f1ff"
+      ]
+    },
+    "apps/web/src/render/battle/player-ship.ts": {
+      "count": 10,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "#fff4a7",
+        "#e8f4ff",
+        "rgba(255, 244, 167, 0.12)",
+        "rgba(180, 220, 255, 0.06)",
+        "rgba(255, 244, 167, 0.7)",
+        "rgba(93, 164, 209, 0.5)",
+        "#5da4d1"
+      ]
+    },
+    "apps/web/src/render/battle/presentation-layer.ts": {
+      "count": 8,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(255, 214, 164, ${alpha})",
+        "rgba(255, 178, 116, 0.42)",
+        "rgba(174, 236, 255, ${0.24 * fade})",
+        "rgba(210, 248, 255, ${0.16 * fade})",
+        "rgba(255, 236, 190, ${0.24 * fade})",
+        "rgba(255, 214, 164, ${0.3 * fade})",
+        "rgba(174, 236, 255, ${0.2 * fade})",
+        "rgba(174, 236, 255, ${0.16 * fade})"
+      ]
+    },
+    "apps/web/src/render/battle/support-fields.ts": {
+      "count": 7,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "#74f0ff",
+        "#9ce06f",
+        "rgba(116, 240, 255, 0.9)",
+        "rgba(116, 240, 255, 1)",
+        "rgba(196, 249, 255, 0.88)",
+        "rgba(116, 240, 255, 0.62)",
+        "rgba(156, 224, 111, 0.62)"
+      ]
+    },
+    "apps/web/src/render/explore/background.ts": {
+      "count": 11,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "#040810",
+        "rgba(93, 164, 209, 0.04)",
+        "rgba(140, 195, 255, 0)",
+        "rgba(140, 195, 255, 0.03)",
+        "rgba(200, 230, 255, 0.028)",
+        "rgba(93, 164, 209, 0.022)",
+        "rgba(0, 0, 0, 0)",
+        "rgba(0, 0, 0, 0.18)"
+      ]
+    },
+    "apps/web/src/render/explore/trail.ts": {
+      "count": 7,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(255, 253, 246, ${(0.62 * fade * intensity)",
+        "rgba(140, 210, 255, 0.46)",
+        "rgba(214, 244, 255, ${alpha.toFixed(3)",
+        "rgba(244, 252, 255, ${(0.2 * fade * pulse)",
+        "rgba(235, 250, 255, ${(0.24 * fade)",
+        "#d0e4ff",
+        "#f0f6ff"
+      ]
+    },
+    "apps/web/src/render/explore/vision.ts": {
+      "count": 18,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(0, 0, 0, ${(0.42 * intensity)",
+        "rgba(0,0,0,1)",
+        "rgba(0,0,0,0.95)",
+        "rgba(0,0,0,0)",
+        "rgba(150, 220, 255, ${(pulse * intensity)",
+        "rgba(93, 164, 209, 0)",
+        "rgba(150, 220, 255, ${(0.035 * intensity)",
+        "rgba(93, 164, 209, ${(pulse * 0.22 * intensity)"
+      ]
+    },
+    "apps/web/src/screens/menu/MenuBackdropCanvas.tsx": {
+      "count": 2,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(93, 164, 209, 0.04)",
+        "rgba(140, 200, 255, ${particle.a * flicker})"
+      ]
+    },
+    "apps/web/src/screens/menu/ShipStatusPanel.tsx": {
+      "count": 11,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(93, 164, 209, 0.05)",
+        "rgba(93, 164, 209, 0.08)",
+        "rgba(93, 164, 209, 0.1)",
+        "rgba(93, 164, 209, 0.12)",
+        "#e8f4ff",
+        "rgba(180, 220, 255, 0.07)",
+        "rgba(93, 164, 209, 0.5)",
+        "rgba(93, 164, 209, ${0.6 + 0.4 * pulse})"
+      ]
+    },
+    "apps/web/src/styles/archive-settings.css": {
+      "count": 15,
+      "threatNoiseCandidates": 5,
+      "examples": [
+        "rgba(216, 231, 246, 0.72)",
+        "rgba(8, 18, 34, 0.4)",
+        "rgba(93, 164, 209, 0.2)",
+        "rgba(93, 164, 209, 0.5)",
+        "rgba(220, 80, 80, 0.6)",
+        "rgba(220, 80, 80, 0.2)",
+        "rgba(93, 164, 209, 0.08)",
+        "rgba(93, 164, 209, 0.1)"
+      ]
+    },
+    "apps/web/src/styles/base.css": {
+      "count": 15,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(93, 164, 209, 0.08)",
+        "rgba(93, 164, 209, 0.2)",
+        "rgba(93, 164, 209, 0.35)",
+        "rgba(93, 164, 209, 0)",
+        "rgba(93, 164, 209, 0.1)",
+        "#dce8f5",
+        "rgba(93, 164, 209, 0.42)",
+        "rgba(93, 164, 209, 0.18)"
+      ]
+    },
+    "apps/web/src/styles/battle.css": {
+      "count": 67,
+      "threatNoiseCandidates": 2,
+      "examples": [
+        "rgba(93, 164, 209, 0.1)",
+        "rgba(240, 198, 116, 0.1)",
+        "rgba(93, 164, 209, 0.18)",
+        "rgba(255, 255, 255, 0.045)",
+        "rgba(93, 164, 209, 0.14)",
+        "rgba(4, 10, 20, 0.86)",
+        "rgba(216, 236, 248, 0.12)",
+        "rgba(93, 164, 209, 0.22)"
+      ]
+    },
+    "apps/web/src/styles/common-ui.css": {
+      "count": 28,
+      "threatNoiseCandidates": 2,
+      "examples": [
+        "rgba(6, 13, 26, 0.92)",
+        "rgba(93, 164, 209, 0.15)",
+        "rgba(8, 18, 34, 0.5)",
+        "rgba(93, 164, 209, 0.6)",
+        "rgba(93, 164, 209, 0.1)",
+        "rgba(4, 8, 16, 0.72)",
+        "rgba(93, 164, 209, 0.06)",
+        "rgba(240, 198, 116, 0.36)"
+      ]
+    },
+    "apps/web/src/styles/explore-map.css": {
+      "count": 57,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(93, 164, 209, 0.05)",
+        "rgba(10, 22, 42, 0.88)",
+        "rgba(4, 10, 22, 0.94)",
+        "rgba(93, 164, 209, 0.14)",
+        "rgba(0, 0, 0, 0.35)",
+        "rgba(10, 22, 42, 0.3)",
+        "rgba(93, 164, 209, 0.25)",
+        "rgba(93, 164, 209, 0.2)"
+      ]
+    },
+    "apps/web/src/styles/explore.css": {
+      "count": 137,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(4, 8, 16, 0.6)",
+        "rgba(117, 179, 218, 0.18)",
+        "rgba(93, 164, 209, 0.06)",
+        "rgba(93, 164, 209, 0.055)",
+        "rgba(8, 18, 34, 0.84)",
+        "rgba(3, 7, 16, 0.93)",
+        "rgba(93, 164, 209, 0.18)",
+        "rgba(200, 230, 255, calc(0.28 + var(--signal-strength, 0)"
+      ]
+    },
+    "apps/web/src/styles/interaction-prompt.css": {
+      "count": 7,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "#0b1424",
+        "#9ed4ff",
+        "#06111f",
+        "#06160d",
+        "#1b070a",
+        "rgba(4, 10, 20, 0.92)",
+        "rgba(4, 10, 20, 0.88)"
+      ]
+    },
+    "apps/web/src/styles/menu-equipment.css": {
+      "count": 102,
+      "threatNoiseCandidates": 9,
+      "examples": [
+        "rgba(6, 13, 26, 0.9)",
+        "rgba(93, 164, 209, 0.15)",
+        "rgba(93, 164, 209, 0.05)",
+        "rgba(4, 10, 22, 0.94)",
+        "rgba(93, 164, 209, 0.03)",
+        "rgba(93, 164, 209, 0.06)",
+        "rgba(93, 164, 209, 0.08)",
+        "rgba(93, 164, 209, 0.18)"
+      ]
+    },
+    "apps/web/src/styles/overlays-keyvisual.css": {
+      "count": 51,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(4, 8, 16, 0.85)",
+        "rgba(93, 164, 209, 0.15)",
+        "rgba(93, 164, 209, 0.05)",
+        "rgba(93, 164, 209, 0.03)",
+        "rgba(93, 164, 209, 0.1)",
+        "rgba(220, 232, 245, 0.3)",
+        "rgba(93, 164, 209, 0.3)",
+        "rgba(240, 198, 116, 0.1)"
+      ]
+    },
+    "apps/web/src/styles/title.css": {
+      "count": 33,
+      "threatNoiseCandidates": 2,
+      "examples": [
+        "rgba(0, 0, 0, 0)",
+        "rgba(0, 0, 0, 0.18)",
+        "rgba(0, 0, 0, 0.94)",
+        "rgba(150, 205, 240, 0.1)",
+        "rgba(93, 164, 209, 0.025)",
+        "rgba(210, 240, 255, 0.08)",
+        "rgba(93, 164, 209, 0.08)",
+        "rgba(93, 164, 209, 0.06)"
+      ]
+    },
+    "apps/web/src/styles/transition-presentation.css": {
+      "count": 12,
+      "threatNoiseCandidates": 0,
+      "examples": [
+        "rgba(3, 7, 10, 0.86)",
+        "#d8fff3",
+        "rgba(120, 255, 218, 0.16)",
+        "rgba(216, 255, 243, 0.08)",
+        "rgba(216, 255, 243, 0.78)",
+        "rgba(86, 255, 211, 0.46)",
+        "rgba(216, 255, 243, 0.55)",
+        "rgba(4, 13, 16, 0.82)"
+      ]
+    }
+  }
+}

@@ -30,7 +30,7 @@ type BootLineStatus = "pending" | "active" | "done"
 const BOOT_SCOPE_BAR_COUNT = 56
 
 export function PresentationOverlay(props: PresentationOverlayProps) {
-  const { presentation, cueSpec, onDismiss } = props
+  const { presentation, onDismiss } = props
   const onDismissRef = useRef(onDismiss)
   // activeIndex: 今タイプ中の行 (-1 = まだ開始前)
   // completedCount: タイプ完了 + dwell 完了した行数 (この数だけ "done" 扱いになる)

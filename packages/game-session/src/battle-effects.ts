@@ -27,6 +27,7 @@ export function applyBattleEffectRequests(input: {
   effectRequests: RuntimeEffectRequest[]
   modifierPatch?: RuntimeModifierPatch
   projectiles: ContentBundle["projectiles"]
+  hitboxPresets: ContentBundle["contentHitboxPresets"]
   nextInstanceId: (prefix: string) => string
   mainCadenceMultiplier: number
 }): {
@@ -42,6 +43,7 @@ export function applyBattleEffectRequests(input: {
           request,
           modifierPatch: input.modifierPatch ?? {},
           projectiles: input.projectiles,
+          hitboxPresets: input.hitboxPresets,
           nextInstanceId: input.nextInstanceId,
           mainCadenceMultiplier: input.mainCadenceMultiplier,
         })
@@ -107,6 +109,7 @@ export function updateBattleProjectiles(input: {
   dtMs: number
   statModifiers: Record<string, number> | undefined
   projectiles: ContentBundle["projectiles"]
+  hitboxPresets: ContentBundle["contentHitboxPresets"]
   nextInstanceId: (prefix: string) => string
 }): void {
   const dtSeconds = input.dtMs / 1000
@@ -227,6 +230,8 @@ export function detonatePlayerProjectile(input: {
 
   const damageMultiplier = input.projectile.explosionDamageMultiplier ?? 0.75
   const explosionDamage = input.projectile.damage * damageMultiplier
+  const areaDamageDurationMs = Math.max(0, input.projectile.explosionAreaDamageDurationMs ?? 0)
+  const areaDamage = input.projectile.damage * (input.projectile.explosionAreaDamageMultiplier ?? 0)
 
   for (const enemy of input.battle.enemies) {
     if (
@@ -240,11 +245,26 @@ export function detonatePlayerProjectile(input: {
     }
   }
 
+  if (input.projectile.explosionClearsEnemyProjectiles) {
+    const explosionRadius = input.projectile.explosiveRadius
+    // キャリア爆発は静音波と同じ範囲で敵弾を消します。磁気災害への抵抗は support field 側だけに残します。
+    input.battle.projectiles = input.battle.projectiles.filter(
+      (projectile) =>
+        projectile.side !== "enemy" ||
+        !isWithinRadius(
+          projectile.position,
+          input.projectile.position,
+          explosionRadius,
+        ),
+    )
+  }
+
   if (!input.projectile.explosionVisualProjectileId) {
     return null
   }
 
   const projectileSpec = input.projectiles[input.projectile.explosionVisualProjectileId]
+  const visualLifetimeMs = Math.max(projectileSpec?.lifetimeMs ?? 180, areaDamageDurationMs)
   return {
     projectileInstanceId: input.nextInstanceId(input.projectile.explosionVisualProjectileId),
     projectileId: input.projectile.explosionVisualProjectileId,
@@ -252,11 +272,16 @@ export function detonatePlayerProjectile(input: {
     position: { ...input.projectile.position },
     velocity: { x: 0, y: 0 },
     radius: input.projectile.explosiveRadius,
-    remainingMs: projectileSpec?.lifetimeMs ?? 180,
+    remainingMs: visualLifetimeMs,
+    initialLifetimeMs: visualLifetimeMs,
+    ageMs: 0,
     spawnDelayMs: 0,
     damage: 0,
     noiseDamage: 0,
     nonColliding: true,
+    areaDamagePerSecond:
+      areaDamage > 0 && areaDamageDurationMs > 0 ? areaDamage / (areaDamageDurationMs / 1000) : undefined,
+    areaClearsEnemyProjectiles: Boolean(input.projectile.explosionClearsEnemyProjectiles),
   }
 }
 
@@ -318,6 +343,9 @@ function spawnTrailExplosions(input: {
         ...input.projectile,
         explosiveRadius: input.projectile.trailExplosionRadius,
         explosionDamageMultiplier: input.projectile.trailExplosionDamageMultiplier,
+        explosionAreaDamageMultiplier: input.projectile.trailExplosionAreaDamageMultiplier,
+        explosionAreaDamageDurationMs: input.projectile.trailExplosionAreaDamageDurationMs,
+        explosionClearsEnemyProjectiles: input.projectile.trailExplosionClearsEnemyProjectiles,
         explosionVisualProjectileId: input.projectile.trailExplosionVisualProjectileId,
       },
       projectiles: input.projectiles,
@@ -341,9 +369,10 @@ function applyMeleeSweepDamage(input: {
   damage: number
   burnDamagePerSec?: number
   burnDurationMs?: number
-}): void {
+}): string[] {
   const forward = normalizeVector(input.direction)
   const halfArcRadians = (Math.max(1, input.arcDeg) * Math.PI) / 360
+  const hitEnemyInstanceIds: string[] = []
 
   for (const enemy of input.battle.enemies) {
     const toEnemy = {
@@ -366,11 +395,14 @@ function applyMeleeSweepDamage(input: {
     }
 
     enemy.hp -= input.damage
+    hitEnemyInstanceIds.push(enemy.enemyInstanceId)
     if (input.burnDamagePerSec && input.burnDurationMs) {
       enemy.burnDamagePerSec = input.burnDamagePerSec
       enemy.burnUntilMs = input.battle.elapsedMs + input.burnDurationMs
     }
   }
+
+  return hitEnemyInstanceIds
 }
 
 function readRequestNumericParam(
@@ -387,6 +419,7 @@ function spawnProjectilesFromRequest(input: {
   request: Extract<RuntimeEffectRequest, { kind: "spawnProjectile" }>
   modifierPatch: RuntimeModifierPatch
   projectiles: ContentBundle["projectiles"]
+  hitboxPresets: ContentBundle["contentHitboxPresets"]
   nextInstanceId: (prefix: string) => string
   mainCadenceMultiplier: number
 }): void {
@@ -429,7 +462,7 @@ function spawnProjectilesFromRequest(input: {
         x: direction.x * input.request.speed,
         y: direction.y * input.request.speed,
       },
-      radius: resolveHitRadius(projectileSpec?.hitboxPresetId),
+      radius: resolveHitRadius(projectileSpec ? input.hitboxPresets[projectileSpec.hitboxPresetId] : undefined),
       remainingMs: lifetimeMs,
       initialLifetimeMs: lifetimeMs,
       ageMs: 0,
@@ -465,6 +498,18 @@ function spawnProjectilesFromRequest(input: {
         trailExplosionEnabled
           ? readRequestNumericParam(input.request.params, "explosionDamageMultiplier", 0.75)
           : undefined,
+      trailExplosionAreaDamageMultiplier:
+        trailExplosionEnabled
+          ? readRequestNumericParam(input.request.params, "explosionAreaDamageMultiplier", 0)
+          : undefined,
+      trailExplosionAreaDamageDurationMs:
+        trailExplosionEnabled
+          ? readRequestNumericParam(input.request.params, "explosionAreaDamageDurationMs", 0)
+          : undefined,
+      trailExplosionClearsEnemyProjectiles:
+        trailExplosionEnabled
+          ? Boolean(input.request.params?.explosionClearsEnemyProjectiles)
+          : undefined,
       trailExplosionVisualProjectileId:
         trailExplosionEnabled &&
         typeof input.request.params?.explosionVisualProjectileId === "string"
@@ -490,40 +535,55 @@ function spawnProjectilesFromRequest(input: {
         input.request.params && typeof input.request.params.explosionDamageMultiplier === "number"
           ? input.request.params.explosionDamageMultiplier
           : undefined,
+      explosionAreaDamageMultiplier:
+        input.request.params && typeof input.request.params.explosionAreaDamageMultiplier === "number"
+          ? input.request.params.explosionAreaDamageMultiplier
+          : undefined,
+      explosionAreaDamageDurationMs:
+        input.request.params && typeof input.request.params.explosionAreaDamageDurationMs === "number"
+          ? input.request.params.explosionAreaDamageDurationMs
+          : undefined,
+      explosionClearsEnemyProjectiles:
+        input.request.params && Boolean(input.request.params.explosionClearsEnemyProjectiles),
       explosionVisualProjectileId:
         input.request.params && typeof input.request.params.explosionVisualProjectileId === "string"
           ? input.request.params.explosionVisualProjectileId
           : undefined,
       nonColliding:
-        Boolean(input.request.params?.visualOnly) || Boolean(input.request.params?.piercing),
+        Boolean(input.request.params?.visualOnly),
+      piercing: Boolean(input.request.params?.piercing),
     })
   }
 
   if (
     input.request.params?.meleeEnabled &&
     typeof input.request.params.meleeProjectileId === "string" &&
-    (input.battle.mainMeleeCooldownMs ?? 0) <= 0 &&
-    hasEnemyWithinRange(
-      input.battle.enemies,
-      input.request.position,
-      typeof input.request.params.meleeRange === "number" ? input.request.params.meleeRange : 80,
-    )
+    (input.battle.mainMeleeCooldownMs ?? 0) <= 0
   ) {
     const meleeProjectileId = input.request.params.meleeProjectileId
     const meleeProjectileSpec = input.projectiles[meleeProjectileId]
     const meleeStyle =
       typeof input.request.params.meleeStyle === "string" ? input.request.params.meleeStyle : "burst"
     const meleeRange = readRequestNumericParam(input.request.params, "meleeRange", 80)
+    const meleeCollisionRange = readRequestNumericParam(
+      input.request.params,
+      "meleeCollisionRange",
+      meleeRange * 1.8,
+    )
+    const meleeCollisionArcDeg = readRequestNumericParam(input.request.params, "meleeCollisionArcDeg", 32)
     const meleeDamage = readRequestNumericParam(input.request.params, "meleeDamage", 8)
     const meleeSpreadDeg = readRequestNumericParam(input.request.params, "meleeSpreadDeg", 120)
+    if (!hasEnemyWithinRange(input.battle.enemies, input.request.position, meleeCollisionRange)) {
+      return
+    }
 
     if (meleeStyle === "swordSweep") {
       // 近接は円弧状の弾をばら撒かず、前方扇形の判定と一つの表示用スイープに分けます。
-      applyMeleeSweepDamage({
+      const hitEnemyInstanceIds = applyMeleeSweepDamage({
         battle: input.battle,
         origin: input.request.position,
         direction: input.request.direction,
-        range: meleeRange,
+        range: meleeCollisionRange,
         arcDeg: meleeSpreadDeg,
         damage: meleeDamage,
         burnDamagePerSec,
@@ -550,6 +610,12 @@ function spawnProjectilesFromRequest(input: {
         noiseDamage: 0,
         nonColliding: true,
         anchorToPlayer: true,
+        meleeSweepDamage: meleeDamage,
+        meleeSweepRange: meleeCollisionRange,
+        meleeSweepArcDeg: meleeCollisionArcDeg,
+        meleeSweepHitEnemyInstanceIds: hitEnemyInstanceIds,
+        burnDamagePerSec,
+        burnDurationMs,
         inversePhaseVisual: Boolean(input.modifierPatch.visibilityModifiers?.inversePhaseVisual),
       })
       // main 弾の連射とは別に、近接の一振りだけを重く遅くします。
@@ -578,7 +644,7 @@ function spawnProjectilesFromRequest(input: {
           x: direction.x * 320,
           y: direction.y * 320,
         },
-        radius: resolveHitRadius(meleeProjectileSpec?.hitboxPresetId),
+        radius: resolveHitRadius(meleeProjectileSpec ? input.hitboxPresets[meleeProjectileSpec.hitboxPresetId] : undefined),
         remainingMs: 150,
         spawnDelayMs:
           (input.request.delayMs ?? 0) +

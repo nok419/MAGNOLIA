@@ -8,7 +8,13 @@ import type {
 } from "@/app/presentation/presentation-state"
 import { BattleCanvas } from "@/render/battle/BattleCanvas"
 import { ActionButton } from "@/components/ActionButton"
-import { Meter, PanelFrame } from "@/components/common"
+import { Meter, PanelFrame, ScrambleText } from "@/components/common"
+import { useEventPulse } from "@/hooks/useEventPulse"
+
+// 被弾・字幕欠損で speaker label を再スクランブルするトリガに使う cueId。
+const SCRAMBLE_HIT_CUES = ["battle.player.hit", "battle.subtitle.damage"] as const
+// 復元イベントは「ノイズから読める形に戻る」演出として軽く一度だけ流す。
+const SCRAMBLE_RECOVER_CUES = ["battle.fragment.recovered"] as const
 
 type BattleScreenProps = {
   renderState: BattleRenderState
@@ -34,6 +40,8 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
   const protectedRatio = clamp01(renderState.currentChunkProtectedRatio)
   const recentlyLost = renderState.newlyLostRange != null
   const recentlyRecovered = renderState.newlyRecoveredRange != null
+  const hitPulse = useEventPulse(battleEvents, SCRAMBLE_HIT_CUES)
+  const recoverPulse = useEventPulse(battleEvents, SCRAMBLE_RECOVER_CUES)
 
   return (
     <main className="battle-screen">
@@ -94,7 +102,12 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
           >
             {renderState.activeSubtitle.speakerLabel ? (
               <p className="battle-subtitle-panel__speaker">
-                {renderState.activeSubtitle.speakerLabel}
+                <ScrambleText
+                  text={renderState.activeSubtitle.speakerLabel}
+                  // chunk が変わるたび + 被弾・欠損が来たびに再スクランブル。
+                  trigger={`${renderState.activeSubtitle.transmissionId}:${renderState.activeSubtitle.chunkId}:${hitPulse}:${recoverPulse}`}
+                  reduceFlashing={displayOptions.reduceFlashing}
+                />
               </p>
             ) : null}
             <p
@@ -132,9 +145,14 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
             className={`battle-subtitle-panel ${subtitleEventTone ? `battle-subtitle-panel--${subtitleEventTone}` : ""}`}
             bodyClassName="battle-subtitle-panel__body"
           >
-            <p className="battle-subtitle-panel__speaker">standby</p>
+            <p className="battle-subtitle-panel__speaker">
+              <ScrambleText text="standby" reduceFlashing={displayOptions.reduceFlashing} />
+            </p>
             <p className="battle-subtitle-panel__text muted-text">
-              waiting for signal...
+              <ScrambleText
+                text="waiting for signal..."
+                reduceFlashing={displayOptions.reduceFlashing}
+              />
             </p>
           </PanelFrame>
         )}
@@ -188,7 +206,12 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
                 <div className="battle-result-overlay__rewards battle-result-overlay__rewards--highlight">
                   <div className="battle-result-rewards__banner" aria-hidden="true">
                     <span className="battle-result-rewards__diamond">◆</span>
-                    <span className="battle-result-rewards__banner-label">NEW EQUIPMENT ACQUIRED</span>
+                    <span className="battle-result-rewards__banner-label">
+                      <ScrambleText
+                        text="NEW EQUIPMENT ACQUIRED"
+                        reduceFlashing={displayOptions.reduceFlashing}
+                      />
+                    </span>
                     <span className="battle-result-rewards__diamond">◆</span>
                   </div>
                   <ul className="battle-result-overlay__reward-list battle-result-overlay__reward-list--highlight">

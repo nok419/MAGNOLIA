@@ -16,10 +16,11 @@ import {
 } from "@/render/explore/trail"
 import { drawVisionFog, drawVisionScannerOverlay } from "@/render/explore/vision"
 import { worldToCanvasPoint, isCanvasPointVisible } from "@/render/shared/coordinates"
-import { PHI_INV, clampScalar } from "@/render/explore/explore-render-utils"
+import { clampScalar } from "@/render/explore/explore-render-utils"
 import { drawExplorePlayer } from "@/render/explore/explore-player"
 import { drawRestrictedBoundary, type BoundaryReleaseSequence } from "@/render/explore/restricted-boundary"
 import { drawNavCueLayer, resolveCollectibleNavKind, type NavCueTarget } from "@/render/explore/nav-cue"
+import { drawScanCooldownMeter, type ScanCooldownMeterState } from "@/render/explore/scan-cooldown-meter"
 
 function toCanvasPoint(bounds: Rect, width: number, height: number, padding: number, wx: number, wy: number) {
   return worldToCanvasPoint({
@@ -103,6 +104,7 @@ export function drawExploreScene(
     shipVariant: ShipVariant
     trailState: ExploreTrailState
     trailEventBoost: number
+    scanMeterState: ScanCooldownMeterState
     reduceFlashing: boolean
     lowFrameRateMode: boolean
   },
@@ -283,6 +285,15 @@ export function drawExploreScene(
     )
     ctx.restore()
   }
+  drawScanCooldownMeter(ctx, {
+    state: input.scanMeterState,
+    playerPoint: input.playerPoint,
+    ratio: input.renderState.scanCooldownRatio,
+    alpha: visionIntensity * playerOpacity,
+    timeMs: input.timeMs,
+    reduceFlashing: input.reduceFlashing,
+    lowFrameRateMode: input.lowFrameRateMode,
+  })
   drawVisionScannerOverlay(
     ctx,
     input.playerPoint,

@@ -1,16 +1,24 @@
 #!/usr/bin/env node
-import { mkdirSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, rmSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import path from "node:path"
 
 const DEFAULT_OUTPUT = "artifacts/magnolia-source.zip"
 const outputPath = path.resolve(process.cwd(), process.argv[2] ?? DEFAULT_OUTPUT)
 
-const sourceFiles = run("git", ["ls-files", "--cached", "--others", "--exclude-standard"])
+const sourceFiles = run("git", [
+  "-c",
+  "core.quotePath=false",
+  "ls-files",
+  "-z",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+])
   .stdout
-  .trim()
-  .split("\n")
+  .split("\0")
   .filter(Boolean)
+  .filter((file) => existsSync(file))
   .filter((file) => !isGeneratedOrMetadata(file))
 
 if (sourceFiles.length === 0) {
@@ -30,6 +38,8 @@ if (zipResult.status !== 0) {
   throw new Error(zipResult.stderr || "zip command failed.")
 }
 
+assertArchiveEntriesAllowed(outputPath)
+assertArchiveContainsExpectedFiles(outputPath, sourceFiles)
 console.log(`source archive written: ${path.relative(process.cwd(), outputPath)}`)
 
 function isGeneratedOrMetadata(file) {
@@ -41,6 +51,9 @@ function isGeneratedOrMetadata(file) {
     file.includes("/._") ||
     file.startsWith("._") ||
     file.startsWith("artifacts/") ||
+    file.endsWith(".zip") ||
+    file.endsWith(".diff") ||
+    file.endsWith(".patch") ||
     file.includes("/dist/") ||
     file.endsWith(".tsbuildinfo") ||
     file.includes("/node_modules/") ||
@@ -58,4 +71,35 @@ function run(command, args) {
     throw new Error(result.stderr || `${command} ${args.join(" ")} failed.`)
   }
   return result
+}
+
+function assertArchiveEntriesAllowed(archivePath) {
+  const listing = readArchiveEntries(archivePath)
+  const forbidden = listing.find(isGeneratedOrMetadata)
+  if (forbidden) {
+    throw new Error(`source archive contains forbidden entry: ${forbidden}`)
+  }
+}
+
+function assertArchiveContainsExpectedFiles(archivePath, expectedFiles) {
+  const entries = new Set(readArchiveEntries(archivePath))
+  const missing = expectedFiles.filter((file) => !entries.has(file))
+  if (missing.length > 0) {
+    throw new Error(`source archive is missing ${missing.length} entries; first missing: ${missing[0]}`)
+  }
+}
+
+function readArchiveEntries(archivePath) {
+  const bsdtar = spawnSync("bsdtar", ["-tf", archivePath], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  })
+  if (bsdtar.status === 0) {
+    return bsdtar.stdout.trim().split("\n").filter(Boolean)
+  }
+  return run("unzip", ["-Z1", archivePath])
+    .stdout
+    .trim()
+    .split("\n")
+    .filter(Boolean)
 }

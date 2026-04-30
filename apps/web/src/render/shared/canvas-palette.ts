@@ -43,6 +43,20 @@ export const CANVAS_PALETTE: Record<CanvasPaletteRole, CanvasPaletteColor> = {
   enemyPrototype: { cssVar: "--color-residual-warmth", hex: "#f0c674", rgb: [240, 198, 116] },
 }
 
+export const CANVAS_PALETTE_ROLES: ReadonlySet<CanvasPaletteRole> = new Set(
+  Object.keys(CANVAS_PALETTE) as CanvasPaletteRole[],
+)
+
+export function resolveCanvasPaletteRole(
+  value: string | undefined,
+  fallback: CanvasPaletteRole,
+): CanvasPaletteRole {
+  // content 側の paletteRole が未知でも描画を止めないため、fallback は caller の文脈で決めます。
+  return value && CANVAS_PALETTE_ROLES.has(value as CanvasPaletteRole)
+    ? (value as CanvasPaletteRole)
+    : fallback
+}
+
 export type CanvasGlow = {
   color: string
   blur: number

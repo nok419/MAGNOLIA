@@ -145,6 +145,13 @@
   animation: mg-interaction-prompt-label-in 340ms var(--ease-out-expo) 960ms forwards;
 }
 
+.interaction-prompt__keys {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
 .interaction-prompt__label--above {
   transform: translate(-50%, calc(-100% - 8px));
 }

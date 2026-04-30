@@ -133,6 +133,43 @@
       ]
     }
   ],
+  "beatEvents": [
+    {
+      "beatId": "way_kana_soft_search",
+      "atMs": 0,
+      "durationMs": 24000,
+      "intentTag": "kana-soft-search",
+      "transcriptChunkIds": ["chunk_way_001a", "chunk_way_001b", "chunk_way_001c", "chunk_way_002a", "chunk_way_002b", "chunk_way_002c", "chunk_way_003a", "chunk_way_003b"],
+      "relatedEnemyIds": ["enemy_scout", "enemy_standard"]
+    },
+    {
+      "beatId": "way_takumi_public_route",
+      "atMs": 26000,
+      "durationMs": 26000,
+      "intentTag": "takumi-public-route",
+      "transcriptChunkIds": ["chunk_way_004a", "chunk_way_004b", "chunk_way_005a", "chunk_way_005b", "chunk_way_006a", "chunk_way_006b"],
+      "relatedEnemyIds": ["enemy_scout", "enemy_standard", "enemy_heavy"],
+      "relatedHazardIds": ["hazard_way_01", "hazard_way_02"]
+    },
+    {
+      "beatId": "way_misaki_fragment_pressure",
+      "atMs": 54000,
+      "durationMs": 26000,
+      "intentTag": "misaki-fragment-pressure",
+      "transcriptChunkIds": ["chunk_way_007a", "chunk_way_007b", "chunk_way_008a", "chunk_way_008b", "chunk_way_009a", "chunk_way_009b"],
+      "relatedEnemyIds": ["enemy_scout", "enemy_standard", "enemy_heavy"],
+      "fragmentWindow": { "startMs": 54000, "endMs": 80000 }
+    },
+    {
+      "beatId": "way_protect_final_word",
+      "atMs": 82500,
+      "durationMs": 2500,
+      "intentTag": "protect-final-word",
+      "transcriptChunkIds": ["chunk_way_010a", "chunk_way_010b"],
+      "relatedHazardIds": ["hazard_way_03"],
+      "fragmentWindow": { "startMs": 82500, "endMs": 85000 }
+    }
+  ],
   "hazards": [
     {
       "hazardId": "hazard_way_01",

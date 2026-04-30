@@ -23,6 +23,7 @@ import type {
   EffectId,
   EffectSpec,
   EnemyArchetype,
+  HitboxPresetId,
   EnemyId,
   HazardId,
   HazardPhase,
@@ -30,8 +31,6 @@ import type {
   EquipmentId,
   EquipmentMaster,
   EquipmentSlot,
-  HitboxPreset,
-  HitboxPresetId,
   MapId,
   MetaRow,
   MissionId,
@@ -57,7 +56,6 @@ import type {
   TransmissionProgressRow,
   UiThemePreset,
   Vector2,
-  VisualPreset,
   VisualPresetId,
   WorldMapLogic,
   WorldMapNodeId,
@@ -206,6 +204,42 @@ export type ArchiveSnapshot = {
   selectedAreaId?: AreaId
   selectedTransmissionId?: TransmissionId
   access: ArchiveAccessState
+  viewModel: ArchiveViewModel
+}
+
+export type EquipmentCatalogItemViewModel = {
+  equipmentId: EquipmentId
+  slot: EquipmentSlot
+  visibleName: string
+  visibleDescription: string
+  flavorText?: string
+  masked: boolean
+  owned: boolean
+  equippedSlot?: EquipmentSlot
+  subsystemIndex?: SubsystemIndex
+  currentLevel: number
+  maxLevel: number
+  canPurchase: boolean
+  purchaseCost?: number
+  canUpgrade: boolean
+  upgradeCost?: number
+  canEquip: boolean
+  equipTargets: Array<{
+    slot: EquipmentSlot
+    subsystemIndex?: SubsystemIndex
+    label: string
+    equipped: boolean
+    canEquip: boolean
+    lockedReasonLabel?: string
+  }>
+  lockedReasonLabel?: string
+}
+
+export type EquipmentCatalogViewModel = {
+  screen: "equipment"
+  selfRepairPoints: number
+  equipped: EquippedItems
+  items: EquipmentCatalogItemViewModel[]
 }
 
 export type EquipmentPanelViewModel = {
@@ -214,6 +248,7 @@ export type EquipmentPanelViewModel = {
   equipped: EquippedItems
   equipmentLevels: Partial<Record<EquipmentId, number>>
   selfRepairPoints: number
+  catalog: EquipmentCatalogViewModel
 }
 
 export function createEmptyEquipmentPanelViewModel(): EquipmentPanelViewModel {
@@ -223,7 +258,47 @@ export function createEmptyEquipmentPanelViewModel(): EquipmentPanelViewModel {
     equipped: createEmptyEquippedItems(),
     equipmentLevels: {},
     selfRepairPoints: 0,
+    catalog: {
+      screen: "equipment",
+      selfRepairPoints: 0,
+      equipped: createEmptyEquippedItems(),
+      items: [],
+    },
   }
+}
+
+export type ArchiveTransmissionEntryViewModel = {
+  areaId: AreaId
+  areaName: string
+  transmissionId: TransmissionId
+  title: string
+  sender: string
+  recipient: string
+  sentAt: string
+  metadataUnlocked: TransmissionProgressRow["metadataUnlocked"]
+  unread: boolean
+  selected: boolean
+  chunks: TranscriptViewChunk[]
+}
+
+export type ArchiveViewModel = {
+  screen: "archive"
+  selectedTransmissionId?: TransmissionId
+  entries: ArchiveTransmissionEntryViewModel[]
+}
+
+export type MenuTabViewModel = {
+  tab: "equipment" | "archive" | "settings"
+  available: boolean
+  badgeCount: number
+  unread: boolean
+}
+
+export type MenuViewModel = {
+  screen: "menu"
+  tabs: MenuTabViewModel[]
+  canSave: boolean
+  canReturnToTitle: boolean
 }
 
 export type RootSnapshot = {
@@ -242,6 +317,7 @@ export type RootSnapshot = {
   battle?: BattleSnapshot
   archive?: ArchiveSnapshot
   equipment?: EquipmentPanelViewModel
+  menu: MenuViewModel
 }
 
 export type DomainEvent =
@@ -288,6 +364,18 @@ export type DomainEvent =
       type: "collectibleCollected"
       nodeId: WorldMapNodeId
       collectibleKind: CollectibleMapNode["collectibleKind"]
+    }
+  | {
+      type: "playerMainWeaponFired"
+    }
+  | {
+      type: "playerSubWeaponUsed"
+    }
+  | {
+      type: "playerBarrierStarted"
+    }
+  | {
+      type: "playerBarrierStopped"
     }
 
 export type ExploreFrameInput = {
@@ -453,11 +541,9 @@ export type ContentBundle = {
   equipment: Record<EquipmentId, EquipmentMaster>
   effects: Record<EffectId, EffectSpec>
   conditions: Record<ConditionId, ConditionSpec>
-  visuals: Record<VisualPresetId, VisualPreset>
-  hitboxes: Record<HitboxPresetId, HitboxPreset>
-  contentVisualPresets?: Record<VisualPresetId, ContentVisualPreset>
-  contentHitboxPresets?: Record<HitboxPresetId, ContentHitboxPreset>
-  backgroundPresets?: Record<VisualPresetId, BackgroundPreset>
+  contentVisualPresets: Record<VisualPresetId, ContentVisualPreset>
+  contentHitboxPresets: Record<HitboxPresetId, ContentHitboxPreset>
+  backgroundPresets: Record<VisualPresetId, BackgroundPreset>
   contentLifecycle?: Partial<Record<ContentLifecycle, Record<string, string[]>>>
   themes: Record<ThemeId, UiThemePreset>
   presentationCues: Record<PresentationCueId, PresentationCueSpec>

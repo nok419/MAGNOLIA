@@ -1,12 +1,11 @@
 import { gradientStop, rgba, resolveGlow } from "@/render/shared/canvas-palette"
+import { TAU } from "@/render/shared/render-math"
 import {
   clampEffectRatio,
   readEffectAlpha,
   type EffectPoint,
   type SharedEffectOptions,
 } from "@/render/shared/effects/effect-options"
-
-const TAU = Math.PI * 2
 
 export type SignalPulseInput = SharedEffectOptions & {
   origin: EffectPoint

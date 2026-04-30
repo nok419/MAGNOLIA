@@ -4,6 +4,8 @@
 担当: 担当者B
 主な対象: `apps/web/src/screens/battle/BattleScreen.tsx`, `apps/web/src/components/BattleCanvas.tsx`, `apps/web/src/components/battle-renderer.ts`, 新設する `apps/web/src/render/battle/*`
 
+注記: この文書は閉じたレビュー履歴です。現行のコードマップは `docs/02_開発体制とディレクトリ構成.md`、データ契約は `docs/05_データ構造.md`、表示境界は `docs/08_表示と機能の境界.md`、design package は `docs/11_design_package/README.md` を参照してください。
+
 # 目的
 
 戦闘画面を、敵を倒す画面ではなく、通信の明瞭度を守り、欠損した言葉を拾い戻す画面として成立させます。

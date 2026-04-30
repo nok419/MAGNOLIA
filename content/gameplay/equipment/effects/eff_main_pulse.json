@@ -4,7 +4,7 @@
   "runtimeHandlerId": "weapon.main.pulse",
   "params": {
     "projectileId": "proj_player_pulse",
-    "damage": 10,
+    "damage": 9,
     "cadenceMs": 120,
     "shotCount": 3,
     "spreadDeg": 28,
@@ -15,8 +15,10 @@
     "meleeStyle": "swordSweep",
     "meleeRange": 92,
     "meleeProjectileId": "proj_player_pulse_melee",
-    "meleeDamage": 22,
+    "meleeDamage": 72,
     "meleeSpreadDeg": 132,
+    "meleeCollisionRange": 166,
+    "meleeCollisionArcDeg": 32,
     "meleeSweepDurationMs": 660,
     "meleeCooldownMs": 920
   }

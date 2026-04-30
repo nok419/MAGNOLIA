@@ -3,6 +3,7 @@ import type {
   FragmentRecoveredPresentationRequest,
   HitPresentationRequest,
   InvincibleStartPresentationRequest,
+  MissionBeatPresentationRequest,
   MotionTrailPresentationRequest,
   NoiseBandKind,
   NoiseClearPresentationRequest,
@@ -12,11 +13,13 @@ import type {
   RebootSequencePresentationRequest,
   ReleasePresentationRequest,
   RestrictionPresentationRequest,
+  SubtitleDamagePresentationRequest,
   SystemMessagePresentationRequest,
   TransitionPresentationRequest,
   TransmissionId,
   Vector2,
 } from "@magnolia/contracts"
+import type { MissionBeatEvent } from "@magnolia/contracts"
 
 let presentationRequestSerial = 0
 
@@ -159,6 +162,22 @@ export function createBattleHitPresentation(input: {
   ]
 }
 
+export function createBattleSubtitleDamagePresentation(input: {
+  chunkId: string
+  range: { startMs: number; endMs: number }
+}): SubtitleDamagePresentationRequest[] {
+  return [
+    {
+      requestId: nextPresentationRequestId("battle.subtitle.damage"),
+      cueId: "battle.subtitle.damage",
+      channel: "battle",
+      blocking: false,
+      chunkId: input.chunkId,
+      range: input.range,
+    },
+  ]
+}
+
 export function createBattleNoisePeakPresentation(): NoisePeakPresentationRequest[] {
   return [
     {
@@ -227,6 +246,29 @@ export function createBattleInvincibleStartPresentation(input: {
       channel: "battle",
       blocking: false,
       durationMs: input.durationMs,
+    },
+  ]
+}
+
+export function createMissionBeatPresentation(input: {
+  missionId: string
+  beat: MissionBeatEvent
+}): MissionBeatPresentationRequest[] {
+  return [
+    {
+      requestId: nextPresentationRequestId("battle.mission.beat"),
+      cueId: "battle.mission.beat",
+      channel: "battle",
+      blocking: false,
+      missionId: input.missionId,
+      beatId: input.beat.beatId,
+      intentTag: input.beat.intentTag,
+      atMs: input.beat.atMs,
+      durationMs: input.beat.durationMs,
+      transcriptChunkIds: input.beat.transcriptChunkIds,
+      relatedEnemyIds: input.beat.relatedEnemyIds ?? [],
+      relatedHazardIds: input.beat.relatedHazardIds ?? [],
+      fragmentWindow: input.beat.fragmentWindow,
     },
   ]
 }

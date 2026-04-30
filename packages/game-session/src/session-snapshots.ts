@@ -17,6 +17,7 @@ import type { ResolvedLoadout } from "./equipment-runtime"
 import { buildBattleHazardViewModels } from "./hazards"
 import {
   buildWorldMapVisibilityState,
+  buildEquipmentCatalogViewModel,
   selectVisibleWorldMapSnapshot,
 } from "./selectors"
 import {
@@ -183,15 +184,27 @@ export function createBattleSnapshotFromState(input: {
 
 export function createEquipmentSnapshotForProfile(
   profileAggregate: ProfileAggregate | null,
+  input?: {
+    content: ContentBundle
+    featureAccess: FeatureAccessState
+  },
 ): EquipmentPanelViewModel {
   if (!profileAggregate) {
     return createEmptyEquipmentPanelViewModel()
   }
+  const catalog = input
+    ? buildEquipmentCatalogViewModel({
+        equipment: input.content.equipment,
+        profile: profileAggregate.profile,
+        featureAccess: input.featureAccess,
+      })
+    : createEmptyEquipmentPanelViewModel().catalog
   return {
     screen: "equipment",
     ownedEquipmentIds: profileAggregate.profile.ownedEquipmentIds,
     equipped: profileAggregate.profile.equipped,
     equipmentLevels: profileAggregate.profile.equipmentLevels,
     selfRepairPoints: profileAggregate.profile.selfRepairPoints,
+    catalog,
   }
 }

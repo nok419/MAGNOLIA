@@ -1,4 +1,4 @@
-const TAU = Math.PI * 2
+import { TAU, clampScalar } from "@/render/shared/render-math"
 
 export function drawVisionFog(
   ctx: CanvasRenderingContext2D,
@@ -164,8 +164,4 @@ function drawVisionRipples(
     ctx.stroke()
   }
   ctx.restore()
-}
-
-function clampScalar(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value))
 }

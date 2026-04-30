@@ -1,5 +1,6 @@
 import type { MutableRefObject } from "react"
 import type { Rect } from "@magnolia/game-session"
+import { clampScalar, easeInOutSine, lerpScalar } from "@/render/shared/render-math"
 
 export type CameraState = { x: number; y: number }
 export type ReleaseFocusEdge = "top" | "right" | "bottom" | "left"
@@ -191,17 +192,4 @@ function lerpPoint(
     x: lerpScalar(from.x, to.x, amount),
     y: lerpScalar(from.y, to.y, amount),
   }
-}
-
-function lerpScalar(from: number, to: number, amount: number) {
-  return from + (to - from) * amount
-}
-
-function clampScalar(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value))
-}
-
-function easeInOutSine(value: number): number {
-  const clamped = Math.max(0, Math.min(1, value))
-  return -(Math.cos(Math.PI * clamped) - 1) / 2
 }

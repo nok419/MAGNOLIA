@@ -6,7 +6,7 @@ import {
   resolveBattleRenderer,
 } from "@/render/battle/battle-renderer-utils"
 import type { CanvasPaletteRole } from "@/render/shared/canvas-palette"
-import { hex, rgba } from "@/render/shared/canvas-palette"
+import { hex, resolveCanvasPaletteRole, rgba } from "@/render/shared/canvas-palette"
 import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
 
 type EnemyRendererInput = {
@@ -327,26 +327,6 @@ function readEnemyMotionProfile(profile: string | undefined): {
   }
 }
 
-const SUPPORTED_ROLES: ReadonlySet<CanvasPaletteRole> = new Set([
-  "voidBase",
-  "voidRaised",
-  "voidDepth",
-  "panel",
-  "lineSubtle",
-  "lineStrong",
-  "signalPrimary",
-  "signalPrimaryDim",
-  "signalReadable",
-  "signalSecondary",
-  "signalMuted",
-  "residualWarmth",
-  "restoration",
-  "threatNoise",
-  "playerSignal",
-  "enemyNoise",
-  "enemyPrototype",
-])
-
 function resolvePaletteRole(value: string, fallback: CanvasPaletteRole): CanvasPaletteRole {
-  return SUPPORTED_ROLES.has(value as CanvasPaletteRole) ? (value as CanvasPaletteRole) : fallback
+  return resolveCanvasPaletteRole(value, fallback)
 }

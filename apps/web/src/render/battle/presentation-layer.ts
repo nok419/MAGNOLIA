@@ -6,14 +6,13 @@ import type {
 import { rgba } from "@/render/shared/canvas-palette"
 import { drawResidualFragment } from "@/render/shared/effects/residual-fragment"
 import { drawThreatNoiseField } from "@/render/shared/effects/threat-noise-field"
+import { TAU } from "@/render/shared/render-math"
 
 type PresentationLayerInput = {
   renderState: BattleRenderState
   battleEvents: TimedPresentationRequest<BattlePresentationRequest>[]
   reduceFlashing: boolean
 }
-
-const TAU = Math.PI * 2
 
 export function drawBattlePresentationLayer(
   ctx: CanvasRenderingContext2D,

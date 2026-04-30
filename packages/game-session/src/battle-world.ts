@@ -1,4 +1,4 @@
-import type { BulletPattern, Vector2 } from "@magnolia/contracts"
+import type { BulletPattern, ContentHitboxPreset, Vector2 } from "@magnolia/contracts"
 
 export const BATTLE_WIDTH = 480
 export const BATTLE_HEIGHT = 520
@@ -40,23 +40,29 @@ export function resolveSpawnPoint(spawnPointId: string): Vector2 {
   }
 }
 
-export function resolveHitRadius(hitboxPresetId: string | undefined): number {
-  if (!hitboxPresetId) {
+export function resolveHitRadius(hitbox: ContentHitboxPreset | undefined): number {
+  if (!hitbox) {
     return 8
   }
-  if (hitboxPresetId.includes("small")) {
-    return 8
+  if (hitbox.shape === "circle") {
+    return readPositiveNumber(hitbox.radius, 8)
   }
-  if (hitboxPresetId.includes("medium")) {
-    return 12
+  if (hitbox.shape === "ellipse") {
+    return Math.max(readPositiveNumber(hitbox.radiusX, 8), readPositiveNumber(hitbox.radiusY, 8))
   }
-  if (hitboxPresetId.includes("large")) {
-    return 18
+  if (hitbox.shape === "rect") {
+    const halfWidth = readPositiveNumber(hitbox.width, 16) / 2
+    const halfHeight = readPositiveNumber(hitbox.height, 16) / 2
+    return Math.hypot(halfWidth, halfHeight)
   }
-  if (hitboxPresetId.includes("thin")) {
-    return 5
+  if (hitbox.shape === "polygon" && hitbox.points && hitbox.points.length > 0) {
+    return Math.max(...hitbox.points.map((point) => Math.hypot(point.x, point.y)))
   }
   return 8
+}
+
+function readPositiveNumber(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback
 }
 
 export function clamp01(value: number): number {

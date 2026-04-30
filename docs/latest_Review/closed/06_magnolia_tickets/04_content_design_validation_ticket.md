@@ -4,6 +4,8 @@
 担当: 担当者D
 主な対象: `content/gameplay`, `docs-tmp/11_design_package` または正式 `docs/11_design_package`, `tools/content-validator`, `packages/contracts` の content 型、`apps/web/src/styles`, `apps/web/src/render/shared/canvas-palette.ts`, repository / CI 設定
 
+注記: この文書は閉じたレビュー履歴です。現行のコードマップは `docs/02_開発体制とディレクトリ構成.md`、データ契約は `docs/05_データ構造.md`、表示境界は `docs/08_表示と機能の境界.md`、design package は `docs/11_design_package/README.md` を参照してください。
+
 # 目的
 
 大規模な見た目の変更を始める前に、content、design package、preset、validator、repository 衛生を整えます。

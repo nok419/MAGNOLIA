@@ -4,6 +4,8 @@
 更新日: 2026-04-28
 対象: `mission_good_morning` / `mission_where_are_you` / `mission_evacuation` までの playable slice
 
+注記: この文書は閉じたレビュー履歴です。現行のコードマップは `docs/02_開発体制とディレクトリ構成.md`、データ契約は `docs/05_データ構造.md`、表示境界は `docs/08_表示と機能の境界.md`、design package は `docs/11_design_package/README.md` を参照してください。
+
 ## 1. 位置づけ
 
 この文書は、通信体験を強めるための改修依頼を、現在の docs / content / apps の状態に合わせて更新したものです。

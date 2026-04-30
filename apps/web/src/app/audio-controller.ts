@@ -1,4 +1,8 @@
-import type { SettingsRow } from "@magnolia/contracts"
+import {
+  SETTINGS_VOLUME_STEPS,
+  type SettingsRow,
+} from "@magnolia/contracts"
+import { audioHub, type AudioMixerGains } from "@/audio"
 
 export type AudioChannel = keyof SettingsRow["volumes"]
 
@@ -12,9 +16,10 @@ export type AudioGainState = {
 export type MagnoliaAudioSettingsChangeEvent = CustomEvent<AudioGainState>
 
 function volumeLevelToGain(level: SettingsRow["volumes"][AudioChannel]): number {
-  const normalized = (level - 1) / 6
-  // 小さい段階でも完全な無音へ落とさず、実音源接続後に微調整できる曲線にします。
-  return Number(Math.pow(normalized, 1.55).toFixed(4))
+  const normalized = (level - 1) / (SETTINGS_VOLUME_STEPS - 1)
+  const minimumGain = 0.06
+  // 既存 UI には mute がないため、最小段階でも小さく鳴らします。
+  return Number((minimumGain + (1 - minimumGain) * Math.pow(normalized, 1.55)).toFixed(4))
 }
 
 export function createAudioGainState(settings: SettingsRow): AudioGainState {
@@ -27,8 +32,21 @@ export function createAudioGainState(settings: SettingsRow): AudioGainState {
   }
 }
 
+export function createAudioMixerGains(settings: SettingsRow): AudioMixerGains {
+  return {
+    master: volumeLevelToGain(settings.volumes.master),
+    bgm: volumeLevelToGain(settings.volumes.bgm),
+    sfx: volumeLevelToGain(settings.volumes.se),
+    ui: volumeLevelToGain(settings.volumes.se),
+    voice: volumeLevelToGain(settings.volumes.voice),
+    noise: volumeLevelToGain(settings.volumes.se),
+    muted: false,
+  }
+}
+
 export function applyAudioSettings(settings: SettingsRow): AudioGainState {
   const gains = createAudioGainState(settings)
+  audioHub.applyMixerGains(createAudioMixerGains(settings))
   const root = document.documentElement
   root.style.setProperty("--magnolia-audio-master-gain", gains.master.toString())
   root.style.setProperty("--magnolia-audio-bgm-gain", gains.bgm.toString())

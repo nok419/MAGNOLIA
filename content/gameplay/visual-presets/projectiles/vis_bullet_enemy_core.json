@@ -2,6 +2,7 @@
   "presetId": "vis_bullet_enemy_core",
   "category": "projectile",
   "rendererKind": "pulse",
+  "bodyKind": "bossCore",
   "paletteRole": "enemyPrototype",
   "trailKind": "shortSignal",
   "auraKind": "dense",

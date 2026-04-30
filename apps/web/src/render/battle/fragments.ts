@@ -1,5 +1,5 @@
 import type { BattleRenderState } from "@magnolia/game-session"
-import { TAU, clamp01, easeOutCubic, hashString } from "@/render/battle/battle-renderer-utils"
+import { clamp01, easeOutCubic, hashString } from "@/render/battle/battle-renderer-utils"
 import { rgba } from "@/render/shared/canvas-palette"
 import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
 

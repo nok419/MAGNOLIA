@@ -38,3 +38,8 @@ tmp_video_probe/
 
 # Generated handoff archives
 artifacts/*.zip
+
+# Local handoff and patch scratch files
+*.zip
+*.diff
+*.patch

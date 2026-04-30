@@ -1,4 +1,12 @@
-import type { AreaId, ThemeId, TransmissionId, Vector2 } from "./game-types"
+import type {
+  AreaId,
+  EnemyId,
+  HazardId,
+  ThemeId,
+  TranscriptChunkId,
+  TransmissionId,
+  Vector2,
+} from "./game-types"
 
 export type ExploreTransitionSourceFrame = {
   screenAnchor: Vector2
@@ -19,11 +27,13 @@ export type PresentationCueId =
   | "transmission.connect.sequence"
   | "warp.transition.sequence"
   | "battle.player.hit"
+  | "battle.subtitle.damage"
   | "battle.noise.peak"
   | "battle.noise.clear"
   | "battle.fragment.recovered"
   | "battle.noiseSource.clear"
   | "battle.invincible.start"
+  | "battle.mission.beat"
 
 export type PresentationChannel =
   | "overlay"
@@ -120,6 +130,15 @@ export type HitPresentationRequest = {
   worldPosition: Vector2
 }
 
+export type SubtitleDamagePresentationRequest = {
+  requestId: string
+  cueId: "battle.subtitle.damage"
+  channel: "battle"
+  blocking: false
+  chunkId: string
+  range: { startMs: number; endMs: number }
+}
+
 export type NoisePeakPresentationRequest = {
   requestId: string
   cueId: "battle.noise.peak"
@@ -164,6 +183,22 @@ export type InvincibleStartPresentationRequest = {
   durationMs: number
 }
 
+export type MissionBeatPresentationRequest = {
+  requestId: string
+  cueId: "battle.mission.beat"
+  channel: "battle"
+  blocking: false
+  missionId: string
+  beatId: string
+  intentTag: string
+  atMs: number
+  durationMs: number
+  transcriptChunkIds: TranscriptChunkId[]
+  relatedEnemyIds: EnemyId[]
+  relatedHazardIds: HazardId[]
+  fragmentWindow?: { startMs: number; endMs: number }
+}
+
 export type PresentationRequest =
   | SystemMessagePresentationRequest
   | RebootSequencePresentationRequest
@@ -173,8 +208,10 @@ export type PresentationRequest =
   | MotionTrailPresentationRequest
   | TransitionPresentationRequest
   | HitPresentationRequest
+  | SubtitleDamagePresentationRequest
   | NoisePeakPresentationRequest
   | NoiseClearPresentationRequest
   | FragmentRecoveredPresentationRequest
   | NoiseSourceClearPresentationRequest
   | InvincibleStartPresentationRequest
+  | MissionBeatPresentationRequest

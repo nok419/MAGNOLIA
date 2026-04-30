@@ -1,13 +1,10 @@
 import type {
   DifficultyModifiers,
-  HitboxPreset,
   MetaRow,
   PlayerShipSpec,
   PresentationCueSpec,
   ThemeId,
   UiThemePreset,
-  VisualPreset,
-  VisualPresetId,
 } from "@magnolia/contracts"
 import {
   createDefaultSaveSlots as createSharedDefaultSaveSlots,
@@ -91,53 +88,6 @@ export function createDefaultThemes(themeIds: ThemeId[]): Record<ThemeId, UiThem
   )
 }
 
-export function createDefaultVisuals(
-  ids: readonly VisualPresetId[],
-): Record<VisualPresetId, VisualPreset> {
-  return Object.fromEntries(ids.map((id) => [id, createVisualPreset(id)]))
-}
-
-export function createDefaultHitboxes(): Record<string, HitboxPreset> {
-  return {
-    hitbox_player_core: {
-      hitboxPresetId: "hitbox_player_core",
-      shape: "circle",
-      radius: 6,
-    },
-    hitbox_enemy_small: {
-      hitboxPresetId: "hitbox_enemy_small",
-      shape: "circle",
-      radius: 12,
-    },
-    hitbox_enemy_medium: {
-      hitboxPresetId: "hitbox_enemy_medium",
-      shape: "circle",
-      radius: 18,
-    },
-    hitbox_enemy_large: {
-      hitboxPresetId: "hitbox_enemy_large",
-      shape: "circle",
-      radius: 24,
-    },
-    hitbox_bullet_small: {
-      hitboxPresetId: "hitbox_bullet_small",
-      shape: "circle",
-      radius: 5,
-    },
-    hitbox_bullet_medium: {
-      hitboxPresetId: "hitbox_bullet_medium",
-      shape: "circle",
-      radius: 9,
-    },
-    hitbox_bullet_thin: {
-      hitboxPresetId: "hitbox_bullet_thin",
-      shape: "ellipse",
-      radiusX: 4,
-      radiusY: 12,
-    },
-  }
-}
-
 export function createDefaultPresentationCues(): Record<string, PresentationCueSpec> {
   const cues: PresentationCueSpec[] = [
     {
@@ -215,6 +165,14 @@ export function createDefaultPresentationCues(): Record<string, PresentationCueS
       defaultDurationMs: 250,
     },
     {
+      id: "battle.subtitle.damage",
+      channel: "battle",
+      renderer: "shared",
+      blocking: false,
+      skippable: true,
+      defaultDurationMs: 320,
+    },
+    {
       id: "battle.noise.peak",
       channel: "battle",
       renderer: "shared",
@@ -238,67 +196,15 @@ export function createDefaultPresentationCues(): Record<string, PresentationCueS
       skippable: true,
       defaultDurationMs: 400,
     },
+    {
+      id: "battle.mission.beat",
+      channel: "battle",
+      renderer: "shared",
+      blocking: false,
+      skippable: true,
+      defaultDurationMs: 600,
+    },
   ]
 
   return Object.fromEntries(cues.map((cue) => [cue.id, cue]))
-}
-
-function createVisualPreset(id: VisualPresetId): VisualPreset {
-  if (id.startsWith("vis_enemy_")) {
-    return {
-      visualPresetId: id,
-      coreRadius: id === "vis_enemy_heavy" ? 18 : id === "vis_enemy_standard" ? 14 : 10,
-      orbit1Radius: id === "vis_enemy_heavy" ? 28 : id === "vis_enemy_standard" ? 22 : 16,
-      orbit2Radius: id === "vis_enemy_heavy" ? 38 : id === "vis_enemy_standard" ? 30 : 22,
-      orbit1Width: 4,
-      orbit2Width: 3,
-      orbit1ArcStart: 0,
-      orbit1ArcEnd: Math.PI,
-      orbit2ArcStart: 0,
-      orbit2ArcEnd: Math.PI * 1.5,
-      orbit1AngularSpeed: 0.8,
-      orbit2AngularSpeed: -0.6,
-      iconType: "dot",
-      iconAngle: 0,
-      iconGapAngle: 0.35,
-      glowStrength: 0.6,
-    }
-  }
-
-  if (id.startsWith("vis_bullet_")) {
-    return {
-      visualPresetId: id,
-      bodyType: id.includes("enemy") ? "noiseCluster" : "diamondCluster",
-      trailType: id.includes("carrier") ? "trailC" : "trailA",
-      seedBucket: 1,
-      scale: id.includes("melee") ? 1.25 : 1,
-      glowStrength: 0.55,
-    }
-  }
-
-  if (id.startsWith("hazard_magnetic_disaster_")) {
-    return {
-      visualPresetId: id,
-      kind: "magneticDisaster",
-      telegraphColor: id.endsWith("gentle") ? "#ff6b7d" : "#ff3b5a",
-      activeColor: id.endsWith("gentle") ? "#ff4f6d" : "#ff2248",
-      telegraphFlashHz: id.endsWith("gentle") ? 2 : 2.8,
-      noiseScrollSpeed: id.endsWith("gentle") ? 0.16 : 0.22,
-      edgeFeather: 18,
-      telegraphOpacity: 0.24,
-      activeOpacity: 0.38,
-    }
-  }
-
-  // 背景 preset は専用 contract が未追加のため、当面は描画側が id で扱えるよう
-  // 最小の placeholder preset として登録します。
-  return {
-    visualPresetId: id,
-    bodyWidth: 0,
-    bodyHeight: 0,
-    wingLength: 0,
-    wingOffsetX: 0,
-    wingOffsetY: 0,
-    glowStrength: 0,
-  }
 }

@@ -1,8 +1,14 @@
 export const BATTLE_CANVAS_WIDTH = 480
 export const BATTLE_CANVAS_HEIGHT = 520
-export const PHI = 1.618033988749895
-export const PHI_INV = 1 / PHI
-export const TAU = Math.PI * 2
+export {
+  PHI,
+  PHI_INV,
+  TAU,
+  clamp01,
+  easeInOutCubic,
+  easeOutCubic,
+  seededUnit as seededRandom,
+} from "@/render/shared/render-math"
 
 export type BattleRendererCategory = "enemy" | "projectile" | "hazard" | "background"
 
@@ -10,10 +16,16 @@ export function resolveBattleRenderer<T>(
   registry: Record<string, T>,
   rendererKind: string,
   diagnostic: { presetId?: string; category: BattleRendererCategory },
+  options: { allowFallback?: boolean } = {},
 ): T {
   const renderer = registry[rendererKind]
   if (renderer) {
     return renderer
+  }
+  if (!options.allowFallback) {
+    throw new Error(
+      `[battle-renderer] unknown rendererKind="${rendererKind}" for ${diagnostic.category} preset "${diagnostic.presetId ?? "(none)"}".`,
+    )
   }
   warnUnknownRendererKind(rendererKind, diagnostic)
   return registry.default
@@ -49,30 +61,6 @@ export function normalizeCanvasVector(x: number, y: number) {
     return { x: 0, y: -1 }
   }
   return { x: x / length, y: y / length }
-}
-
-export function easeOutCubic(value: number): number {
-  const clamped = clamp01(value)
-  return 1 - (1 - clamped) ** 3
-}
-
-export function easeInOutCubic(value: number): number {
-  const clamped = clamp01(value)
-  return clamped < 0.5
-    ? 4 * clamped * clamped * clamped
-    : 1 - (-2 * clamped + 2) ** 3 / 2
-}
-
-export function clamp01(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0
-  }
-  return Math.max(0, Math.min(1, value))
-}
-
-export function seededRandom(seed: number): number {
-  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453
-  return x - Math.floor(x)
 }
 
 export function hashString(str: string): number {

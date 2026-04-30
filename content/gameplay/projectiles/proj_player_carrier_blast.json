@@ -4,7 +4,7 @@
   "damage": 0,
   "noiseDamage": 0,
   "speed": 0,
-  "lifetimeMs": 180,
+  "lifetimeMs": 480,
   "visualPresetId": "vis_bullet_player_carrier_blast",
   "hitboxPresetId": "hitbox_bullet_medium"
 }

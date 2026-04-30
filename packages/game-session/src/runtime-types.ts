@@ -1,16 +1,23 @@
 import type {
   AreaId,
   BattleFragmentViewModel,
+  BackgroundPreset,
+  ContentHitboxPreset,
   EquipmentId,
   EquipmentSlot,
+  EnemyContentVisualPreset,
   ExploreScanPulseViewModel,
   ExploreSignalHintViewModel,
   HazardId,
+  HazardContentVisualPreset,
   HazardPhase,
   HitboxPresetId,
   MapId,
   MissionId,
   MissionResult,
+  ProjectileContentVisualPreset,
+  TimeRange,
+  TranscriptSpan,
   TranscriptViewChunk,
   ThemeId,
   TransmissionId,
@@ -74,6 +81,7 @@ export type ExploreRenderState = {
   elapsedMs: number
   signalHints: ExploreSignalHintViewModel[]
   scanPulses: ExploreScanPulseViewModel[]
+  shouldShowScanHint: boolean
   tutorialRestricted: boolean
 }
 
@@ -179,6 +187,8 @@ export function buildMiniMapViewModel(input: {
 
 export type PlayerRenderState = {
   position: Vector2
+  hitboxPresetId: HitboxPresetId
+  hitbox: ContentHitboxPreset
   radius: number
   invincible: boolean
   noiseLevel: number
@@ -195,8 +205,10 @@ export type PlayerRenderState = {
 export type EnemyRenderState = {
   enemyInstanceId: string
   enemyId: string
-  visualPresetId?: VisualPresetId
-  hitboxPresetId?: HitboxPresetId
+  visualPresetId: VisualPresetId
+  visual: EnemyContentVisualPreset
+  hitboxPresetId: HitboxPresetId
+  hitbox: ContentHitboxPreset
   noiseBandKind?: "subtitle" | "speaker" | "metadata" | "fragment" | "waveform"
   position: Vector2
   radius: number
@@ -208,8 +220,10 @@ export type EnemyRenderState = {
 export type ProjectileRenderState = {
   projectileInstanceId: string
   projectileId: string
-  visualPresetId?: VisualPresetId
-  hitboxPresetId?: HitboxPresetId
+  visualPresetId: VisualPresetId
+  visual: ProjectileContentVisualPreset
+  hitboxPresetId: HitboxPresetId
+  hitbox: ContentHitboxPreset
   renderEffects?: string[]
   side: "player" | "enemy"
   position: Vector2
@@ -243,6 +257,8 @@ export type SubtitleRenderState = {
   speakerLabel?: string
   text: string
   audible: boolean
+  protectedSpans: TranscriptSpan[]
+  damagedSpans: TranscriptSpan[]
   noiseLevel: number
   hearingThreshold: number
   progress: number
@@ -252,6 +268,8 @@ export type HazardRenderState = {
   hazardId: HazardId
   phase: HazardPhase
   phaseProgress: number
+  visualPresetId: VisualPresetId
+  visual: HazardContentVisualPreset
   position: Vector2
   size: { width: number; height: number }
 }
@@ -274,9 +292,17 @@ export type BattleResultViewModel = {
 
 export type BattleRenderState = {
   missionId: MissionId
-  backgroundPresetId?: VisualPresetId
+  backgroundPresetId: VisualPresetId
+  background: BackgroundPreset
   missionDurationMs: number
   elapsedMs: number
+  currentChunkId?: string
+  currentChunkProtectedRatio: number
+  noiseLevel: number
+  hearingThreshold: number
+  analysisRate: number
+  newlyLostRange?: TimeRange
+  newlyRecoveredRange?: TimeRange
   player: PlayerRenderState
   enemies: EnemyRenderState[]
   projectiles: ProjectileRenderState[]

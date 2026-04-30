@@ -1,7 +1,6 @@
 import type { ExploreRenderState } from "@magnolia/game-session"
 import { rgba } from "@/render/shared/canvas-palette"
-
-const TAU = Math.PI * 2
+import { TAU, clampScalar } from "@/render/shared/render-math"
 
 export function drawSignalHintLayer(
   ctx: CanvasRenderingContext2D,
@@ -154,6 +153,10 @@ function drawSignalHintSymbol(
 function readSignalHintColor(
   hint: ExploreRenderState["signalHints"][number],
 ): string {
+  if (hint.kind === "transmission") {
+    // scanで出るミッション方向は、通常の白い可読テキストと混ざらないよう赤で固定します。
+    return rgba("threatNoise", 0.86)
+  }
   if (hint.kind === "equipment") {
     return rgba("residualWarmth", 0.88)
   }
@@ -171,8 +174,4 @@ function readSignalHintColor(
     default:
       return rgba("signalReadable", 0.76)
   }
-}
-
-function clampScalar(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value))
 }
