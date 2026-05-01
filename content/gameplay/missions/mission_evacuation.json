@@ -15,142 +15,329 @@
   "repeatDecayRate": 0.2,
   "waves": [
     {
+      "waveId": "evac_wave_01",
       "atMs": 2200,
       "intentTag": "broken-public-broadcast-repeat",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 101 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 102 }
+        {
+          "spawnId": "evac_wave_01_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 101
+        },
+        {
+          "spawnId": "evac_wave_01_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 102
+        }
       ]
     },
     {
+      "waveId": "evac_wave_02",
       "atMs": 3600,
       "intentTag": "broken-public-broadcast-repeat",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 103 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 104 }
+        {
+          "spawnId": "evac_wave_02_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 103
+        },
+        {
+          "spawnId": "evac_wave_02_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 104
+        }
       ]
     },
     {
+      "waveId": "evac_wave_03",
       "atMs": 8000,
       "intentTag": "broken-public-broadcast-dropout",
       "entries": [
         {
-          "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 110,
-          "overrides": { "speed": 5, "driftX": 40 }
+          "spawnId": "evac_wave_03_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_side_left",
+          "seed": 110,
+          "overrides": {
+            "speed": 5,
+            "driftX": 40
+          }
         },
         {
-          "enemyId": "enemy_standard", "spawnPointId": "spawn_side_right", "seed": 111,
-          "overrides": { "speed": 5, "driftX": -40 }
+          "spawnId": "evac_wave_03_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_side_right",
+          "seed": 111,
+          "overrides": {
+            "speed": 5,
+            "driftX": -40
+          }
         }
       ]
     },
     {
+      "waveId": "evac_wave_04",
       "atMs": 11000,
       "intentTag": "broken-public-broadcast-dropout",
       "entries": [
-        { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_center", "seed": 113 }
+        {
+          "spawnId": "evac_wave_04_spawn_01",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_center",
+          "seed": 113
+        }
       ]
     },
     {
+      "waveId": "evac_wave_05",
       "atMs": 14000,
       "intentTag": "broken-public-broadcast-repeat",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 120 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 121 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 122 }
+        {
+          "spawnId": "evac_wave_05_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 120
+        },
+        {
+          "spawnId": "evac_wave_05_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_center",
+          "seed": 121
+        },
+        {
+          "spawnId": "evac_wave_05_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 122
+        }
       ]
     },
     {
+      "waveId": "evac_wave_06",
       "atMs": 15200,
       "intentTag": "broken-public-broadcast-repeat",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 123 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 124 }
+        {
+          "spawnId": "evac_wave_06_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 123
+        },
+        {
+          "spawnId": "evac_wave_06_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 124
+        }
       ]
     },
     {
+      "waveId": "evac_wave_07",
       "atMs": 21000,
       "intentTag": "shelter-route-fragment",
       "entries": [
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_left", "seed": 130 },
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_right", "seed": 131 }
+        {
+          "spawnId": "evac_wave_07_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_left",
+          "seed": 130
+        },
+        {
+          "spawnId": "evac_wave_07_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_right",
+          "seed": 131
+        }
       ]
     },
     {
+      "waveId": "evac_wave_08",
       "atMs": 24800,
       "intentTag": "shelter-route-fragment",
       "entries": [
-        { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_left", "seed": 132, "overrides": { "pauseAtY": 70 } },
-        { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_right", "seed": 133, "overrides": { "pauseAtY": 70 } }
+        {
+          "spawnId": "evac_wave_08_spawn_01",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_left",
+          "seed": 132,
+          "overrides": {
+            "pauseAtY": 70
+          }
+        },
+        {
+          "spawnId": "evac_wave_08_spawn_02",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_right",
+          "seed": 133,
+          "overrides": {
+            "pauseAtY": 70
+          }
+        }
       ]
     },
     {
+      "waveId": "evac_wave_09",
       "atMs": 25000,
       "intentTag": "shelter-route-fragment",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 140 }
+        {
+          "spawnId": "evac_wave_09_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_center",
+          "seed": 140
+        }
       ]
     },
     {
+      "waveId": "evac_wave_10",
       "atMs": 26200,
       "intentTag": "shelter-route-fragment",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 142 }
+        {
+          "spawnId": "evac_wave_10_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_center",
+          "seed": 142
+        }
       ]
     },
     {
+      "waveId": "evac_wave_11",
       "atMs": 30000,
       "intentTag": "broadcast-collapse",
       "entries": [
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_left", "seed": 150 },
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 151 },
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_right", "seed": 152 }
+        {
+          "spawnId": "evac_wave_11_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_left",
+          "seed": 150
+        },
+        {
+          "spawnId": "evac_wave_11_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 151
+        },
+        {
+          "spawnId": "evac_wave_11_spawn_03",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_right",
+          "seed": 152
+        }
       ]
     },
     {
+      "waveId": "evac_wave_12",
       "atMs": 33000,
       "intentTag": "broadcast-collapse",
       "entries": [
-        { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_center", "seed": 153 }
+        {
+          "spawnId": "evac_wave_12_spawn_01",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_center",
+          "seed": 153
+        }
       ]
     },
     {
+      "waveId": "evac_wave_13",
       "atMs": 38000,
       "intentTag": "fragment-recovery-window",
       "entries": [
         {
-          "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 160,
-          "overrides": { "speed": 4, "driftX": 36 }
+          "spawnId": "evac_wave_13_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_side_left",
+          "seed": 160,
+          "overrides": {
+            "speed": 4,
+            "driftX": 36
+          }
         },
         {
-          "enemyId": "enemy_standard", "spawnPointId": "spawn_side_right", "seed": 161,
-          "overrides": { "speed": 4, "driftX": -36 }
+          "spawnId": "evac_wave_13_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_side_right",
+          "seed": 161,
+          "overrides": {
+            "speed": 4,
+            "driftX": -36
+          }
         }
       ]
     },
     {
+      "waveId": "evac_wave_14",
       "atMs": 40000,
       "intentTag": "fragment-recovery-window",
       "entries": [
-        { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_left", "seed": 162, "overrides": { "pauseAtY": 60 } },
-        { "enemyId": "enemy_heavy", "spawnPointId": "spawn_top_right", "seed": 164, "overrides": { "pauseAtY": 60 } }
+        {
+          "spawnId": "evac_wave_14_spawn_01",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_left",
+          "seed": 162,
+          "overrides": {
+            "pauseAtY": 60
+          }
+        },
+        {
+          "spawnId": "evac_wave_14_spawn_02",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_right",
+          "seed": 164,
+          "overrides": {
+            "pauseAtY": 60
+          }
+        }
       ]
     },
     {
+      "waveId": "evac_wave_15",
       "atMs": 46000,
       "intentTag": "fragment-recovery-window",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 170 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 171 }
+        {
+          "spawnId": "evac_wave_15_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 170
+        },
+        {
+          "spawnId": "evac_wave_15_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 171
+        }
       ]
     },
     {
+      "waveId": "evac_wave_16",
       "atMs": 50000,
       "intentTag": "fragment-recovery-window",
       "entries": [
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 180 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 181 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 182 }
+        {
+          "spawnId": "evac_wave_16_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 180
+        },
+        {
+          "spawnId": "evac_wave_16_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 181
+        },
+        {
+          "spawnId": "evac_wave_16_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 182
+        }
       ]
     }
   ],
@@ -160,36 +347,81 @@
       "atMs": 0,
       "durationMs": 8500,
       "intentTag": "broken-public-broadcast-repeat",
-      "transcriptChunkIds": ["tx_evacuation_01a", "tx_evacuation_01b", "tx_evacuation_01c", "tx_evacuation_02a", "tx_evacuation_02b", "tx_evacuation_02c"],
-      "relatedEnemyIds": ["enemy_scout"]
+      "transcriptChunkIds": [
+        "tx_evacuation_01a",
+        "tx_evacuation_01b",
+        "tx_evacuation_01c",
+        "tx_evacuation_02a",
+        "tx_evacuation_02b",
+        "tx_evacuation_02c"
+      ],
+      "relatedEnemyIds": [
+        "enemy_scout"
+      ]
     },
     {
       "beatId": "evac_route_update_failed",
       "atMs": 9000,
       "durationMs": 20200,
       "intentTag": "shelter-route-fragment",
-      "transcriptChunkIds": ["tx_evacuation_03a", "tx_evacuation_03b", "tx_evacuation_04a", "tx_evacuation_04b", "tx_evacuation_05a", "tx_evacuation_05b"],
-      "relatedEnemyIds": ["enemy_standard", "enemy_heavy"],
-      "relatedHazardIds": ["hazard_evac_disaster_1"],
-      "fragmentWindow": { "startMs": 22500, "endMs": 29200 }
+      "transcriptChunkIds": [
+        "tx_evacuation_03a",
+        "tx_evacuation_03b",
+        "tx_evacuation_04a",
+        "tx_evacuation_04b",
+        "tx_evacuation_05a",
+        "tx_evacuation_05b"
+      ],
+      "relatedEnemyIds": [
+        "enemy_standard",
+        "enemy_heavy"
+      ],
+      "relatedHazardIds": [
+        "hazard_evac_disaster_1"
+      ],
+      "fragmentWindow": {
+        "startMs": 22500,
+        "endMs": 29200
+      }
     },
     {
       "beatId": "evac_remaining_voices",
       "atMs": 30500,
       "durationMs": 6700,
       "intentTag": "broadcast-collapse",
-      "transcriptChunkIds": ["tx_evacuation_06a", "tx_evacuation_06b"],
-      "relatedEnemyIds": ["enemy_standard", "enemy_heavy"]
+      "transcriptChunkIds": [
+        "tx_evacuation_06a",
+        "tx_evacuation_06b"
+      ],
+      "relatedEnemyIds": [
+        "enemy_standard",
+        "enemy_heavy"
+      ]
     },
     {
       "beatId": "evac_protection_overload",
       "atMs": 38800,
       "durationMs": 16900,
       "intentTag": "fragment-recovery-window",
-      "transcriptChunkIds": ["tx_evacuation_07a", "tx_evacuation_07b", "tx_evacuation_08a", "tx_evacuation_08b", "tx_evacuation_09a"],
-      "relatedEnemyIds": ["enemy_scout", "enemy_standard", "enemy_heavy"],
-      "relatedHazardIds": ["hazard_evac_disaster_2"],
-      "fragmentWindow": { "startMs": 38800, "endMs": 55700 }
+      "transcriptChunkIds": [
+        "tx_evacuation_07a",
+        "tx_evacuation_07b",
+        "tx_evacuation_08a",
+        "tx_evacuation_08b",
+        "tx_evacuation_09a"
+      ],
+      "relatedEnemyIds": [
+        "enemy_scout",
+        "enemy_standard",
+        "enemy_heavy"
+      ],
+      "relatedHazardIds": [
+        "hazard_evac_disaster_2"
+      ],
+      "fragmentWindow": {
+        "startMs": 38800,
+        "endMs": 55700
+      }
     }
   ],
   "hazards": [

@@ -18,8 +18,9 @@ import { toRecord } from "../record-utils"
 
 export const DEFAULT_EXPLORE_VISION_RADIUS = 150
 export const EXPLORE_SCAN_COOLDOWN_MS = 2400
+export const DEFAULT_EXPLORE_SCAN_RADIUS = 860
+export const MIN_EXPLORE_NODE_INTERACTION_RADIUS = 44
 
-const EXPLORE_SCAN_RADIUS = 860
 const EXPLORE_SCAN_DURATION_MS = 1250
 const EXPLORE_SIGNAL_HINT_DURATION_MS = 3600
 const EXPLORE_SCAN_RESPONSE_WIDTH = 140
@@ -28,6 +29,12 @@ const EXPLORE_PASSIVE_CONFIDENCE_RADIUS = 300
 const EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE = 1
 const SCAN_HINT_DISMISSED_FLAG = "tutorial.scan_hint.dismissed"
 const FIRST_MISSION_ID = "mission_good_morning"
+
+export function resolveExploreNodeInteractionRadius(node: { interactionRadius?: number }): number {
+  // map content の半径は小さめですが、画面上のアイコンは残響や外枠で少し大きく見えます。
+  // 見た目上近い位置ではインタラクト意図を優先するため、runtime の判定にも下限を持たせます。
+  return Math.max(node.interactionRadius ?? 0, MIN_EXPLORE_NODE_INTERACTION_RADIUS)
+}
 
 export function shouldShowScanTutorialHint(profile: ProfileRow): boolean {
   // 初回 scan の誘導は学習用です。scan 実行後、または初回ミッション完了後は再表示しません。
@@ -47,6 +54,8 @@ export function updateExploreSignalConfidence(input: {
   scanPressed: boolean
   exploreElapsedMs: number
   lastExploreScanAtMs: number
+  scanRadius: number
+  scanCooldownMs: number
   exploreScanPulses: ExploreScanPulseViewModel[]
   newlyIdentifiedExploreNodeIds: Set<WorldMapNodeId>
   getOrCreateTransmissionProgress: (
@@ -64,7 +73,7 @@ export function updateExploreSignalConfidence(input: {
   let nextLastExploreScanAtMs = input.lastExploreScanAtMs
   const canStartScan =
     input.scanPressed &&
-    input.exploreElapsedMs - input.lastExploreScanAtMs >= EXPLORE_SCAN_COOLDOWN_MS
+    input.exploreElapsedMs - input.lastExploreScanAtMs >= input.scanCooldownMs
 
   if (canStartScan) {
     events.push({ type: "exploreScanStarted" })
@@ -76,7 +85,7 @@ export function updateExploreSignalConfidence(input: {
     input.exploreScanPulses.push({
       pulseId: input.nextInstanceId("explore_scan"),
       startedAtMs: input.exploreElapsedMs,
-      radius: EXPLORE_SCAN_RADIUS,
+      radius: input.scanRadius,
       durationMs: EXPLORE_SCAN_DURATION_MS,
     })
   }
@@ -99,7 +108,7 @@ export function updateExploreSignalConfidence(input: {
     const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
     const passiveStrength = clamp01(1 - distance / EXPLORE_PASSIVE_CONFIDENCE_RADIUS)
     const scanConfidenceDelta = canStartScan
-      ? computeExploreScanConfidenceDelta(distance)
+      ? computeExploreScanConfidenceDelta(distance, input.scanRadius)
       : 0
     const confidenceDelta =
       passiveStrength * (input.dtMs / 1000) * 0.16 +
@@ -146,7 +155,7 @@ export function updateExploreSignalConfidence(input: {
       continue
     }
     const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-    if (computeExploreScanConfidenceDelta(distance) < 0.45) {
+    if (computeExploreScanConfidenceDelta(distance, input.scanRadius) < 0.45) {
       continue
     }
     input.profileAggregate.profile.identifiedNodeIds.push(node.nodeId)
@@ -173,6 +182,7 @@ export function buildExploreSignalHints(input: {
   playerPosition: Vector2
   exploreElapsedMs: number
   lastExploreScanAtMs: number
+  scanRadius: number
   newlyIdentifiedExploreNodeIds: Set<WorldMapNodeId>
 }): ExploreSignalHintViewModel[] {
   const transmissionProgress = toRecord(input.profileAggregate.transmissionProgress, "transmissionId")
@@ -185,7 +195,7 @@ export function buildExploreSignalHints(input: {
       const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
       const passiveStrength = clamp01(1 - distance / EXPLORE_PASSIVE_SIGNAL_RADIUS)
       const scanStrength = scanHintActive
-        ? computeExploreScanHintStrength(distance, scanElapsedMs)
+        ? computeExploreScanHintStrength(distance, scanElapsedMs, input.scanRadius)
         : 0
       const confidence = readSignalConfidence(transmissionProgress[node.transmissionId]?.signalConfidence)
       const recorded = isTransmissionSignalIdentified(transmissionProgress[node.transmissionId])
@@ -217,7 +227,7 @@ export function buildExploreSignalHints(input: {
       const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
       const passiveStrength = clamp01(1 - distance / (EXPLORE_PASSIVE_SIGNAL_RADIUS * 0.72))
       const scanStrength = scanHintActive
-        ? computeExploreScanHintStrength(distance, scanElapsedMs)
+        ? computeExploreScanHintStrength(distance, scanElapsedMs, input.scanRadius)
         : 0
       const recorded = input.profileAggregate.profile.identifiedNodeIds.includes(node.nodeId)
       const strength = Math.max(passiveStrength, scanStrength * 0.85, recorded ? 0.16 : 0)
@@ -256,7 +266,7 @@ export function buildExploreInteractionTargets(input: {
     Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
   const toClickable = (node: ExploreNodeRenderState) => {
     const distance = toDistance(node)
-    return distance <= input.visionRadius && distance <= (node.interactionRadius ?? 0)
+    return distance <= input.visionRadius && distance <= resolveExploreNodeInteractionRadius(node)
   }
   const toTarget = (
     node: ExploreNodeRenderState,
@@ -268,7 +278,7 @@ export function buildExploreInteractionTargets(input: {
     worldPosition: { x: node.x, y: node.y },
     visible: true,
     clickable: kind === "transmission" && node.state === "complete" ? false : toClickable(node),
-    interactionRadius: node.interactionRadius ?? 0,
+    interactionRadius: resolveExploreNodeInteractionRadius(node),
     screenHintPriority,
     markerKind: node.markerKind,
   })
@@ -292,21 +302,21 @@ export function buildExploreInteractionTargets(input: {
   })
 }
 
-function computeExploreScanConfidenceDelta(distance: number): number {
+function computeExploreScanConfidenceDelta(distance: number, scanRadius: number): number {
   // scan 範囲を広げても遠距離ノードが一度で識別済みにならないよう、距離減衰を強めます。
-  const distanceStrength = clamp01(1 - distance / EXPLORE_SCAN_RADIUS)
+  const distanceStrength = clamp01(1 - distance / scanRadius)
   return Math.pow(distanceStrength, 1.8) * 0.64
 }
 
-function computeExploreScanHintStrength(distance: number, elapsedMs: number): number {
-  const distanceStrength = clamp01(1 - distance / EXPLORE_SCAN_RADIUS)
+function computeExploreScanHintStrength(distance: number, elapsedMs: number, scanRadius: number): number {
+  const distanceStrength = clamp01(1 - distance / scanRadius)
   if (distanceStrength <= 0) {
     return 0
   }
 
   // pulse の波面が届いた後にだけ反応を出し、遠距離ほど遅れて弱く見えるようにします。
   const pulseProgress = easeOutCubic(clamp01(elapsedMs / EXPLORE_SCAN_DURATION_MS))
-  const reachedRadius = EXPLORE_SCAN_RADIUS * pulseProgress
+  const reachedRadius = scanRadius * pulseProgress
   if (distance > reachedRadius) {
     return 0
   }

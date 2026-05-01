@@ -1,0 +1,9 @@
+{
+  "movementPatternId": "move_linear_standard",
+  "patternKind": "linear",
+  "speed": 28,
+  "driftX": 0,
+  "driftY": 0,
+  "authoringLabel": "Standard linear descent",
+  "intendedUse": "enemy_standard.default"
+}

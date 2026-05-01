@@ -5,6 +5,7 @@ import {
   asRecord,
   asString,
   indexById,
+  type ContentFile,
   type ValidationContext,
 } from "./validate-content.js"
 
@@ -15,6 +16,9 @@ export function validateTimingRules(context: ValidationContext): void {
     ["transmissionId"],
   )
   const chunksByTransmission = indexChunksByTransmission(context)
+  const chunkRecords = indexChunkRecords(context)
+
+  validateTransmissionChunkListTiming(context, transmissions, chunkRecords)
 
   for (const [missionId, file] of missions) {
     const mission = asRecord(file.data)
@@ -61,12 +65,14 @@ export function validateTimingRules(context: ValidationContext): void {
     const chunks = transmissionId ? chunksByTransmission.get(transmissionId) ?? [] : []
     if (transmission && chunks.length > 0) {
       const maxChunkEndMs = Math.max(...chunks.map((chunk) => asNumber(chunk.endMs) ?? 0))
+      const audioDurationMs = asNumber(asRecord(transmission.data)?.audioDurationMs) ?? 0
+      const transmissionDurationMs = Math.max(maxChunkEndMs, audioDurationMs)
       const audioStartDelayMs = asNumber(mission.audioStartDelayMs) ?? 0
       const outroMs = asNumber(mission.outroMs) ?? 0
-      if (audioStartDelayMs + maxChunkEndMs + outroMs > durationMs) {
+      if (audioStartDelayMs + transmissionDurationMs + outroMs > durationMs) {
         addIssue(
           context,
-          `Mission '${missionId}' duration does not contain audioStartDelayMs + subtitle chunks + outroMs.`,
+          `Mission '${missionId}' duration does not contain audioStartDelayMs + transmission audio/chunks + outroMs.`,
           file.relativePath,
         )
       }
@@ -90,6 +96,66 @@ function validateNumberRange(
   if (numberValue === undefined || numberValue < min || numberValue > max) {
     addIssue(context, `${owner}.${label} must be between ${min} and ${max}.`, file)
   }
+}
+
+
+function validateTransmissionChunkListTiming(
+  context: ValidationContext,
+  transmissions: Map<string, ContentFile>,
+  chunksById: Map<string, Record<string, unknown>>,
+): void {
+  for (const [transmissionId, file] of transmissions) {
+    const transmission = asRecord(file.data)
+    if (!transmission) {
+      continue
+    }
+    let previousEndMs = -Infinity
+    let maxChunkEndMs = 0
+    for (const chunkIdValue of asArray(transmission.transcriptChunkIds)) {
+      const chunkId = asString(chunkIdValue)
+      const chunk = chunkId ? chunksById.get(chunkId) : undefined
+      if (!chunk) {
+        continue
+      }
+      const startMs = asNumber(chunk.startMs)
+      const endMs = asNumber(chunk.endMs)
+      if (startMs === undefined || endMs === undefined || endMs <= startMs) {
+        addIssue(context, `Transcript chunk '${String(chunkId)}' in '${transmissionId}' must have endMs greater than startMs.`, file.relativePath)
+        continue
+      }
+      if (startMs < previousEndMs) {
+        addIssue(context, `Transmission '${transmissionId}' transcriptChunkIds are not in chronological order around '${String(chunkId)}'.`, file.relativePath)
+      }
+      previousEndMs = endMs
+      maxChunkEndMs = Math.max(maxChunkEndMs, endMs)
+    }
+
+    if (asString(transmission.audioAssetId)) {
+      const audioDurationMs = asNumber(transmission.audioDurationMs)
+      if (audioDurationMs === undefined || audioDurationMs <= 0) {
+        addIssue(context, `Transmission '${transmissionId}' must define positive audioDurationMs when audioAssetId is set.`, file.relativePath)
+      } else if (audioDurationMs + 1200 < maxChunkEndMs) {
+        addIssue(context, `Transmission '${transmissionId}' audioDurationMs is shorter than transcript chunks.`, file.relativePath)
+      }
+    }
+  }
+}
+
+function indexChunkRecords(context: ValidationContext): Map<string, Record<string, unknown>> {
+  const index = new Map<string, Record<string, unknown>>()
+  for (const file of context.store.byGroup.transmissions ?? []) {
+    if (!file.relativePath.endsWith(".chunks.json")) {
+      continue
+    }
+    for (const chunk of asArray(file.data)) {
+      const record = asRecord(chunk)
+      const chunkId = asString(record?.chunkId)
+      if (record && chunkId) {
+        index.set(chunkId, record)
+      }
+    }
+  }
+  return index
 }
 
 function indexChunksByTransmission(context: ValidationContext): Map<string, Record<string, unknown>[]> {

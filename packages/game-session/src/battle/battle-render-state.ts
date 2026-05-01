@@ -1,5 +1,6 @@
 import type {
   ContentBundle,
+  EffectSpec,
   EquipmentSlot,
   MissionResult,
   TimeRange,
@@ -65,7 +66,10 @@ export function buildBattleRenderState(input: {
         : undefined,
       subCooldownMs: input.battle.subCooldownMs,
       subMaxCooldownMs: input.battle.loadout.sub?.equipmentId
-        ? (input.content.equipment[input.battle.loadout.sub.equipmentId]?.active?.cooldownMs ?? 0)
+        ? readSubCooldownMs(
+            input.battle.loadout.sub.activeEffects,
+            input.content.equipment[input.battle.loadout.sub.equipmentId]?.active?.cooldownMs ?? 0,
+          )
         : 0,
     },
     enemies: input.battle.enemies.map<EnemyRenderState>((enemy) => {
@@ -168,16 +172,33 @@ export function buildBattleRenderState(input: {
             content: input.content,
           })
         : undefined,
+    transmissionAudio: {
+      transmissionId: input.battle.transmission.transmissionId,
+      audioAssetId: input.battle.transmission.audioAssetId,
+      audioPlaybackMs: input.battle.audioPlaybackMs,
+      audioStartDelayMs: input.battle.mission.audioStartDelayMs,
+      phase: input.battle.activeResult ? "result" : input.battle.phase,
+      // session 側は仮想時計だけを持ちます。Web 側で画面停止中に pause を上書きします。
+      isPaused: false,
+    },
     equippedMainId: input.equippedMainId,
     equippedSubId: input.equippedSubId,
   }
+}
+
+function readSubCooldownMs(activeEffects: EffectSpec[], fallback: number): number {
+  const cooldownEffect = activeEffects.find(
+    (effect) => effect.effectKind === "subArmBurst" || effect.effectKind === "subArmField",
+  )
+  const value = cooldownEffect?.params?.cooldownMs
+  return typeof value === "number" ? value : fallback
 }
 
 export function getActiveBattleChunk(battle: InternalBattleState): TranscriptChunk | undefined {
   return battle.transcript.find(
     (chunk) =>
       chunk.startMs <= battle.audioPlaybackMs &&
-      chunk.endMs >= battle.audioPlaybackMs,
+      chunk.endMs > battle.audioPlaybackMs,
   )
 }
 

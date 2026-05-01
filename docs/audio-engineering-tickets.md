@@ -1,6 +1,6 @@
 # 音楽/SE 受け入れ作業チケット
 
-更新日: 2026-04-30
+更新日: 2026-05-01
 
 このチケット群は、今回の音声棚卸し v3 とコード受け口パッチをエンジニアがレビュー/取り込み/検証するための作業単位です。
 
@@ -38,9 +38,9 @@
 4. 追加要求が出ても、現行トリガーが無いものは P3 以下または「後回し」表へ戻す。
 
 受け入れ条件:
-- 棚卸し表の 33ファイルが `SOUND_ASSETS` に登録済み。
-- 棚卸し表の 33ファイルに対応する同名 `.md` が `apps/web/public/sound/` にあり、音源担当が用途を確認できる。
-- `shot-placeholder.mp3` は unlock/開発確認用としてのみ扱われ、新規棚卸しの正本ではない。
+- 棚卸し表の 41ファイルが `SOUND_ASSETS` に登録済み。
+- 棚卸し表の 41ファイルの用途を `docs/sound-inventory.md` で確認できる。
+- `shot-placeholder.wav` は unlock/開発確認用としてのみ扱われ、新規棚卸しの正本ではない。
 - 音源担当は表のファイル名だけを見て配置できる。
 
 ## AUD-02: 未配置音源でも落ちない AudioHub 挙動の確認
@@ -53,9 +53,9 @@
 
 作業:
 1. `optional: true` の asset が起動時 preload 対象外になっていることを確認する。
-2. 未配置 MP3 のイベントを発火しても、該当音だけ無音で進行することを確認する。
+2. 未配置音源のイベントを発火しても、該当音だけ無音で進行することを確認する。
 3. 再生失敗ログが同じイベントで大量に出ないことを確認する。
-4. MP3 を配置してブラウザを再読み込みすると、同じイベントが鳴ることを確認する。
+4. 表の `配置ファイル` に音源を置いてブラウザを再読み込みすると、同じイベントが鳴ることを確認する。
 
 受け入れ条件:
 - 未配置 P0 ファイルがあってもゲーム開始、探索、戦闘が継続する。
@@ -96,8 +96,8 @@
 - `apps/web/src/app/audio-event-adapter.ts`
 
 作業:
-1. `useMenuNavigation` の Arrow/WASD/ホイール移動で `ui-cursor.mp3` が鳴ることを確認する。
-2. Enter/Z で `ui-confirm.mp3`、Escape/X で `ui-cancel.mp3` が鳴ることを確認する。
+1. `useMenuNavigation` の Arrow/WASD/ホイール移動で `ui-cursor.wav` が鳴ることを確認する。
+2. Enter/Z で `ui-confirm.wav`、Escape/X で `ui-cancel.wav` が鳴ることを確認する。
 3. New Game/Load Game は意味イベントとして `title.newGame`/`title.loadGame` も通るため、二重に強く鳴りすぎる場合は音量または cooldown を調整する。
 4. 設定画面や装備画面など、共通 hook 外のクリック操作に UI 音を足す必要があるかを追加レビューする。
 
@@ -110,21 +110,21 @@
 目的: 最小体験に必要な P0 音源を配置し、素材なし/素材ありの両方で確認する。
 
 対象ファイル:
-- `ui-cursor.mp3`
-- `ui-confirm.mp3`
-- `ui-cancel.mp3`
-- `ui-panel-open.mp3`
-- `ui-panel-close.mp3`
-- `ui-error.mp3`
-- `player-shot.mp3`
-- `player-hit.mp3`
-- `barrier-up.mp3`
-- `barrier-down.mp3`
-- `barrier-hit.mp3`
-- `radio-static-loop.mp3`
+- `ui/ui-cursor.wav`
+- `ui/ui-confirm.wav`
+- `ui/ui-cancel.wav`
+- `ui/ui-panel-open.wav`
+- `ui/ui-panel-close.wav`
+- `ui/ui-error.wav`
+- `combat/player-shot.wav`
+- `combat/player-hit.wav`
+- `equipment/noise_camceler.wav`
+- `barrier/barrier-down.wav`
+- `barrier/barrier-hit.wav`
+- `noise/radio-static-loop.wav`
 
 作業:
-1. `apps/web/public/sound/*.md` で用途を確認し、同名の P0 MP3 ファイルを `apps/web/public/sound/` に配置する。
+1. `docs/sound-inventory.md` で用途を確認し、P0 音源ファイルを表の `配置ファイル` に記載された場所へ配置する。
 2. タイトル操作、探索、戦闘射撃、被弾、バリア展開/解除/防御、通信ノイズ状態を確認する。
 3. `master`, `bgm`, `se`, `voice` の設定変更が音量に反映されることを確認する。
 4. P0 のうち任意の1ファイルを一時的に外し、無音進行になることを確認する。
@@ -138,11 +138,11 @@
 
 目的: P0 完了後に、BGM・探索報酬・敵フィードバック・ミッション結果を順に追加する。
 
-対象: `docs/sound-inventory.md` の No.13〜30。
+対象: `docs/sound-inventory.md` の No.13〜31。
 
 作業:
 1. P1 を先に配置する: タイトル/探索/戦闘 BGM、ミッション突入、スキャン、回収、敵射撃/命中/撃破。
-2. 次に P2 を配置する: 汎用ミッション BGM、目標更新、クリア/失敗、装備切替/使用、radio blip。
+2. 次に P2 を配置する: 汎用ミッション BGM、目標更新、クリア/失敗、装備切替/使用、静音波、無線ブリップ。
 3. BGM は loop 前提で頭/尻の無音やクリックノイズがないか確認する。
 4. 敵弾/敵ヒット系は連打時に濁らない音量・長さに調整する。
 
@@ -178,9 +178,9 @@
 1. 初回ロード直後、ユーザー操作前に BGM が pending になり、クリック/キー入力後に再生されることを確認する。
 2. mute/master 0 のときに不要な音が鳴らないことを確認する。
 3. 画面遷移、戦闘開始/終了、ミッション開始/クリアで BGM が重複しないことを確認する。
-4. P0〜P2 の MP3 をすべて置いた状態で `npm run build` と手動プレイ確認を行う。
+4. P0〜P2 の音源をすべて置いた状態で `npm run build` と手動プレイ確認を行う。
 
 受け入れ条件:
 - ブラウザ console に同一音源の大量警告が出ない。
 - ループ音が止めるべき状態で残らない。
-- リリース artifact の `dist/sound/` または公開ディレクトリに必要な MP3 が含まれる。
+- リリース artifact の `dist/sound/` または公開ディレクトリに必要な音源が含まれる。

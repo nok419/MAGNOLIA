@@ -7,6 +7,14 @@ import areasAreaBroadcastFacilityJson from "../../../../content/gameplay/areas/a
 import areasAreaCentralTowerJson from "../../../../content/gameplay/areas/area_central_tower.json"
 import backgroundPresetsBgBroadcastFacilityJson from "../../../../content/gameplay/background-presets/bg_broadcast_facility.json"
 import backgroundPresetsBgCentralTowerJson from "../../../../content/gameplay/background-presets/bg_central_tower.json"
+import battleSpawnPointsSpawnMidLeftJson from "../../../../content/gameplay/battle-spawn-points/spawn_mid_left.json"
+import battleSpawnPointsSpawnMidRightJson from "../../../../content/gameplay/battle-spawn-points/spawn_mid_right.json"
+import battleSpawnPointsSpawnPlayerCenterJson from "../../../../content/gameplay/battle-spawn-points/spawn_player_center.json"
+import battleSpawnPointsSpawnSideLeftJson from "../../../../content/gameplay/battle-spawn-points/spawn_side_left.json"
+import battleSpawnPointsSpawnSideRightJson from "../../../../content/gameplay/battle-spawn-points/spawn_side_right.json"
+import battleSpawnPointsSpawnTopCenterJson from "../../../../content/gameplay/battle-spawn-points/spawn_top_center.json"
+import battleSpawnPointsSpawnTopLeftJson from "../../../../content/gameplay/battle-spawn-points/spawn_top_left.json"
+import battleSpawnPointsSpawnTopRightJson from "../../../../content/gameplay/battle-spawn-points/spawn_top_right.json"
 import bulletPatternsBpA2LanceSpreadJson from "../../../../content/gameplay/bullet-patterns/bp_a2_lance_spread.json"
 import bulletPatternsBpB1CoreBurstJson from "../../../../content/gameplay/bullet-patterns/bp_b1_core_burst.json"
 import bulletPatternsBpB1LanceStreamJson from "../../../../content/gameplay/bullet-patterns/bp_b1_lance_stream.json"
@@ -26,6 +34,7 @@ import enemiesEnemyStandardJson from "../../../../content/gameplay/enemies/enemy
 import equipmentEqMainCarrierJson from "../../../../content/gameplay/equipment/eq_main_carrier.json"
 import equipmentEqMainPulseJson from "../../../../content/gameplay/equipment/eq_main_pulse.json"
 import equipmentEqOsBrokenJson from "../../../../content/gameplay/equipment/eq_os_broken.json"
+import equipmentEqOsLilyJson from "../../../../content/gameplay/equipment/eq_os_lily.json"
 import equipmentEqOsMagnoliaJson from "../../../../content/gameplay/equipment/eq_os_magnolia.json"
 import equipmentEqSubNoiseCancellerJson from "../../../../content/gameplay/equipment/eq_sub_noise_canceller.json"
 import equipmentEqSubSilentWaveJson from "../../../../content/gameplay/equipment/eq_sub_silent_wave.json"
@@ -36,6 +45,7 @@ import equipmentEqSubsystemNoiseGateJson from "../../../../content/gameplay/equi
 import equipmentEqSubsystemPrecisionControlJson from "../../../../content/gameplay/equipment/eq_subsystem_precision_control.json"
 import equipmentEffectsEffMainCarrierJson from "../../../../content/gameplay/equipment/effects/eff_main_carrier.json"
 import equipmentEffectsEffMainPulseJson from "../../../../content/gameplay/equipment/effects/eff_main_pulse.json"
+import equipmentEffectsEffOsLilyJson from "../../../../content/gameplay/equipment/effects/eff_os_lily.json"
 import equipmentEffectsEffOsMagnoliaJson from "../../../../content/gameplay/equipment/effects/eff_os_magnolia.json"
 import equipmentEffectsEffSubNoiseCancellerJson from "../../../../content/gameplay/equipment/effects/eff_sub_noise_canceller.json"
 import equipmentEffectsEffSubSilentWaveJson from "../../../../content/gameplay/equipment/effects/eff_sub_silent_wave.json"
@@ -55,6 +65,13 @@ import mapLogicWorldMapDemoJson from "../../../../content/gameplay/map-logic/wor
 import missionsMissionEvacuationJson from "../../../../content/gameplay/missions/mission_evacuation.json"
 import missionsMissionGoodMorningJson from "../../../../content/gameplay/missions/mission_good_morning.json"
 import missionsMissionWhereAreYouJson from "../../../../content/gameplay/missions/mission_where_are_you.json"
+import movementPatternsMoveLinearA2Json from "../../../../content/gameplay/movement-patterns/move_linear_a2.json"
+import movementPatternsMoveLinearStandardJson from "../../../../content/gameplay/movement-patterns/move_linear_standard.json"
+import movementPatternsMovePauseThenDriftB1Json from "../../../../content/gameplay/movement-patterns/move_pause_then_drift_b1.json"
+import movementPatternsMovePauseThenDriftC1Json from "../../../../content/gameplay/movement-patterns/move_pause_then_drift_c1.json"
+import movementPatternsMovePauseThenDriftHeavyJson from "../../../../content/gameplay/movement-patterns/move_pause_then_drift_heavy.json"
+import movementPatternsMoveSineDriftA1Json from "../../../../content/gameplay/movement-patterns/move_sine_drift_a1.json"
+import movementPatternsMoveSineDriftScoutJson from "../../../../content/gameplay/movement-patterns/move_sine_drift_scout.json"
 import progressionConditionsCondAlwaysJson from "../../../../content/gameplay/progression/conditions/cond_always.json"
 import progressionConditionsCondMissionGoodMorningClearedJson from "../../../../content/gameplay/progression/conditions/cond_mission_good_morning_cleared.json"
 import projectilesProjEnemyBasicJson from "../../../../content/gameplay/projectiles/proj_enemy_basic.json"
@@ -96,13 +113,15 @@ import presentationCuesJson from "../../../../content/gameplay/presentation-cues
 export const contentManifest = {
   areas: [areasAreaBroadcastFacilityJson, areasAreaCentralTowerJson],
   backgroundPresets: [backgroundPresetsBgBroadcastFacilityJson, backgroundPresetsBgCentralTowerJson],
+  battleSpawnPoints: [battleSpawnPointsSpawnMidLeftJson, battleSpawnPointsSpawnMidRightJson, battleSpawnPointsSpawnPlayerCenterJson, battleSpawnPointsSpawnSideLeftJson, battleSpawnPointsSpawnSideRightJson, battleSpawnPointsSpawnTopCenterJson, battleSpawnPointsSpawnTopLeftJson, battleSpawnPointsSpawnTopRightJson],
   bulletPatterns: [bulletPatternsBpA2LanceSpreadJson, bulletPatternsBpB1CoreBurstJson, bulletPatternsBpB1LanceStreamJson, bulletPatternsBpC1PressureRingJson, bulletPatternsBpHeavyBurstJson, bulletPatternsBpRadialBurstJson, bulletPatternsBpScoutSingleJson, bulletPatternsBpSpiralStreamJson, bulletPatternsBpStandardSpreadJson],
   enemies: [enemiesA1Json, enemiesA2Json, enemiesB1Json, enemiesC1Json, enemiesEnemyHeavyJson, enemiesEnemyScoutJson, enemiesEnemyStandardJson],
-  equipment: [equipmentEqMainCarrierJson, equipmentEqMainPulseJson, equipmentEqOsBrokenJson, equipmentEqOsMagnoliaJson, equipmentEqSubNoiseCancellerJson, equipmentEqSubSilentWaveJson, equipmentEqSubsystemAnalysisCircuitJson, equipmentEqSubsystemGuidedWaveJson, equipmentEqSubsystemInversePhaseJson, equipmentEqSubsystemNoiseGateJson, equipmentEqSubsystemPrecisionControlJson],
-  effects: [equipmentEffectsEffMainCarrierJson, equipmentEffectsEffMainPulseJson, equipmentEffectsEffOsMagnoliaJson, equipmentEffectsEffSubNoiseCancellerJson, equipmentEffectsEffSubSilentWaveJson, equipmentEffectsEffSubsystemAnalysisCircuitJson, equipmentEffectsEffSubsystemGuidedWaveJson, equipmentEffectsEffSubsystemInversePhaseJson, equipmentEffectsEffSubsystemNoiseGateJson, equipmentEffectsEffSubsystemPrecisionControlJson],
+  equipment: [equipmentEqMainCarrierJson, equipmentEqMainPulseJson, equipmentEqOsBrokenJson, equipmentEqOsLilyJson, equipmentEqOsMagnoliaJson, equipmentEqSubNoiseCancellerJson, equipmentEqSubSilentWaveJson, equipmentEqSubsystemAnalysisCircuitJson, equipmentEqSubsystemGuidedWaveJson, equipmentEqSubsystemInversePhaseJson, equipmentEqSubsystemNoiseGateJson, equipmentEqSubsystemPrecisionControlJson],
+  effects: [equipmentEffectsEffMainCarrierJson, equipmentEffectsEffMainPulseJson, equipmentEffectsEffOsLilyJson, equipmentEffectsEffOsMagnoliaJson, equipmentEffectsEffSubNoiseCancellerJson, equipmentEffectsEffSubSilentWaveJson, equipmentEffectsEffSubsystemAnalysisCircuitJson, equipmentEffectsEffSubsystemGuidedWaveJson, equipmentEffectsEffSubsystemInversePhaseJson, equipmentEffectsEffSubsystemNoiseGateJson, equipmentEffectsEffSubsystemPrecisionControlJson],
   hitboxPresets: [hitboxPresetsEnemiesHitboxEnemyLargeJson, hitboxPresetsEnemiesHitboxEnemyMediumJson, hitboxPresetsEnemiesHitboxEnemySmallJson, hitboxPresetsPlayerHitboxPlayerCoreJson, hitboxPresetsProjectilesHitboxBulletMediumJson, hitboxPresetsProjectilesHitboxBulletSmallJson, hitboxPresetsProjectilesHitboxBulletThinJson],
   mapLogic: [mapLogicWorldMapDemoJson],
   missions: [missionsMissionEvacuationJson, missionsMissionGoodMorningJson, missionsMissionWhereAreYouJson],
+  movementPatterns: [movementPatternsMoveLinearA2Json, movementPatternsMoveLinearStandardJson, movementPatternsMovePauseThenDriftB1Json, movementPatternsMovePauseThenDriftC1Json, movementPatternsMovePauseThenDriftHeavyJson, movementPatternsMoveSineDriftA1Json, movementPatternsMoveSineDriftScoutJson],
   conditions: [progressionConditionsCondAlwaysJson, progressionConditionsCondMissionGoodMorningClearedJson],
   projectiles: [projectilesProjEnemyBasicJson, projectilesProjEnemyCoreJson, projectilesProjEnemyGeoJson, projectilesProjEnemyLanceJson, projectilesProjEnemyPetalJson, projectilesProjPlayerCarrierJson, projectilesProjPlayerCarrierBlastJson, projectilesProjPlayerPulseJson, projectilesProjPlayerPulseMeleeJson],
   transmissions: [transmissionsTxEvacuationJson, transmissionsTxGoodMorningJson, transmissionsTxWhereAreYouJson],

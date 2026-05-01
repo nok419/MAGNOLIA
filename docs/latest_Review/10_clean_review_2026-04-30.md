@@ -12,7 +12,7 @@
 一方で、責務集中が大きい `packages/game-session/src/game-session.ts`、`apps/web/src/app/use-magnolia-app.ts`、key visual 周辺、battle step の host interface、色指定の残量は、短い削除作業で安全に直す範囲を超えています。これらは挙動変更リスクがあるため、個別チケットに分けました。
 
 2026-05-01 追記:
-MGN-CLN-002 は音声チーム関連を含むため保留しました。それ以外の cleanup ticket は実リポジトリへ反映済みです。`MagnoliaGameSession` は battle / explore frame と探索 signal runtime を分離し、`useMagnoliaApp` は idle auto-save、presentation timer、action、session sync を helper 化しました。key visual は `apps/web/src/render/key-visual/` へ移し、direct color baseline は 25 ファイル 710 件から 24 ファイル 686 件へ減らしました。`source-audit` は `apps/web/src/main.tsx` 起点の到達性検査を含みます。
+MGN-CLN-002 は音声チーム関連を含むため保留しました。それ以外の cleanup ticket は実リポジトリへ反映済みです。`MagnoliaGameSession` は battle / explore frame と探索 signal runtime を分離し、`useMagnoliaApp` は idle auto-save、presentation timer、action、session sync を helper 化しました。key visual は `apps/web/src/render/key-visual/` へ移し、direct color baseline は 25 ファイル 710 件から 24 ファイル 686 件へ減らしました。`source-audit` は `apps/web/src/main.tsx` 起点の到達性検査を含みます。音源配置先は `apps/web/public/sound/`、棚卸し正本は `docs/sound-inventory.md` に寄せ、root `sound/` は使いません。
 
 # 実施した確認
 
@@ -48,7 +48,7 @@ clean source から除外しました。加えて `.gitignore` を追加し、�
 未適用または部分的に古い patch が残ると、どれが正本か分からなくなります。空ディレクトリは責務の存在を示すように見えますが、実体がなく、現在の `MenuScreen` 集約方針ともずれます。
 
 どうしたか:
-古い patch と空ディレクトリを clean source から除外しました。`apps/web/public/sound/shot-placeholder.mp3` は実際の public asset なので残しました。
+古い patch と空ディレクトリを clean source から除外しました。`apps/web/public/sound/placeholder/shot-placeholder.wav` は実際の public asset なので残しました。root `sound/` は正本ではないため使いません。
 
 改善後にどう変化するか:
 音声実装の正本が `apps/web/src/audio/*`、`apps/web/src/app/audio-controller.ts`、`docs/06_音声管理.md` に絞られます。screen 構成も実ファイルに対応した見え方になります。

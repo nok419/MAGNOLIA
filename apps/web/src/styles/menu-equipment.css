@@ -17,9 +17,74 @@
   pointer-events: none;
 }
 
+.menu-click-glitches {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.menu-click-glitch {
+  position: absolute;
+  left: var(--menu-click-glitch-x);
+  top: var(--menu-click-glitch-y);
+  width: 120px;
+  height: 42px;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  mix-blend-mode: screen;
+  filter: saturate(1.35);
+  animation: menu-click-glitch 340ms steps(3, end) forwards;
+}
+
+.menu-click-glitch::before,
+.menu-click-glitch::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 58%, transparent);
+  background:
+    linear-gradient(90deg, transparent 0 18%, color-mix(in srgb, var(--color-signal-readable) 34%, transparent) 18% 23%, transparent 23% 100%),
+    linear-gradient(180deg, transparent 0 28%, color-mix(in srgb, var(--color-signal-primary) 38%, transparent) 28% 35%, transparent 35% 100%);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--color-signal-readable) 30%, transparent),
+    0 0 24px color-mix(in srgb, var(--color-signal-primary) 24%, transparent);
+  clip-path: inset(12% 0 20% 0);
+}
+
+.menu-click-glitch::after {
+  inset: 7px 12px 9px 10px;
+  border-color: color-mix(in srgb, var(--color-threat-noise) 44%, transparent);
+  background:
+    linear-gradient(90deg, transparent 0 52%, color-mix(in srgb, var(--color-threat-noise) 32%, transparent) 52% 58%, transparent 58% 100%);
+  transform: translateX(9px);
+  opacity: 0.68;
+  clip-path: inset(42% 0 16% 0);
+}
+
+@keyframes menu-click-glitch {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) translateX(-4px);
+  }
+  38% {
+    opacity: 0.68;
+    transform: translate(-50%, -50%) translateX(5px);
+  }
+  72% {
+    opacity: 0.34;
+    transform: translate(-50%, -50%) translateX(-2px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%);
+  }
+}
+
 .menu-tabs {
   position: relative;
-  z-index: 2;
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: 0;
@@ -80,7 +145,7 @@
 
 .menu-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   flex: 1;
   padding:
     clamp(18px, 3vh, 24px)
@@ -451,6 +516,69 @@
   pointer-events: none;
 }
 
+.equip-list--plain > .list-card--unowned {
+  background: color-mix(in srgb, var(--color-void-depth) 70%, transparent);
+  border-color: color-mix(in srgb, var(--mg-border) 70%, transparent);
+  opacity: 0.72;
+}
+.equip-list--plain > .list-card--unowned::before {
+  background: var(--mg-text-muted);
+  opacity: 0.2;
+  box-shadow: none;
+}
+.equip-list--plain > .list-card--unowned:hover {
+  opacity: 0.86;
+  border-color: color-mix(in srgb, var(--mg-text-muted) 34%, transparent);
+}
+
+.equip-list--plain > .list-card--upgrade-short {
+  background: color-mix(in srgb, var(--color-threat-noise) 7%, var(--color-void-depth));
+  border-color: color-mix(in srgb, var(--color-threat-noise) 30%, transparent);
+}
+.equip-list--plain > .list-card--upgrade-short::before {
+  background: var(--color-threat-noise);
+  opacity: 0.82;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-threat-noise) 36%, transparent);
+}
+.equip-list--plain > .list-card--upgrade-short.list-card--selected {
+  border-color: color-mix(in srgb, var(--color-threat-noise) 58%, transparent) !important;
+  box-shadow:
+    0 18px 36px color-mix(in srgb, var(--color-void-depth) 50%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-threat-noise) 40%, transparent),
+    0 0 26px color-mix(in srgb, var(--color-threat-noise) 16%, transparent);
+}
+.equip-list--plain > .list-card--upgrade-short.list-card--selected::after {
+  background: linear-gradient(180deg, transparent, var(--color-threat-noise) 24%, var(--color-threat-noise) 76%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-threat-noise) 42%, transparent);
+}
+
+.equip-list--plain > .list-card--upgrade-ready {
+  background: color-mix(in srgb, var(--color-residual-warmth) 8%, var(--color-void-depth));
+  border-color: color-mix(in srgb, var(--color-residual-warmth) 34%, transparent);
+}
+.equip-list--plain > .list-card--upgrade-ready::before {
+  background: var(--mg-warm);
+  opacity: 0.95;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-residual-warmth) 46%, transparent);
+}
+.equip-list--plain > .list-card--upgrade-ready.list-card--selected {
+  border-color: color-mix(in srgb, var(--color-residual-warmth) 64%, transparent) !important;
+  box-shadow:
+    0 18px 36px color-mix(in srgb, var(--color-void-depth) 50%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-residual-warmth) 42%, transparent),
+    0 0 30px color-mix(in srgb, var(--color-residual-warmth) 18%, transparent);
+}
+.equip-list--plain > .list-card--upgrade-ready.list-card--selected::after {
+  background: linear-gradient(180deg, transparent, var(--mg-warm) 24%, var(--mg-warm) 76%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-residual-warmth) 46%, transparent);
+}
+
+.equip-list--plain > .list-card--maxed::before,
+.equip-list--plain > .list-card--owned::before {
+  background: var(--mg-accent);
+  opacity: 0.42;
+}
+
 .equip-detail {
   background:
     /* 極薄のドットグリッド — 近づくまで読み取れないほど微細に */
@@ -674,6 +802,93 @@
   color: var(--mg-text);
 }
 
+.equip-detail__stat-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.equip-detail__stat-group {
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 18%, transparent);
+  background: color-mix(in srgb, var(--color-void-depth) 42%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-void-depth) 22%, transparent);
+}
+
+.equip-detail__stat-heading {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--mg-accent);
+  text-transform: uppercase;
+}
+
+.equip-detail__stat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.equip-detail__stat-row {
+  display: grid;
+  grid-template-columns: minmax(58px, 0.88fr) minmax(64px, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.equip-detail__stat-row dt {
+  color: var(--mg-text-muted);
+  min-width: 0;
+}
+
+.equip-detail__stat-row dd {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: 0;
+  color: var(--mg-text);
+  min-width: 0;
+  text-align: right;
+}
+
+.equip-detail__stat-row dd span {
+  overflow-wrap: anywhere;
+}
+
+.equip-detail__stat-row dd small {
+  color: var(--mg-text-muted);
+  font-size: 9px;
+}
+
+.equip-detail__upgrade-preview {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-residual-warmth) 22%, transparent);
+  background: color-mix(in srgb, var(--color-residual-warmth) 4%, transparent);
+  color: var(--mg-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.equip-detail__upgrade-track {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--mg-warm);
+  white-space: nowrap;
+}
+
 /* フレーバーテキスト: 左の縦アクセント + 小さな引用符風マーカー */
 .equip-detail__flavor {
   position: relative;
@@ -717,6 +932,37 @@
   flex-direction: column;
   gap: 14px;
   margin-top: 4px;
+}
+
+.equip-detail__equip-action.action-button {
+  min-height: 38px;
+  padding: 9px 18px;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 46%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-signal-primary) 16%, transparent), transparent),
+    color-mix(in srgb, var(--color-void-depth) 62%, transparent);
+  color: var(--color-signal-readable);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--color-signal-primary) 44%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-signal-primary) 12%, transparent),
+    0 0 18px color-mix(in srgb, var(--color-signal-primary) 16%, transparent);
+}
+.equip-detail__equip-action.action-button::before,
+.equip-detail__equip-action.action-button::after {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent, var(--color-signal-primary) 22%, var(--color-signal-readable) 50%, var(--color-signal-primary) 78%, transparent);
+}
+.equip-detail__equip-action.action-button:hover:not(:disabled) {
+  color: var(--color-void-depth);
+  background:
+    linear-gradient(180deg, var(--color-signal-readable), var(--color-signal-primary));
+  text-shadow: none;
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--color-signal-primary) 28%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-signal-readable) 42%, transparent);
 }
 
 /* ロック中・最大レベル時のインライン通知 */
@@ -816,10 +1062,29 @@
   text-transform: uppercase;
   color: var(--mg-text-muted);
 }
+.procurement--upgrade .procurement__eyebrow {
+  padding: 5px 9px 5px 7px;
+  border: 1px solid color-mix(in srgb, var(--color-residual-warmth) 48%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-residual-warmth) 18%, transparent), transparent),
+    color-mix(in srgb, var(--color-void-depth) 42%, transparent);
+  color: var(--mg-warm);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--color-residual-warmth) 50%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-residual-warmth) 14%, transparent),
+    0 0 18px color-mix(in srgb, var(--color-residual-warmth) 14%, transparent);
+}
 .procurement__diamond {
   color: var(--mg-accent);
   font-size: 9px;
   text-shadow: 0 0 6px var(--mg-glow-blue);
+}
+.procurement--upgrade .procurement__diamond {
+  color: var(--mg-warm);
+  font-size: 11px;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--color-residual-warmth) 58%, transparent);
 }
 .procurement__level-track {
   display: inline-flex;
@@ -1055,4 +1320,20 @@
 .equip-badge--locked {
   color: var(--mg-text-muted);
   border-color: var(--mg-border);
+}
+.equip-badge--upgrade-ready {
+  color: var(--mg-warm);
+  border-color: color-mix(in srgb, var(--color-residual-warmth) 52%, transparent);
+  background: color-mix(in srgb, var(--color-residual-warmth) 8%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-residual-warmth) 16%, transparent);
+}
+.equip-badge--upgrade-short {
+  color: var(--color-threat-noise);
+  border-color: color-mix(in srgb, var(--color-threat-noise) 46%, transparent);
+  background: color-mix(in srgb, var(--color-threat-noise) 8%, transparent);
+}
+.equip-badge--maxed {
+  color: var(--mg-accent);
+  border-color: color-mix(in srgb, var(--mg-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--mg-accent) 6%, transparent);
 }

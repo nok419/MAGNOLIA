@@ -7,7 +7,7 @@
     "launchSpeed": 100,
     "spawnOffset": 72,
     "durationMs": 5000,
-    "dpsInField": 5,
+    "dpsInField": 0,
     "mainCadenceMultiplier": 1.5,
     "blocksEnemyBullets": true,
     "blocksMagneticDisaster": true,

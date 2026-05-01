@@ -70,9 +70,57 @@
   pointer-events: none;
 }
 
+.title-click-ripples {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.title-click-ripple {
+  position: absolute;
+  left: var(--title-ripple-x);
+  top: var(--title-ripple-y);
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 64%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--color-signal-readable) 22%, transparent),
+    0 0 30px color-mix(in srgb, var(--color-signal-primary) 20%, transparent);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: title-click-ripple 1200ms var(--ease-out-expo) forwards;
+}
+
+.title-click-ripple::after {
+  content: "";
+  position: absolute;
+  inset: 28%;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 34%, transparent);
+  border-radius: 50%;
+}
+
+@keyframes title-click-ripple {
+  0% {
+    width: 18px;
+    height: 18px;
+    opacity: 0.66;
+  }
+  72% {
+    opacity: 0.26;
+  }
+  100% {
+    width: 198px;
+    height: 198px;
+    opacity: 0;
+  }
+}
+
 .title-screen__panel {
   position: relative;
-  z-index: 2;
+  z-index: 4;
   width: min(100%, clamp(420px, 46vw, 700px));
   padding:
     clamp(42px, 7vh, 72px)
@@ -168,6 +216,7 @@
   color: #e8f4ff;
   animation: mg-text-glow 4s ease-in-out infinite;
   line-height: 1.1;
+  white-space: nowrap;
   transform: translateX(var(--title-logo-manual-offset-x));
 }
 

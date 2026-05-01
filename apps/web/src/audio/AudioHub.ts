@@ -16,6 +16,10 @@ export type AudioMixerGains = Record<SoundChannel, number> & {
 };
 
 export type PlaySoundOptions = {
+  /**
+   * イベント発火時だけ使う音源倍率の上書きです。
+   * 未指定なら soundCatalog.ts の sourceGain を使い、ユーザー設定倍率は別途掛け合わせます。
+   */
   volume?: number;
   rate?: number;
   detune?: number;
@@ -25,9 +29,23 @@ export type PlaySoundOptions = {
   ignoreMute?: boolean;
 };
 
+export type PlaySoundAndWaitOptions = PlaySoundOptions & {
+  minimumWaitMs?: number;
+  maxWaitMs?: number;
+};
+
 export type BgmOptions = {
   volume?: number;
   fadeMs?: number;
+};
+
+export type TransmissionVoiceSyncOptions = {
+  transmissionId: string;
+  assetId: string;
+  playbackMs: number;
+  playing: boolean;
+  driftToleranceMs?: number;
+  volume?: number;
 };
 
 export type LoopOptions = PlaySoundOptions & {
@@ -49,11 +67,27 @@ type LoopState = {
   audio: HTMLAudioElement;
 };
 
+type TransmissionVoiceState = {
+  transmissionId: string;
+  assetId: SoundAssetId;
+  audio: HTMLAudioElement;
+  sourceGain: number;
+};
+
 type PlaybackFailureHandler = (error: unknown) => void;
+
+type SoundPlaybackStartResult = {
+  started: boolean;
+};
 
 const clamp01 = (value: number): number => {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
+};
+
+const readPositiveGain = (value: number): number => {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, value);
 };
 
 const now = (): number => {
@@ -72,6 +106,7 @@ export class AudioHub {
   private lastPlayedAt = new Map<SoundKey, number>();
   private loops = new Map<string, LoopState>();
   private currentBgm?: LoopState;
+  private transmissionVoice?: TransmissionVoiceState;
   private pendingBgm?: { key: SoundKey; options?: BgmOptions };
   private warnedMissingEvents = new Set<SoundKey>();
   private warnedMissingAssets = new Set<string>();
@@ -147,19 +182,66 @@ export class AudioHub {
   }
 
   play(key: SoundKey, options: PlaySoundOptions = {}): boolean {
+    return this.startOneShotSound(key, options).started;
+  }
+
+  playAndWait(key: SoundKey, options: PlaySoundAndWaitOptions = {}): Promise<void> {
+    const minimumWaitMs = Math.max(0, options.minimumWaitMs ?? 0);
+    const maxWaitMs = Math.max(minimumWaitMs, options.maxWaitMs ?? 0);
+    const startedAt = now();
+
+    return new Promise((resolve) => {
+      let resolved = false;
+      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+      let minimumTimer: ReturnType<typeof setTimeout> | undefined;
+
+      const resolveOnce = (): void => {
+        if (resolved) return;
+        resolved = true;
+        if (fallbackTimer) clearTimeout(fallbackTimer);
+        if (minimumTimer) clearTimeout(minimumTimer);
+        resolve();
+      };
+
+      const finishAfterMinimumWait = (): void => {
+        const remainingMs = Math.max(0, minimumWaitMs - (now() - startedAt));
+        if (remainingMs > 0) {
+          minimumTimer = setTimeout(resolveOnce, remainingMs);
+          return;
+        }
+        resolveOnce();
+      };
+
+      if (maxWaitMs > 0) {
+        // 音源が長い場合や ended が来ない場合でも、呼び出し側の待機時間を固定するための上限です。
+        fallbackTimer = setTimeout(finishAfterMinimumWait, maxWaitMs);
+      }
+
+      const result = this.startOneShotSound(key, options, finishAfterMinimumWait);
+      if (!result.started) {
+        finishAfterMinimumWait();
+      }
+    });
+  }
+
+  private startOneShotSound(
+    key: SoundKey,
+    options: PlaySoundOptions = {},
+    onComplete?: () => void,
+  ): SoundPlaybackStartResult {
     const definition = this.getPlayableDefinition(key);
-    if (!definition) return false;
-    if (this.isOutputMuted() && !options.ignoreMute) return false;
+    if (!definition) return { started: false };
+    if (this.isOutputMuted() && !options.ignoreMute) return { started: false };
 
     const cooldownMs = options.cooldownMs ?? definition.cooldownMs ?? 0;
     const currentTime = now();
     const previousTime = this.lastPlayedAt.get(key) ?? Number.NEGATIVE_INFINITY;
     if (cooldownMs > 0 && currentTime - previousTime < cooldownMs) {
-      return false;
+      return { started: false };
     }
 
     const volume = this.resolveEventVolume(definition, options.volume);
-    if (volume <= 0 && !options.loop) return false;
+    if (volume <= 0 && !options.loop) return { started: false };
 
     const polyphony = Math.max(1, Math.floor(options.polyphony ?? definition.polyphony ?? 4));
     const activeSounds = this.getActiveSounds(key);
@@ -169,7 +251,7 @@ export class AudioHub {
     }
 
     const audio = this.createPlayableAudio(definition.assetId);
-    if (!audio) return false;
+    if (!audio) return { started: false };
 
     this.applyPlaybackOptions(audio, definition, {
       ...options,
@@ -178,23 +260,30 @@ export class AudioHub {
     });
 
     activeSounds.add(audio);
+    let completed = false;
     const cleanup = (): void => {
       activeSounds.delete(audio);
-      audio.removeEventListener('ended', cleanup);
-      audio.removeEventListener('pause', cleanup);
+      audio.removeEventListener('ended', complete);
+      audio.removeEventListener('pause', complete);
     };
-    audio.addEventListener('ended', cleanup, { once: true });
-    audio.addEventListener('pause', cleanup, { once: true });
-    const started = this.tryPlayAudio(audio, (error) => {
+    const complete = (): void => {
+      if (completed) return;
+      completed = true;
       cleanup();
+      onComplete?.();
+    };
+    audio.addEventListener('ended', complete, { once: true });
+    audio.addEventListener('pause', complete, { once: true });
+    const started = this.tryPlayAudio(audio, (error) => {
+      complete();
       this.handlePlaybackFailure(definition, error);
     });
     if (!started) {
-      return false;
+      return { started: false };
     }
 
     this.lastPlayedAt.set(key, currentTime);
-    return true;
+    return { started: true };
   }
 
   playLoop(key: SoundKey, loopId: string = key, options: LoopOptions = {}): boolean {
@@ -296,6 +385,75 @@ export class AudioHub {
     this.fadeAudio(bgm.audio, 0, fadeMs, () => this.stopAndRelease(bgm.audio));
   }
 
+  syncTransmissionVoice(options: TransmissionVoiceSyncOptions): boolean {
+    const assetId = options.assetId as SoundAssetId;
+    const asset = SOUND_ASSET_BY_ID[assetId];
+    if (!asset) {
+      this.warnMissingAssetOnce(options.assetId);
+      this.stopTransmissionVoice(0);
+      return false;
+    }
+
+    if (!this.unlocked) {
+      this.installUnlockListeners();
+      return false;
+    }
+
+    const sourceGain = readPositiveGain(options.volume ?? 1);
+    const targetTime = Math.max(0, options.playbackMs / 1000);
+    const driftToleranceSeconds = Math.max(0.03, (options.driftToleranceMs ?? 160) / 1000);
+    let voice = this.transmissionVoice;
+    if (
+      !voice ||
+      voice.transmissionId !== options.transmissionId ||
+      voice.assetId !== assetId
+    ) {
+      this.stopTransmissionVoice(0);
+      const audio = this.createPlayableAudio(assetId);
+      if (!audio) return false;
+      audio.loop = false;
+      voice = {
+        transmissionId: options.transmissionId,
+        assetId,
+        audio,
+        sourceGain,
+      };
+      this.transmissionVoice = voice;
+    }
+
+    voice.sourceGain = sourceGain;
+    voice.audio.volume = this.resolveChannelVolume('voice', voice.sourceGain);
+    voice.audio.muted = this.isOutputMuted();
+    if (Math.abs(voice.audio.currentTime - targetTime) > driftToleranceSeconds) {
+      voice.audio.currentTime = targetTime;
+    }
+
+    if (!options.playing || this.isOutputMuted()) {
+      voice.audio.pause();
+      return true;
+    }
+
+    if (voice.audio.paused) {
+      return this.tryPlayAudio(voice.audio, (error) => {
+        this.stopTransmissionVoice(0);
+        this.handleAssetPlaybackFailure(asset, `transmission voice ${options.transmissionId}`, error);
+      });
+    }
+    return true;
+  }
+
+  pauseTransmissionVoice(): void {
+    this.transmissionVoice?.audio.pause();
+  }
+
+  stopTransmissionVoice(fadeMs = 120): void {
+    const voice = this.transmissionVoice;
+    if (!voice) return;
+
+    this.transmissionVoice = undefined;
+    this.fadeAudio(voice.audio, 0, fadeMs, () => this.stopAndRelease(voice.audio));
+  }
+
   applyMixerGains(gains: AudioMixerGains): void {
     const nextGains = normalizeMixerGains(gains);
     if (areMixerGainsEqual(this.mixerGains, nextGains)) {
@@ -395,10 +553,16 @@ export class AudioHub {
   }
 
   private resolveEventVolume(definition: SoundEventDefinition, eventVolumeOverride?: number): number {
-    const eventVolume = clamp01(eventVolumeOverride ?? definition.defaultVolume);
+    const sourceGain = readPositiveGain(eventVolumeOverride ?? definition.sourceGain);
+    return this.resolveChannelVolume(definition.category, sourceGain);
+  }
+
+  private resolveChannelVolume(channel: SoundChannel, sourceGain: number): number {
     const masterVolume = clamp01(this.mixerGains.master);
-    const channelVolume = clamp01(this.mixerGains[definition.category]);
-    return eventVolume * masterVolume * channelVolume;
+    const channelVolume = clamp01(this.mixerGains[channel]);
+    // HTMLAudioElement.volume は 0..1 のため最終出力だけを丸めます。
+    // 1 を超える実増幅が必要になった場合は Web Audio API の GainNode へ移行します。
+    return clamp01(sourceGain * masterVolume * channelVolume);
   }
 
   private updateLongRunningAudioState(): void {
@@ -416,6 +580,11 @@ export class AudioHub {
         loop.audio.volume = this.resolveEventVolume(definition);
         loop.audio.muted = this.isOutputMuted();
       }
+    }
+
+    if (this.transmissionVoice) {
+      this.transmissionVoice.audio.volume = this.resolveChannelVolume('voice', this.transmissionVoice.sourceGain);
+      this.transmissionVoice.audio.muted = this.isOutputMuted();
     }
   }
 
@@ -504,6 +673,17 @@ export class AudioHub {
     if (this.warnedPlaybackFailures.has(key)) return;
     const reason = error instanceof Error ? error.message : 'unknown reason';
     console.warn(`[AudioHub] audio asset load skipped: ${asset.url} (${reason})`);
+    this.warnedPlaybackFailures.add(key);
+  }
+
+  private handleAssetPlaybackFailure(asset: SoundAssetDefinition, label: string, error: unknown): void {
+    if (asset.optional && !isAutoplayError(error)) {
+      this.markOptionalAssetUnavailable(asset);
+    }
+    const key = `asset:${label}:${asset.id}`;
+    if (this.warnedPlaybackFailures.has(key)) return;
+    const reason = error instanceof Error ? error.message : 'unknown reason';
+    console.warn(`[AudioHub] ${label} playback failed: ${asset.url} (${reason})`);
     this.warnedPlaybackFailures.add(key);
   }
 

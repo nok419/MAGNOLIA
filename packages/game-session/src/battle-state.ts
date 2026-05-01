@@ -17,12 +17,16 @@ import type {
 export type InternalEnemyState = {
   enemyInstanceId: string
   enemyId: string
+  spawnId: string
+  patternSeed: string
+  movementPatternId?: string
   spawnPosition: Vector2
   position: Vector2
   hp: number
   maxHp: number
   enteredAtMs: number
   pauseStartedAtMs?: number
+  fadedOut?: boolean
   patternLastFiredAtMs: Record<string, number>
   burnDamagePerSec: number
   burnUntilMs: number
@@ -141,7 +145,7 @@ export type InternalBattleState = {
   score: number
   selfRepairPointsEarned: number
   cleared: boolean
-  spawnedWaveIndexes: Set<number>
+  spawnedWaveIds: Set<string>
   firedBeatIds: Set<string>
   playerPosition: Vector2
   mainCooldownMs: number

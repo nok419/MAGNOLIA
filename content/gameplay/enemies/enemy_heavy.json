@@ -9,6 +9,7 @@
     "pauseMs": 2400,
     "pauseAtY": 80
   },
+  "movementPatternId": "move_pause_then_drift_heavy",
   "bulletPatternIds": [
     "bp_heavy_burst",
     "bp_spiral_stream"

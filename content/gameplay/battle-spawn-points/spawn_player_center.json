@@ -1,0 +1,10 @@
+{
+  "spawnPointId": "spawn_player_center",
+  "side": "player",
+  "xRatio": 0.5,
+  "yRatio": 1,
+  "offsetX": 0,
+  "offsetY": -64,
+  "authoringLabel": "Player center start",
+  "intendedUse": "battle.player.default"
+}

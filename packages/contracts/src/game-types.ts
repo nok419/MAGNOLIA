@@ -1,10 +1,12 @@
 import type {
   BackgroundTheme,
+  BattleSpawnPointSide,
   BulletPatternKind,
   EnemyBehaviorKind,
   EnemyRendererKind,
   HazardRendererKind,
   HitboxShape,
+  MovementPatternKind,
   ProjectileBodyKind,
   ProjectileRendererKind,
 } from "./content-kinds"
@@ -28,6 +30,8 @@ export type ConditionId = string
 export type ProfileId = string
 export type WorldMapNodeId = string
 export type TranscriptChunkId = string
+export type BattleSpawnPointId = string
+export type MovementPatternId = string
 
 export type Difficulty = "calm" | "terminal"
 export type VolumeLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7
@@ -281,6 +285,7 @@ export type TransmissionMaster = {
   sentAt: string
   subjectTags: string[]
   audioAssetId?: string
+  audioDurationMs?: number
   transcriptChunkIds: TranscriptChunkId[]
   visibilityConditionId?: ConditionId
   accessConditionId?: ConditionId
@@ -297,11 +302,29 @@ export type TransmissionMaster = {
 export type TranscriptChunk = {
   chunkId: TranscriptChunkId
   transmissionId: TransmissionId
+  previousChunkIds?: TranscriptChunkId[]
   lineId: string
   startMs: number
   endMs: number
   speakerLabel?: string
   text: string
+}
+
+export type TranscriptChunkMigrationSegment = {
+  sourceStartRatio: number
+  sourceEndRatio: number
+  targetChunkId: TranscriptChunkId
+  targetStartRatio: number
+  targetEndRatio: number
+}
+
+export type TranscriptChunkMigration = {
+  kind: "transcriptChunk"
+  transmissionId: TransmissionId
+  fromChunkId: TranscriptChunkId
+  toChunkIds: TranscriptChunkId[]
+  segments?: TranscriptChunkMigrationSegment[]
+  reason?: string
 }
 
 export type TranscriptViewChunk = TranscriptChunk & {
@@ -316,7 +339,7 @@ export type MissionMaster = {
   durationMs: number
   scrollSpeed: number
   backgroundPresetId: VisualPresetId
-  playerSpawnId: string
+  playerSpawnId: BattleSpawnPointId
   analysisTotal: number
   visibilityConditionId?: ConditionId
   startConditionId?: ConditionId
@@ -377,6 +400,7 @@ export type BattlefieldHazardMotion =
     }
 
 export type EnemyWave = {
+  waveId: string
   atMs: number
   /**
    * ミッション固有の TypeScript 分岐を増やさず、content 上で意図を読めるようにするタグ。
@@ -387,8 +411,10 @@ export type EnemyWave = {
 }
 
 export type EnemySpawn = {
+  spawnId: string
   enemyId: EnemyId
-  spawnPointId: string
+  spawnPointId: BattleSpawnPointId
+  movementPatternId?: MovementPatternId
   seed?: number
   overrides?: Record<string, number | string | boolean>
 }
@@ -400,12 +426,78 @@ export type EnemyArchetype = {
   analysisValue: number
   behaviorKind: EnemyBehaviorKind
   behaviorParams: Record<string, number | string | boolean>
+  movementPatternId?: MovementPatternId
   bulletPatternIds: BulletPatternId[]
   visualPresetId: VisualPresetId
   hitboxPresetId: HitboxPresetId
   deathEffectPresetId?: VisualPresetId
   dropSelfRepairPoints: number
 }
+
+export type BattleSpawnPoint = {
+  spawnPointId: BattleSpawnPointId
+  side: BattleSpawnPointSide
+  xRatio: number
+  yRatio: number
+  offsetX: number
+  offsetY: number
+  authoringLabel: string
+  intendedUse: string
+}
+
+export type MovementPatternBase = {
+  movementPatternId: MovementPatternId
+  patternKind: MovementPatternKind
+  authoringLabel: string
+  intendedUse: string
+  exitMargin?: number
+}
+
+export type LinearMovementPattern = MovementPatternBase & {
+  patternKind: "linear"
+  speed: number
+  driftX?: number
+  driftY?: number
+}
+
+export type SineDriftMovementPattern = MovementPatternBase & {
+  patternKind: "sineDrift"
+  speed: number
+  driftX?: number
+  driftY?: number
+  wobbleAmplitude: number
+  wobblePeriodMs: number
+}
+
+export type PauseThenDriftMovementPattern = MovementPatternBase & {
+  patternKind: "pauseThenDrift"
+  speed: number
+  driftX?: number
+  driftY?: number
+  pauseAtY: number
+  pauseMs: number
+}
+
+export type BezierRouteMovementPattern = MovementPatternBase & {
+  patternKind: "bezierRoute"
+  durationMs: number
+  points: Vector2[]
+}
+
+export type HoldAndFadeMovementPattern = MovementPatternBase & {
+  patternKind: "holdAndFade"
+  holdMs: number
+  fadeMs: number
+  driftX?: number
+  driftY?: number
+}
+
+export type MovementPattern =
+  | LinearMovementPattern
+  | SineDriftMovementPattern
+  | PauseThenDriftMovementPattern
+  | BezierRouteMovementPattern
+  | HoldAndFadeMovementPattern
 
 export type BulletPattern = {
   bulletPatternId: BulletPatternId
@@ -504,11 +596,14 @@ export type EquipmentUnlockSource =
   | { kind: "purchase"; selfRepairPointCost: number }
   | { kind: "transmissionReward"; transmissionId: TransmissionId }
   | { kind: "mapPickup"; nodeId: WorldMapNodeId }
+  | { kind: "upgradeTransform"; sourceEquipmentId: EquipmentId }
 
 export type EquipmentLevelParams = {
   level: number
   selfRepairPointCost: number
   effectOverrides: Record<string, number>
+  upgradeSummary?: string
+  transformEquipmentId?: EquipmentId
 }
 
 export type EquipmentMaster = {

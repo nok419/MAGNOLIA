@@ -46,6 +46,7 @@ import type {
   WorldMapNodeId,
 } from "@magnolia/contracts"
 import {
+  applyEquippedPassives,
   createEquipmentRuntimeBindings,
   defaultEquipmentRuntimeRegistry,
   resolveLoadout,
@@ -118,16 +119,23 @@ import {
   doesCircleIntersectHazardArea,
   isCircleInsideCircle,
   resolveHitRadius,
+  resolveSpawnPoint,
 } from "./battle-world"
 import { fireEnemyPatterns as fireEnemyPatternsFromRegistry } from "./battle/enemy-pattern-system"
+import {
+  advanceEnemyMovement,
+  shouldKeepEnemyInBattle,
+} from "./battle/movement-system"
 import { spawnMissionEnemies as spawnMissionEnemiesFromSystem } from "./battle/spawn-system"
 import { buildBattleRenderState } from "./battle/battle-render-state"
 import { stepBattleFrame } from "./battle/step-battle"
 import {
+  DEFAULT_EXPLORE_SCAN_RADIUS,
   DEFAULT_EXPLORE_VISION_RADIUS,
   EXPLORE_SCAN_COOLDOWN_MS,
   buildExploreInteractionTargets,
   buildExploreSignalHints,
+  resolveExploreNodeInteractionRadius,
   shouldShowScanTutorialHint,
 } from "./explore/explore-session-runtime"
 import { stepExploreFrame } from "./explore/step-explore"
@@ -191,7 +199,6 @@ export class MagnoliaGameSession {
   private lastExploreVelocity: Vector2 = { x: 0, y: 0 }
   private lastExploreMovementMode: ExploreRenderState["movementMode"] = "normal"
   private lastExploreSignalStability = 0.58
-  private exploreVisionRadius: number = DEFAULT_EXPLORE_VISION_RADIUS
   private exploreElapsedMs = 0
   private lastExploreScanAtMs = -Infinity
   private exploreScanPulses: ExploreScanPulseViewModel[] = []
@@ -294,6 +301,9 @@ export class MagnoliaGameSession {
       playerPosition: this.activeProfile.profile.playerPosition,
     })
     const currentAreaBounds = computeAreaBounds(mapLogic, currentArea.areaId, worldBounds)
+    const exploreVisionRadius = this.resolveExploreVisionRadius()
+    const exploreScanCooldownMs = this.resolveExploreScanCooldownMs()
+    const exploreScanRadius = this.resolveExploreScanRadius()
     const mergedRevealBitmap = mergeRevealBitmaps(this.activeProfile.areaProgress)
     const mapState = buildWorldMapVisibilityState({
       revealBitmap: mergedRevealBitmap,
@@ -359,7 +369,7 @@ export class MagnoliaGameSession {
       visibleWarps,
       visibleCollectibles,
       playerPosition: this.activeProfile.profile.playerPosition,
-      visionRadius: this.exploreVisionRadius,
+      visionRadius: exploreVisionRadius,
     })
 
     return {
@@ -369,7 +379,7 @@ export class MagnoliaGameSession {
       currentThemeId: displayArea?.themeId,
       playerPosition: this.activeProfile.profile.playerPosition,
       playerFacing: this.lastExploreFacing ?? { x: 0, y: -1 },
-      visionRadius: this.exploreVisionRadius,
+      visionRadius: exploreVisionRadius,
       areaBounds: currentAreaBounds,
       visibleTransmissions,
       visibleWarps,
@@ -381,7 +391,7 @@ export class MagnoliaGameSession {
       movementMode: this.lastExploreMovementMode,
       signalStability: this.lastExploreSignalStability,
       scanCooldownRatio: clamp01(
-        (this.exploreElapsedMs - this.lastExploreScanAtMs) / EXPLORE_SCAN_COOLDOWN_MS,
+        (this.exploreElapsedMs - this.lastExploreScanAtMs) / exploreScanCooldownMs,
       ),
       elapsedMs: this.exploreElapsedMs,
       signalHints: buildExploreSignalHints({
@@ -392,6 +402,7 @@ export class MagnoliaGameSession {
         playerPosition: this.activeProfile.profile.playerPosition,
         exploreElapsedMs: this.exploreElapsedMs,
         lastExploreScanAtMs: this.lastExploreScanAtMs,
+        scanRadius: exploreScanRadius,
         newlyIdentifiedExploreNodeIds: this.newlyIdentifiedExploreNodeIds,
       }),
       scanPulses: this.exploreScanPulses.filter(
@@ -506,7 +517,7 @@ export class MagnoliaGameSession {
         areaId: currentArea.areaId,
         position: this.activeProfile.profile.playerPosition,
         facing: this.lastExploreFacing,
-        visionRadius: this.exploreVisionRadius,
+        visionRadius: this.resolveExploreVisionRadius(),
       },
     }
   }
@@ -534,6 +545,7 @@ export class MagnoliaGameSession {
       openMap: () => this.handleOpenMap(),
       closePanel: () => this.handleClosePanel(),
       equipItem: (nextCommand) => this.handleEquipItem(nextCommand),
+      unequipItem: (nextCommand) => this.handleUnequipItem(nextCommand),
       purchaseEquipment: (nextCommand) => this.handlePurchaseEquipment(nextCommand.equipmentId),
       upgradeEquipment: (nextCommand) => this.handleUpgradeEquipment(nextCommand.equipmentId),
       startMission: (nextCommand) => this.startMission(nextCommand.missionId),
@@ -569,7 +581,12 @@ export class MagnoliaGameSession {
         newlyIdentifiedExploreNodeIds: this.newlyIdentifiedExploreNodeIds,
       },
       host: {
-      content: this.content,
+        content: this.content,
+        equipment: {
+          exploreMoveSpeedMultiplier: this.resolveExploreMoveSpeedMultiplier(),
+          scanRadius: this.resolveExploreScanRadius(),
+          scanCooldownMs: this.resolveExploreScanCooldownMs(),
+        },
         snapshot: {
           createExploreSnapshot: () => this.createExploreSnapshot(),
         },
@@ -836,7 +853,7 @@ export class MagnoliaGameSession {
     // 磁気災害は局所的な環境ノイズではなく、空間全体を乱す場として扱います。
     // そのため、内部に入った敵弾は消え、敵機も継続的に損耗します。
     battle.projectiles = battle.projectiles.filter((projectile) => {
-      if (projectile.side !== "enemy") {
+      if (projectile.side !== "enemy" || projectile.nonColliding) {
         return true
       }
 
@@ -986,11 +1003,58 @@ export class MagnoliaGameSession {
 
     if (command.slot === "subsystem") {
       this.activeProfile.profile.equipped.subsystems[command.subsystemIndex] = command.equipmentId
+      this.domainEventQueue.push({
+        type: "equipmentEquipped",
+        equipmentId: command.equipmentId,
+        slot: command.slot,
+        subsystemIndex: command.subsystemIndex,
+      })
     } else {
       this.activeProfile.profile.equipped[command.slot] = command.equipmentId
+      this.domainEventQueue.push({
+        type: "equipmentEquipped",
+        equipmentId: command.equipmentId,
+        slot: command.slot,
+      })
     }
 
     // MAGNOLIA 装備後の制限解除は、装備画面を閉じた瞬間に演出付きで行います。
+  }
+
+  private handleUnequipItem(
+    command:
+      | Extract<GameCommand, { type: "unequipItem"; slot: "main" | "sub" | "os" }>
+      | Extract<GameCommand, { type: "unequipItem"; slot: "subsystem" }>,
+  ): void {
+    if (!this.activeProfile) {
+      return
+    }
+
+    if (command.slot === "subsystem") {
+      if (this.activeProfile.profile.equipped.subsystems[command.subsystemIndex] !== command.equipmentId) {
+        this.lastCommandErrorReason = "指定したサブシステム枠には装備されていません"
+        return
+      }
+      this.activeProfile.profile.equipped.subsystems[command.subsystemIndex] = null
+      this.domainEventQueue.push({
+        type: "equipmentUnequipped",
+        equipmentId: command.equipmentId,
+        slot: command.slot,
+        subsystemIndex: command.subsystemIndex,
+      })
+      return
+    }
+
+    if (this.activeProfile.profile.equipped[command.slot] !== command.equipmentId) {
+      this.lastCommandErrorReason = "指定したスロットには装備されていません"
+      return
+    }
+    this.activeProfile.profile.equipped[command.slot] = undefined
+    this.domainEventQueue.push({
+      type: "equipmentUnequipped",
+      equipmentId: command.equipmentId,
+      slot: command.slot,
+    })
   }
 
   private handlePurchaseEquipment(equipmentId: EquipmentId): void {
@@ -1032,6 +1096,37 @@ export class MagnoliaGameSession {
     }
     this.activeProfile.profile.selfRepairPoints -= params.selfRepairPointCost
     this.activeProfile.profile.equipmentLevels[equipmentId] = nextLevel
+    if (params.transformEquipmentId) {
+      this.applyEquipmentTransform(equipmentId, params.transformEquipmentId)
+    }
+  }
+
+  private applyEquipmentTransform(
+    sourceEquipmentId: EquipmentId,
+    targetEquipmentId: EquipmentId,
+  ): void {
+    if (!this.activeProfile) {
+      return
+    }
+
+    const sourceEquipment = this.content.equipment[sourceEquipmentId]
+    const targetEquipment = this.content.equipment[targetEquipmentId]
+    if (!sourceEquipment || !targetEquipment || sourceEquipment.slot !== targetEquipment.slot) {
+      return
+    }
+
+    this.grantEquipment([targetEquipmentId])
+    if (sourceEquipment.slot === "subsystem") {
+      this.activeProfile.profile.equipped.subsystems =
+        this.activeProfile.profile.equipped.subsystems.map((equipmentId) =>
+          equipmentId === sourceEquipmentId ? targetEquipmentId : equipmentId,
+        ) as ProfileRow["equipped"]["subsystems"]
+      return
+    }
+
+    if (this.activeProfile.profile.equipped[sourceEquipment.slot] === sourceEquipmentId) {
+      this.activeProfile.profile.equipped[sourceEquipment.slot] = targetEquipmentId
+    }
   }
 
   private startMission(
@@ -1090,7 +1185,7 @@ export class MagnoliaGameSession {
       replaySeed,
     })
 
-    this.battleState = {
+    const battleState: InternalBattleState = {
       mission,
       transmission,
       transcript: transmission.transcriptChunkIds
@@ -1111,9 +1206,9 @@ export class MagnoliaGameSession {
       score: 0,
       selfRepairPointsEarned: 0,
       cleared: false,
-      spawnedWaveIndexes: new Set<number>(),
+      spawnedWaveIds: new Set<string>(),
       firedBeatIds: new Set<string>(),
-      playerPosition: { x: BATTLE_WIDTH / 2, y: BATTLE_HEIGHT - 64 },
+      playerPosition: resolveSpawnPoint(mission.playerSpawnId, this.content.battleSpawnPoints),
       mainCooldownMs: 0,
       mainMeleeCooldownMs: 0,
       subCooldownMs: 0,
@@ -1127,6 +1222,7 @@ export class MagnoliaGameSession {
       previousSubPressed: false,
       hazards: initialMissionState.hazards,
     }
+    this.battleState = battleState
     const missionStartHookResult = runSubsystemHooks({
       bindings,
       context: {
@@ -1136,10 +1232,10 @@ export class MagnoliaGameSession {
       },
     })
     if (missionStartHookResult.effectRequests?.length) {
-      this.applyEffectRequests(this.battleState, missionStartHookResult.effectRequests)
+      this.applyEffectRequests(battleState, missionStartHookResult.effectRequests)
     }
     if (missionStartHookResult.analysisDelta) {
-      this.battleState.destroyedAnalysisValue +=
+      battleState.destroyedAnalysisValue +=
         Math.max(0, missionStartHookResult.analysisDelta) * mission.analysisTotal
     }
     this.screen = "battle"
@@ -1218,7 +1314,7 @@ export class MagnoliaGameSession {
       this.lastCommandErrorReason = "収集ノードが表示されていません"
       return
     }
-    if (!isWithinRadius(playerPosition, { x: node.x, y: node.y }, node.interactionRadius)) {
+    if (!isWithinRadius(playerPosition, { x: node.x, y: node.y }, resolveExploreNodeInteractionRadius(node))) {
       this.lastCommandErrorReason = "収集範囲外です"
       return
     }
@@ -1524,7 +1620,9 @@ export class MagnoliaGameSession {
 
     const mapState = this.buildCurrentWorldMapVisibilityState(mapLogic)
     const nearbyCollectible = findNearbyNode(
-      mapLogic.collectibleNodes.filter((node) => mapState.visibleCollectibleNodeIds.includes(node.nodeId)),
+      mapLogic.collectibleNodes
+        .filter((node) => mapState.visibleCollectibleNodeIds.includes(node.nodeId))
+        .map((node) => ({ ...node, interactionRadius: resolveExploreNodeInteractionRadius(node) })),
       playerPosition,
     )
     if (nearbyCollectible && !this.activeProfile.profile.collectedNodeIds.includes(nearbyCollectible.nodeId)) {
@@ -1545,7 +1643,9 @@ export class MagnoliaGameSession {
     }
 
     const nearbyWarp = findNearbyNode(
-      mapLogic.warpNodes.filter((node) => mapState.visibleWarpNodeIds.includes(node.nodeId)),
+      mapLogic.warpNodes
+        .filter((node) => mapState.visibleWarpNodeIds.includes(node.nodeId))
+        .map((node) => ({ ...node, interactionRadius: resolveExploreNodeInteractionRadius(node) })),
       playerPosition,
     )
     if (nearbyWarp) {
@@ -1564,7 +1664,9 @@ export class MagnoliaGameSession {
     }
 
     const nearbyTransmission = findNearbyNode(
-      mapLogic.transmissionNodes.filter((node) => mapState.visibleTransmissionNodeIds.includes(node.nodeId)),
+      mapLogic.transmissionNodes
+        .filter((node) => mapState.visibleTransmissionNodeIds.includes(node.nodeId))
+        .map((node) => ({ ...node, interactionRadius: resolveExploreNodeInteractionRadius(node) })),
       playerPosition,
     )
     if (nearbyTransmission) {
@@ -1599,7 +1701,11 @@ export class MagnoliaGameSession {
       collectible &&
       mapState.visibleCollectibleNodeIds.includes(collectible.nodeId) &&
       !this.activeProfile.profile.collectedNodeIds.includes(collectible.nodeId) &&
-      isWithinRadius(playerPosition, { x: collectible.x, y: collectible.y }, collectible.interactionRadius)
+      isWithinRadius(
+        playerPosition,
+        { x: collectible.x, y: collectible.y },
+        resolveExploreNodeInteractionRadius(collectible),
+      )
     ) {
       // command 経路でも session が DomainEvent の正本です。UI 側で取得成功を再判定しません。
       this.handleCollectItem({ type: "collectItem", nodeId: collectible.nodeId })
@@ -1615,7 +1721,7 @@ export class MagnoliaGameSession {
     if (
       warp &&
       mapState.visibleWarpNodeIds.includes(warp.nodeId) &&
-      isWithinRadius(playerPosition, { x: warp.x, y: warp.y }, warp.interactionRadius)
+      isWithinRadius(playerPosition, { x: warp.x, y: warp.y }, resolveExploreNodeInteractionRadius(warp))
     ) {
       this.activeProfile.profile.currentAreaId = warp.warpTargetAreaId
       this.activeProfile.profile.playerPosition = {
@@ -1638,7 +1744,7 @@ export class MagnoliaGameSession {
       isWithinRadius(
         playerPosition,
         { x: transmission.x, y: transmission.y },
-        transmission.interactionRadius,
+        resolveExploreNodeInteractionRadius(transmission),
       )
     ) {
       this.startMission(
@@ -1806,51 +1912,13 @@ export class MagnoliaGameSession {
       if (!definition) {
         continue
       }
-      const elapsed = battle.elapsedMs - enemy.enteredAtMs
-      const behaviorParams = {
-        ...definition.behaviorParams,
-        ...(enemy.overrides ?? {}),
-      }
-      const speed = Number(behaviorParams.speed ?? 40)
-      switch (definition.behaviorKind) {
-        case "straightDown": {
-          enemy.position.y += speed * dtSeconds
-          // driftX: 横方向への一定速ドリフト (画面横切り演出用)
-          const driftX = Number(behaviorParams.driftX ?? 0)
-          if (driftX !== 0) {
-            enemy.position.x += driftX * dtSeconds
-          }
-          // wobble: ゆったりした正弦波の横揺れ (漂流感の演出)
-          const wobbleAmp = Number(behaviorParams.wobbleAmplitude ?? 0)
-          const wobblePeriod = Number(behaviorParams.wobblePeriodMs ?? 3000)
-          if (wobbleAmp > 0) {
-            enemy.position.x =
-              enemy.spawnPosition.x +
-              Math.sin((elapsed / wobblePeriod) * Math.PI * 2) * wobbleAmp
-          }
-          break
-        }
-        case "zigzag": {
-          const amplitude = Number(behaviorParams.wobbleAmplitude ?? 40)
-          const periodMs = Number(behaviorParams.wobblePeriodMs ?? 2000)
-          enemy.position.y += speed * dtSeconds
-          enemy.position.x =
-            enemy.spawnPosition.x + Math.sin((elapsed / periodMs) * Math.PI * 2) * amplitude
-          break
-        }
-        case "slowDescent": {
-          const pauseAtY = Number(behaviorParams.pauseAtY ?? 100)
-          const pauseMs = Number(behaviorParams.pauseMs ?? 1000)
-          if (enemy.position.y < pauseAtY) {
-            enemy.position.y += speed * dtSeconds
-          } else if (!enemy.pauseStartedAtMs) {
-            enemy.pauseStartedAtMs = battle.elapsedMs
-          } else if (battle.elapsedMs - enemy.pauseStartedAtMs > pauseMs) {
-            enemy.position.y += speed * dtSeconds
-          }
-          break
-        }
-      }
+      advanceEnemyMovement({
+        enemy,
+        enemyDefinition: definition,
+        movementPatterns: this.content.movementPatterns,
+        battleElapsedMs: battle.elapsedMs,
+        dtMs,
+      })
 
       if (enemy.burnUntilMs > battle.elapsedMs && enemy.burnDamagePerSec > 0) {
         enemy.hp -= enemy.burnDamagePerSec * dtSeconds
@@ -1880,9 +1948,7 @@ export class MagnoliaGameSession {
     }
 
     // hp <= 0 の敵は resolveBattleCollisions 側で撃破処理に集約するため、この段階では消さない。
-    battle.enemies = battle.enemies.filter(
-      (enemy) => enemy.position.y < BATTLE_HEIGHT + 60 || enemy.hp <= 0,
-    )
+    battle.enemies = battle.enemies.filter((enemy) => shouldKeepEnemyInBattle(enemy) || enemy.hp <= 0)
     return events
   }
 
@@ -1952,6 +2018,51 @@ export class MagnoliaGameSession {
     })
   }
 
+  private resolveExploreStatModifiers(): Record<string, number> | undefined {
+    const loadout = this.resolveLoadout()
+    const bindings = createEquipmentRuntimeBindings({
+      loadout,
+      registry: this.getRuntimeRegistry(),
+    })
+    return applyEquippedPassives({
+      bindings,
+      context: {
+        phase: "explore",
+        resolvedLoadout: loadout,
+      },
+    }).statModifiers
+  }
+
+  private resolveExploreVisionRadius(): number {
+    const statModifiers = this.resolveExploreStatModifiers()
+    return Math.max(
+      1,
+      DEFAULT_EXPLORE_VISION_RADIUS + (statModifiers?.exploreVisionBonus ?? 0),
+    )
+  }
+
+  private resolveExploreScanRadius(): number {
+    const statModifiers = this.resolveExploreStatModifiers()
+    return Math.max(
+      1,
+      DEFAULT_EXPLORE_SCAN_RADIUS + (statModifiers?.exploreScanRadiusBonus ?? 0),
+    )
+  }
+
+  private resolveExploreScanCooldownMs(): number {
+    const statModifiers = this.resolveExploreStatModifiers()
+    const multiplier = Math.max(
+      0.25,
+      1 + (statModifiers?.exploreScanCooldownMultiplier ?? 0),
+    )
+    return Math.max(1, EXPLORE_SCAN_COOLDOWN_MS * multiplier)
+  }
+
+  private resolveExploreMoveSpeedMultiplier(): number {
+    const statModifiers = this.resolveExploreStatModifiers()
+    return Math.max(0.25, 1 + (statModifiers?.exploreSpeedMultiplier ?? 0))
+  }
+
   private getRuntimeRegistry() {
     return defaultEquipmentRuntimeRegistry
   }
@@ -2003,6 +2114,7 @@ export class MagnoliaGameSession {
       battle,
       previousElapsedMs,
       enemies: this.content.enemies,
+      battleSpawnPoints: this.content.battleSpawnPoints,
       hitboxPresets: this.content.contentHitboxPresets,
       difficultyModifiers: this.resolveDifficultyModifiers(),
       nextInstanceId: (prefix) => this.nextInstanceId(prefix),

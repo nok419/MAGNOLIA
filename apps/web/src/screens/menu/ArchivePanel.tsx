@@ -1,4 +1,5 @@
 import type { ArchiveViewModel } from "@magnolia/contracts"
+import { audioEvents } from "@/audio"
 
 export function ArchivePanel({
   viewModel,
@@ -20,7 +21,12 @@ export function ArchivePanel({
               key={entry.transmissionId}
               type="button"
               className={`list-card ${entry.selected ? "list-card--selected" : ""}`}
-              onClick={() => onSelectTransmission(entry.areaId, entry.transmissionId)}
+              onClick={() => {
+                if (!entry.selected) {
+                  audioEvents.equipmentArchiveDetailSelect()
+                }
+                onSelectTransmission(entry.areaId, entry.transmissionId)
+              }}
             >
               <p style={{ fontWeight: 500, fontSize: 14 }}>
                 {entry.title}

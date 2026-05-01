@@ -58,6 +58,21 @@ export type ScrambleOptions = {
    * disableOnReduceMotion が false のときだけ意味を持つ。
    */
   reducedShuffleProbability?: number
+  /**
+   * 1 回の発火で乱す文字の割合。定期的なタイトル表示では一部だけを乱し、
+   * 初回ロードやイベント同期では既定値 1 で全文を対象にします。
+   */
+  activeGlyphRatio?: number
+  /**
+   * 1 回の発火で乱す文字数。0 以下なら activeGlyphRatio を使います。
+   * タイトルの周期演出では「数文字だけ」を明示して、長文全体が壊れないようにします。
+   */
+  activeGlyphCount?: number
+  /**
+   * true のとき、各文字の崩れ始める時刻をランダムにずらします。
+   * 少数文字がばらばらに欠け、少しずつ戻る見え方に使います。
+   */
+  randomizeStartFrames?: boolean
 }
 
 const DEFAULT_OPTIONS: Required<Omit<ScrambleOptions, "reducedShuffleProbability">> & {
@@ -68,6 +83,9 @@ const DEFAULT_OPTIONS: Required<Omit<ScrambleOptions, "reducedShuffleProbability
   shuffleProbability: 0.32,
   disableOnReduceMotion: true,
   reducedShuffleProbability: 0.08,
+  activeGlyphRatio: 1,
+  activeGlyphCount: 0,
+  randomizeStartFrames: false,
 }
 
 function pickGlyph(): string {
@@ -82,10 +100,31 @@ function shouldDisableMotion(reduceFlashing: boolean | undefined): boolean {
   return Boolean(query?.matches)
 }
 
+function pickActiveIndexes(length: number, opts: typeof DEFAULT_OPTIONS): Set<number> | null {
+  if (opts.activeGlyphCount <= 0 || length <= 0) {
+    return null
+  }
+
+  const candidateIndexes = Array.from({ length }, (_, index) => index)
+  const count = Math.min(length, Math.max(1, Math.floor(opts.activeGlyphCount)))
+  const selected = new Set<number>()
+
+  while (selected.size < count && candidateIndexes.length > 0) {
+    const candidateOffset = Math.floor(Math.random() * candidateIndexes.length)
+    const [index] = candidateIndexes.splice(candidateOffset, 1)
+    if (index !== undefined) {
+      selected.add(index)
+    }
+  }
+
+  return selected
+}
+
 function buildSegments(target: string, fromText: string, opts: typeof DEFAULT_OPTIONS): Segment[] {
   // 等幅前提の単純実装。target と fromText の長さが違う場合は target に合わせて切る/詰める。
   const length = target.length
   const baseDelay = Math.min(opts.maxFrames * 0.4, length * 0.6)
+  const activeIndexes = pickActiveIndexes(length, opts)
   return Array.from({ length }, (_, index) => {
     const targetChar = target[index] ?? " "
     const sourceChar = fromText[index] ?? " "
@@ -99,8 +138,23 @@ function buildSegments(target: string, fromText: string, opts: typeof DEFAULT_OP
         currentScramble: targetChar,
       }
     }
+    const shouldScramble = activeIndexes
+      ? activeIndexes.has(index)
+      : Math.random() <= opts.activeGlyphRatio
+    if (!shouldScramble) {
+      return {
+        kind: "char" as const,
+        source: sourceChar,
+        target: targetChar,
+        startFrame: 0,
+        endFrame: 0,
+        currentScramble: targetChar,
+      }
+    }
     // 文字ごとの収束開始/終了フレームをずらして「左から右に解錠」するような流れを作る。
-    const stagger = (index / Math.max(1, length - 1)) * baseDelay
+    const stagger = opts.randomizeStartFrames
+      ? Math.random() * baseDelay
+      : (index / Math.max(1, length - 1)) * baseDelay
     const startFrame = Math.floor(stagger * 0.6)
     const endFrame = Math.min(
       opts.maxFrames,

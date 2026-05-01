@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react"
 import type {
   ArchiveViewModel,
   ContentBundle,
   EquipmentPanelViewModel,
-  EquipmentSlot,
   MenuViewModel,
   SaveSlotId,
   SaveSlotRow,
@@ -11,11 +11,13 @@ import type {
   ShipVariant,
 } from "@magnolia/contracts"
 import { KeyVisualModal } from "@/components/KeyVisualModal"
+import { audioEvents } from "@/audio"
 import type { DisplayOptions } from "@/app/display-options"
 import { ArchivePanel } from "@/screens/menu/ArchivePanel"
 import { EquipmentPanel } from "@/screens/menu/EquipmentPanel"
 import { MenuBackdropCanvas } from "@/screens/menu/MenuBackdropCanvas"
 import { SettingsPanel } from "@/screens/menu/SettingsPanel"
+import type { EquipmentCategoryKey } from "@/screens/menu/equipment-category"
 
 type MenuTab = "equipment" | "archive" | "settings"
 
@@ -30,6 +32,7 @@ type MenuScreenProps = {
   unseenEquipmentIds: string[]
   onMarkEquipmentSeen: (equipmentIds: string[]) => void
   onEquip: (equipmentId: string, slot: string, subsystemIndex?: 0 | 1) => void
+  onUnequip: (equipmentId: string, slot: string, subsystemIndex?: 0 | 1) => void
   onPurchase: (equipmentId: string) => void
   onUpgrade: (equipmentId: string) => void
   onSelectTransmission: (areaId: string, transmissionId: string) => void
@@ -44,6 +47,12 @@ type MenuScreenProps = {
   displayOptions: DisplayOptions
 }
 
+type MenuClickGlitch = {
+  id: number
+  x: number
+  y: number
+}
+
 export function MenuScreen({
   menuViewModel,
   content,
@@ -55,6 +64,7 @@ export function MenuScreen({
   unseenEquipmentIds,
   onMarkEquipmentSeen,
   onEquip,
+  onUnequip,
   onPurchase,
   onUpgrade,
   onSelectTransmission,
@@ -74,14 +84,45 @@ export function MenuScreen({
 
   const defaultTab = initialTab && tabs.includes(initialTab) ? initialTab : tabs[0]
   const [activeTab, setActiveTab] = useState<MenuTab>(defaultTab)
-  const [selectedCategory, setSelectedCategory] = useState<EquipmentSlot>("main")
+  const [selectedCategory, setSelectedCategory] = useState<EquipmentCategoryKey>("main")
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null)
   // key visual
   const [keyVisualVariant, setKeyVisualVariant] = useState<"fullscreen" | "windowed" | null>(null)
+  const [clickGlitches, setClickGlitches] = useState<MenuClickGlitch[]>([])
+  const clickGlitchIdRef = useRef(0)
+
+  const emitClickGlitch = useCallback((point: { x: number; y: number }) => {
+    const id = clickGlitchIdRef.current + 1
+    clickGlitchIdRef.current = id
+    setClickGlitches((current) => [...current.slice(-7), { id, x: point.x, y: point.y }])
+  }, [])
+
+  const handleMenuPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    if (event.button !== 0 || keyVisualVariant) {
+      return
+    }
+    const rect = event.currentTarget.getBoundingClientRect()
+    emitClickGlitch({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    })
+  }, [emitClickGlitch, keyVisualVariant])
 
   useEffect(() => {
     setActiveTab(defaultTab)
   }, [defaultTab])
+
+  const handleSelectTab = useCallback((tab: MenuTab) => {
+    if (tab !== activeTab) {
+      // MenuScreen 内のタブ切替は session screen を変えないため、装備 panel を開く音はここで鳴らします。
+      if (tab === "equipment") {
+        audioEvents.equipmentPanelOpen()
+      } else {
+        audioEvents.equipmentArchiveCategorySelect()
+      }
+    }
+    setActiveTab(tab)
+  }, [activeTab])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -102,8 +143,23 @@ export function MenuScreen({
   }, [keyVisualVariant, activeTab, onBack])
 
   return (
-    <main className="menu-screen">
+    <main className="menu-screen" onPointerDown={handleMenuPointerDown}>
       <MenuBackdropCanvas displayOptions={displayOptions} />
+      <div className="menu-click-glitches" aria-hidden="true">
+        {clickGlitches.map((glitch) => (
+          <span
+            key={glitch.id}
+            className="menu-click-glitch"
+            style={{
+              ["--menu-click-glitch-x" as keyof CSSProperties]: `${glitch.x}px`,
+              ["--menu-click-glitch-y" as keyof CSSProperties]: `${glitch.y}px`,
+            }}
+            onAnimationEnd={() => {
+              setClickGlitches((current) => current.filter((item) => item.id !== glitch.id))
+            }}
+          />
+        ))}
+      </div>
 
       {/* tab bar */}
       <nav className="menu-tabs">
@@ -114,7 +170,7 @@ export function MenuScreen({
               key={tab}
               type="button"
               className={`menu-tab ${activeTab === tab ? "menu-tab--active" : ""}`}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleSelectTab(tab)}
             >
               {tab}
               {tabModel.badgeCount > 0 ? <span className="menu-tab__badge">{tabModel.badgeCount}</span> : null}
@@ -137,6 +193,7 @@ export function MenuScreen({
             onSelectCategory={setSelectedCategory}
             onSelectEquipment={setSelectedEquipmentId}
             onEquip={onEquip}
+            onUnequip={onUnequip}
             onPurchase={onPurchase}
             onUpgrade={onUpgrade}
             shipVariant={settings.shipVariant}

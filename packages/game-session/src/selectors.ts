@@ -23,6 +23,7 @@ import type {
   MissionState,
   ProfileAggregate,
   ProfileRow,
+  ProjectileSpec,
   SubsystemIndex,
   TranscriptChunk,
   TranscriptSpan,
@@ -45,10 +46,17 @@ import {
   readTranscriptChunkRestorationRatio,
   transcriptSpansFromTimeRanges,
 } from "./progression"
+import {
+  DEFAULT_EXPLORE_SCAN_RADIUS,
+  DEFAULT_EXPLORE_VISION_RADIUS,
+  EXPLORE_SCAN_COOLDOWN_MS,
+} from "./explore/explore-session-runtime"
 
 const WORLD_CELL_SIZE = 20
 const WORLD_BITMAP_ORIGIN_X = -640
 const WORLD_BITMAP_ORIGIN_Y = -520
+
+type EquipmentStatGroupViewModel = EquipmentCatalogViewModel["items"][number]["statGroups"][number]
 
 export type EquipmentHintSelection = {
   unseenEquipmentIds: EquipmentId[]
@@ -207,6 +215,14 @@ export function resolveEquipmentEquipState(input: {
     if (profile.equipped.subsystems[input.subsystemIndex] === input.equipmentId) {
       return { canEquip: false, lockedReasonLabel: "装備中です" }
     }
+    // サブシステムは二枠ありますが、同じ装備を二重に動かすと hook が重複実行されます。
+    // そのため、別枠で装備中のものはターゲット枠側でも装着不可にします。
+    const occupiedSubsystemIndex = profile.equipped.subsystems.findIndex(
+      (equipmentId) => equipmentId === input.equipmentId,
+    )
+    if (occupiedSubsystemIndex === 0 || occupiedSubsystemIndex === 1) {
+      return { canEquip: false, lockedReasonLabel: "もう一方のサブシステム枠で装備中です" }
+    }
     return { canEquip: true }
   }
   if (profile.equipped[input.slot] === input.equipmentId) {
@@ -217,6 +233,8 @@ export function resolveEquipmentEquipState(input: {
 
 export function buildEquipmentCatalogViewModel(input: {
   equipment: Record<EquipmentId, EquipmentMaster>
+  effects: Record<string, EffectSpec>
+  projectiles: Record<string, ProjectileSpec>
   profile: ProfileRow | null
   featureAccess: FeatureAccessState
 }): EquipmentCatalogViewModel {
@@ -259,17 +277,29 @@ export function buildEquipmentCatalogViewModel(input: {
           equipment,
           profile,
         })
+        const currentLevel = profile?.equipmentLevels[equipment.equipmentId] ?? 0
         return {
           equipmentId: equipment.equipmentId,
           slot: equipment.slot,
           visibleName: masked ? "???" : equipment.name,
           visibleDescription: masked ? "詳細不明" : equipment.description,
           flavorText: masked ? undefined : equipment.flavorText,
+          statGroups: masked
+            ? []
+            : buildEquipmentStatGroups({
+                equipment,
+                effects: input.effects,
+                projectiles: input.projectiles,
+                level: Math.max(1, currentLevel),
+              }),
+          upgradePreview: masked
+            ? undefined
+            : buildEquipmentUpgradePreview(equipment, currentLevel),
           masked,
           owned,
           equippedSlot: equippedState.slot,
           subsystemIndex: equippedState.subsystemIndex,
-          currentLevel: profile?.equipmentLevels[equipment.equipmentId] ?? 0,
+          currentLevel,
           maxLevel: equipment.maxLevel,
           canPurchase: purchase.canPurchase,
           purchaseCost: purchase.purchaseCost,
@@ -285,6 +315,296 @@ export function buildEquipmentCatalogViewModel(input: {
         }
       }),
   }
+}
+
+function buildEquipmentStatGroups(input: {
+  equipment: EquipmentMaster
+  effects: Record<string, EffectSpec>
+  projectiles: Record<string, ProjectileSpec>
+  level: number
+}): EquipmentStatGroupViewModel[] {
+  const levelOverrides = resolveEquipmentLevelOverrides(input.equipment, input.level)
+  const effects = [...input.equipment.activeEffectIds, ...input.equipment.passiveEffectIds]
+    .map((effectId) => input.effects[effectId])
+    .filter((effect): effect is EffectSpec => Boolean(effect))
+    .map((effect) => ({
+      ...effect,
+      params: {
+        ...(effect.params ?? {}),
+        ...levelOverrides,
+      },
+    }))
+
+  return effects
+    .flatMap((effect) => buildEffectStatGroups(effect, input.projectiles))
+    .filter((group) => group.stats.length > 0)
+}
+
+function buildEffectStatGroups(
+  effect: EffectSpec,
+  projectiles: Record<string, ProjectileSpec>,
+): EquipmentStatGroupViewModel[] {
+  const params = effect.params ?? {}
+  if (effect.runtimeHandlerId === "weapon.main.pulse") {
+    return buildPulseStatGroups(params, projectiles)
+  }
+  if (effect.runtimeHandlerId === "weapon.main.carrier") {
+    return buildCarrierStatGroups(params, projectiles)
+  }
+  if (effect.runtimeHandlerId === "sub.barrier.noise_canceller") {
+    return [
+      compactStatGroup("バリア", [
+        stat("範囲", formatDistance(readNumber(params, "radius", 48))),
+        stat("最大持続", formatMs(readNumber(params, "maxDurationMs", 1200))),
+        stat("移動速度", formatMultiplier(readNumber(params, "moveSpeedMultiplier", 0.8))),
+        stat("敵弾消去", formatEnabled(readBoolean(params, "blocksEnemyBullets"))),
+        stat("攻撃継続", formatEnabled(readBoolean(params, "allowAttackDuringUse"))),
+      ]),
+      compactStatGroup("リキャスト", [
+        stat("クールタイム", formatMs(readNumber(params, "cooldownMs", 3000))),
+      ]),
+    ]
+  }
+  if (effect.runtimeHandlerId === "sub.field.silent_wave") {
+    return [
+      compactStatGroup("フィールド", [
+        stat("範囲", formatDistance(readNumber(params, "radius", 60))),
+        stat("持続", formatMs(readNumber(params, "durationMs", 5000))),
+        stat("効果量", readNumber(params, "dpsInField", 0) > 0
+          ? `${formatNumber(readNumber(params, "dpsInField", 0), 1)}/秒`
+          : "なし"),
+        stat("敵弾消去", formatEnabled(readBoolean(params, "blocksEnemyBullets"))),
+        stat("磁気災害", readBoolean(params, "blocksMagneticDisaster") ? "無効化" : "影響あり"),
+      ]),
+      compactStatGroup("リキャスト", [
+        stat("クールタイム", formatMs(readNumber(params, "cooldownMs", 12000))),
+      ]),
+    ]
+  }
+  if (effect.runtimeHandlerId === "subsystem.shot.modifier.burn") {
+    return [
+      compactStatGroup("付与効果", [
+        stat("継続ダメージ", `${formatNumber(readNumber(params, "burnDamagePerSec", 0), 1)}/秒`),
+        stat("持続", formatMs(readNumber(params, "burnDurationMs", 0))),
+      ]),
+    ]
+  }
+  if (effect.runtimeHandlerId === "subsystem.shot.modifier.homing") {
+    return [
+      compactStatGroup("誘導", [
+        stat("追従精度", formatNumber(readNumber(params, "homingStrength", 0), 2)),
+        stat("追従範囲", formatDistance(readNumber(params, "homingRange", 0))),
+      ]),
+    ]
+  }
+  if (effect.runtimeHandlerId === "subsystem.analysis.ramp") {
+    return [
+      compactStatGroup("解析", [
+        stat("増加量", `${formatNumber(readNumber(params, "analysisDeltaPerStep", 0) * 100, 2)}%/step`),
+      ]),
+    ]
+  }
+  if (effect.runtimeHandlerId === "subsystem.noise.gate") {
+    return [
+      compactStatGroup("防御", [
+        stat("ノイズ軽減", formatPercent(readNumber(params, "noiseReduction", 0))),
+      ]),
+    ]
+  }
+  if (effect.runtimeHandlerId === "subsystem.movement.focus") {
+    return [
+      compactStatGroup("操作", [
+        stat("低速移動", formatEnabled(readBoolean(params, "enableFocusMovement"))),
+        stat("低速倍率", formatMultiplier(readNumber(params, "focusSpeedMultiplier", 0.5))),
+      ]),
+    ]
+  }
+  if (effect.runtimeHandlerId === "os.magnolia.core") {
+    const scanCooldownMultiplier = readNumber(params, "exploreScanCooldownMultiplier", 1)
+    const exploreSpeedMultiplier = readNumber(params, "exploreSpeedMultiplier", 1)
+    return [
+      compactStatGroup("OS", [
+        stat("UI解放", readBoolean(params, "unlocksHud") ? "基本HUD" : "なし"),
+        stat(
+          "視界",
+          formatDistance(DEFAULT_EXPLORE_VISION_RADIUS + readNumber(params, "exploreVisionBonus", 0)),
+        ),
+        stat(
+          "スキャン範囲",
+          formatDistance(DEFAULT_EXPLORE_SCAN_RADIUS + readNumber(params, "exploreScanRadiusBonus", 0)),
+        ),
+        stat("スキャンクールタイム", formatMs(EXPLORE_SCAN_COOLDOWN_MS * scanCooldownMultiplier)),
+        stat("探索移動", formatMultiplier(exploreSpeedMultiplier)),
+      ]),
+    ]
+  }
+  return []
+}
+
+function buildPulseStatGroups(
+  params: Record<string, number | string | boolean>,
+  projectiles: Record<string, ProjectileSpec>,
+): EquipmentStatGroupViewModel[] {
+  const projectile = projectiles[readString(params, "projectileId", "")]
+  const speed = readNumber(params, "projectileSpeed", projectile?.speed ?? 920)
+  const lifetimeMs = readNumber(params, "lifetimeMs", projectile?.lifetimeMs ?? 0)
+  return [
+    compactStatGroup("弾丸", [
+      stat("威力", formatNumber(readNumber(params, "damage", projectile?.damage ?? 0), 1)),
+      stat("発射間隔", formatMs(readNumber(params, "cadenceMs", 120))),
+      stat("弾数", `${formatNumber(readNumber(params, "shotCount", 1), 0)}発`),
+      stat("射角", `${formatNumber(readNumber(params, "spreadDeg", 0), 0)}度`),
+      stat(
+        "射程",
+        lifetimeMs > 0 ? formatDistance((speed * lifetimeMs) / 1000) : undefined,
+      ),
+      stat(
+        "追加弾",
+        readNumber(params, "extraSideShotCount", 0) > 0
+          ? `${formatNumber(readNumber(params, "extraSideShotCount", 0), 0)}発 / 威力${formatNumber(readNumber(params, "extraSideShotDamage", 0), 1)}`
+          : "なし",
+      ),
+    ]),
+    compactStatGroup("近接", [
+      stat("威力", formatNumber(readNumber(params, "meleeDamage", 0), 1)),
+      stat("範囲", formatDistance(readNumber(params, "meleeCollisionRange", readNumber(params, "meleeRange", 0)))),
+      stat("角度", `${formatNumber(readNumber(params, "meleeSpreadDeg", 0), 0)}度`),
+      stat("クールタイム", formatMs(readNumber(params, "meleeCooldownMs", 0))),
+    ]),
+  ]
+}
+
+function buildCarrierStatGroups(
+  params: Record<string, number | string | boolean>,
+  projectiles: Record<string, ProjectileSpec>,
+): EquipmentStatGroupViewModel[] {
+  const projectile = projectiles[readString(params, "projectileId", "")]
+  const speed = readNumber(params, "projectileSpeed", projectile?.speed ?? 760)
+  const lifetimeMs = readNumber(params, "lifetimeMs", projectile?.lifetimeMs ?? 1800)
+  const damage = readNumber(params, "damage", projectile?.damage ?? 0)
+  const explosionMultiplier = readNumber(params, "explosionDamageMultiplier", 1)
+  return [
+    compactStatGroup("弾丸", [
+      stat("威力", formatNumber(damage, 1)),
+      stat("発射間隔", formatMs(readNumber(params, "cadenceMs", 360))),
+      stat("弾数", `${formatNumber(readNumber(params, "shotCount", 1), 0)}発`),
+      stat("射程", formatDistance((speed * lifetimeMs) / 1000)),
+    ]),
+    compactStatGroup("爆発", [
+      stat("威力", formatNumber(damage * explosionMultiplier, 1)),
+      stat("半径", formatDistance(readNumber(params, "explosionRadius", 30))),
+      stat("発生間隔", formatMs(readNumber(params, "trailExplosionIntervalMs", 190))),
+      stat("持続", formatMs(readNumber(params, "explosionAreaDamageDurationMs", 0))),
+      stat("敵弾消去", formatEnabled(readBoolean(params, "explosionClearsEnemyProjectiles"))),
+    ]),
+  ]
+}
+
+function buildEquipmentUpgradePreview(
+  equipment: EquipmentMaster,
+  currentLevel: number,
+): EquipmentCatalogViewModel["items"][number]["upgradePreview"] {
+  if (currentLevel < 1 || currentLevel >= equipment.maxLevel) {
+    return undefined
+  }
+  const nextParams = equipment.levelParams.find((params) => params.level === currentLevel + 1)
+  if (!nextParams?.upgradeSummary) {
+    return undefined
+  }
+  return {
+    fromLevel: currentLevel,
+    toLevel: currentLevel + 1,
+    summary: nextParams.upgradeSummary,
+  }
+}
+
+function resolveEquipmentLevelOverrides(
+  equipment: EquipmentMaster,
+  level: number,
+): Record<string, number> {
+  const overrides: Record<string, number> = {}
+  for (const levelParams of equipment.levelParams) {
+    if (levelParams.level > level) {
+      continue
+    }
+    Object.assign(overrides, levelParams.effectOverrides)
+  }
+  return overrides
+}
+
+function compactStatGroup(
+  label: string,
+  stats: Array<{ label: string; value?: string; note?: string }>,
+): EquipmentStatGroupViewModel {
+  return {
+    label,
+    stats: stats.filter((entry): entry is { label: string; value: string; note?: string } =>
+      typeof entry.value === "string" && entry.value.length > 0,
+    ),
+  }
+}
+
+function stat(label: string, value: string | undefined, note?: string): {
+  label: string
+  value?: string
+  note?: string
+} {
+  return { label, value, note }
+}
+
+function readNumber(
+  params: Record<string, number | string | boolean>,
+  key: string,
+  fallback: number,
+): number {
+  const value = params[key]
+  return typeof value === "number" ? value : fallback
+}
+
+function readString(
+  params: Record<string, number | string | boolean>,
+  key: string,
+  fallback: string,
+): string {
+  const value = params[key]
+  return typeof value === "string" ? value : fallback
+}
+
+function readBoolean(
+  params: Record<string, number | string | boolean>,
+  key: string,
+): boolean {
+  return params[key] === true
+}
+
+function formatNumber(value: number, fractionDigits: number): string {
+  if (Number.isInteger(value)) {
+    return value.toFixed(0)
+  }
+  return value.toFixed(fractionDigits).replace(/\.?0+$/, "")
+}
+
+function formatDistance(value: number): string {
+  return `${formatNumber(value, value >= 10 ? 0 : 1)} px`
+}
+
+function formatMs(value: number): string {
+  if (value >= 1000) {
+    return `${formatNumber(value / 1000, 1)}秒`
+  }
+  return `${formatNumber(value, 0)}ms`
+}
+
+function formatEnabled(value: boolean): string {
+  return value ? "有効" : "なし"
+}
+
+function formatMultiplier(value: number): string {
+  return `x${formatNumber(value, 2)}`
+}
+
+function formatPercent(value: number): string {
+  return `${formatNumber(value * 100, 1)}%`
 }
 
 function buildEquipTargets(input: {
@@ -662,17 +982,19 @@ export function buildTranscriptViewChunks(
   chunks: TranscriptChunk[],
   restoredSpans: TranscriptSpan[],
 ) {
-  return chunks.map((chunk) => {
-    const chunkSpans = restoredSpans.filter((span) => span.chunkId === chunk.chunkId)
-    const restorationRatio = readTranscriptChunkRestorationRatio(chunk, chunkSpans)
-    return {
-      ...chunk,
-      text: maskTranscriptChunkText(chunk.text, chunkSpans, restorationRatio),
-      audible: restorationRatio >= 0.85,
-      restorationRatio,
-      restoredSpans: chunkSpans,
-    }
-  })
+  return [...chunks]
+    .sort((left, right) => left.startMs - right.startMs || left.chunkId.localeCompare(right.chunkId))
+    .map((chunk) => {
+      const chunkSpans = restoredSpans.filter((span) => span.chunkId === chunk.chunkId)
+      const restorationRatio = readTranscriptChunkRestorationRatio(chunk, chunkSpans)
+      return {
+        ...chunk,
+        text: maskTranscriptChunkText(chunk.text, chunkSpans, restorationRatio),
+        audible: restorationRatio >= 0.85,
+        restorationRatio,
+        restoredSpans: chunkSpans,
+      }
+    })
 }
 
 function readRestoredTranscriptSpans(
@@ -693,7 +1015,7 @@ function maskTranscriptChunkText(
   if (restorationRatio >= 0.85) {
     return text
   }
-  const glyphs = Array.from(text)
+  const glyphs = splitGraphemes(text)
   if (glyphs.length === 0) {
     return text
   }
@@ -709,6 +1031,18 @@ function maskTranscriptChunkText(
         : "█"
     })
     .join("")
+}
+
+function splitGraphemes(text: string): string[] {
+  const Segmenter = (Intl as unknown as {
+    Segmenter?: new (locale: string, options: { granularity: "grapheme" }) => {
+      segment(input: string): Iterable<{ segment: string }>
+    }
+  }).Segmenter
+  if (!Segmenter) {
+    return Array.from(text)
+  }
+  return Array.from(new Segmenter("ja", { granularity: "grapheme" }).segment(text), (part) => part.segment)
 }
 
 function readEquippedSlot(

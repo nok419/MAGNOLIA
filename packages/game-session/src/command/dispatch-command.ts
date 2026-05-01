@@ -11,6 +11,7 @@ export type GameCommandHandlers = {
   openMap: (command: CommandOf<"openMap">) => void
   closePanel: (command: CommandOf<"closePanel">) => void
   equipItem: (command: CommandOf<"equipItem">) => void
+  unequipItem: (command: CommandOf<"unequipItem">) => void
   purchaseEquipment: (command: CommandOf<"purchaseEquipment">) => void
   upgradeEquipment: (command: CommandOf<"upgradeEquipment">) => void
   startMission: (command: CommandOf<"startMission">) => void
@@ -52,6 +53,9 @@ export async function dispatchGameCommand(
       return
     case "equipItem":
       handlers.equipItem(command)
+      return
+    case "unequipItem":
+      handlers.unequipItem(command)
       return
     case "purchaseEquipment":
       handlers.purchaseEquipment(command)

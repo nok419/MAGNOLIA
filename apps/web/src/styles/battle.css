@@ -202,11 +202,14 @@
 }
 .battle-subtitle-panel__text {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   line-height: 1.95;
   font-size: 16px;
   color: var(--mg-text);
 }
 .subtitle-corrupt {
+  position: relative;
   display: inline-block;
   min-width: 0.8em;
   color: rgba(240, 198, 116, 0.82);
@@ -216,6 +219,31 @@
   color: rgba(5, 10, 16, 0.92);
   background: rgba(6, 10, 16, 0.88);
   box-shadow: inset 0 0 0 1px rgba(240, 198, 116, 0.12);
+}
+.subtitle-corrupt--mojibake {
+  color: var(--color-threat-noise);
+  text-shadow:
+    1px 0 0 color-mix(in srgb, var(--color-signal-readable) 45%, transparent),
+    0 0 9px color-mix(in srgb, var(--color-threat-noise) 26%, transparent);
+}
+.subtitle-corrupt--scramble {
+  color: var(--color-residual-warmth);
+  background: color-mix(in srgb, var(--color-residual-warmth) 8%, transparent);
+}
+.subtitle-corrupt--glitch {
+  color: var(--color-signal-readable);
+  text-shadow:
+    -1px 0 0 color-mix(in srgb, var(--color-threat-noise) 55%, transparent),
+    1px 0 0 color-mix(in srgb, var(--color-signal-readable) 55%, transparent);
+}
+.subtitle-corrupt--glitch::after {
+  content: attr(data-shadow);
+  position: absolute;
+  left: 0.12em;
+  top: 0;
+  color: color-mix(in srgb, var(--color-threat-noise) 72%, transparent);
+  opacity: 0.72;
+  clip-path: inset(0 0 48% 0);
 }
 .subtitle-safe {
   color: var(--color-restoration);

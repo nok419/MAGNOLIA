@@ -1,7 +1,15 @@
-import type { BulletPattern, ContentHitboxPreset, Vector2 } from "@magnolia/contracts"
+import {
+  BATTLE_FIELD_HEIGHT,
+  BATTLE_FIELD_WIDTH,
+  BATTLE_SPAWN_OUTER_MARGIN,
+  type BattleSpawnPoint,
+  type BulletPattern,
+  type ContentHitboxPreset,
+  type Vector2,
+} from "@magnolia/contracts"
 
-export const BATTLE_WIDTH = 480
-export const BATTLE_HEIGHT = 520
+export const BATTLE_WIDTH = BATTLE_FIELD_WIDTH
+export const BATTLE_HEIGHT = BATTLE_FIELD_HEIGHT
 
 type PositionedCircle = {
   position: Vector2
@@ -10,34 +18,32 @@ type PositionedCircle = {
 
 type PatternEnemy = {
   enemyInstanceId: string
+  patternSeed?: string
 }
 
-export function resolveSpawnPoint(spawnPointId: string): Vector2 {
-  // 戦闘フィールド比率を変更しても敵配置の意味が崩れないよう、代表 spawn は画面比率で再計算します。
-  const leftX = Math.round(BATTLE_WIDTH * 0.15)
-  const centerX = Math.round(BATTLE_WIDTH * 0.5)
-  const rightX = Math.round(BATTLE_WIDTH * 0.85)
-  const midLeftX = Math.round(BATTLE_WIDTH * 0.2)
-  const midRightX = Math.round(BATTLE_WIDTH * 0.8)
-
-  switch (spawnPointId) {
-    case "spawn_top_left":
-      return { x: leftX, y: -24 }
-    case "spawn_top_center":
-      return { x: centerX, y: -24 }
-    case "spawn_top_right":
-      return { x: rightX, y: -24 }
-    case "spawn_mid_left":
-      return { x: midLeftX, y: 96 }
-    case "spawn_mid_right":
-      return { x: midRightX, y: 96 }
-    case "spawn_side_left":
-      return { x: -24, y: 80 }
-    case "spawn_side_right":
-      return { x: BATTLE_WIDTH + 24, y: 80 }
-    default:
-      return { x: centerX, y: -24 }
+export function resolveSpawnPoint(
+  spawnPointId: string,
+  spawnPoints: Record<string, BattleSpawnPoint>,
+): Vector2 {
+  const spawnPoint = spawnPoints[spawnPointId]
+  if (!spawnPoint) {
+    throw new Error(`Missing battle spawn point '${spawnPointId}'.`)
   }
+
+  // 座標は content の比率とオフセットから毎回計算し、画面寸法変更時も配置意図を保ちます。
+  const position = {
+    x: Math.round(BATTLE_WIDTH * spawnPoint.xRatio + spawnPoint.offsetX),
+    y: Math.round(BATTLE_HEIGHT * spawnPoint.yRatio + spawnPoint.offsetY),
+  }
+  if (
+    position.x < -BATTLE_SPAWN_OUTER_MARGIN ||
+    position.x > BATTLE_WIDTH + BATTLE_SPAWN_OUTER_MARGIN ||
+    position.y < -BATTLE_SPAWN_OUTER_MARGIN ||
+    position.y > BATTLE_HEIGHT + BATTLE_SPAWN_OUTER_MARGIN
+  ) {
+    throw new Error(`Battle spawn point '${spawnPointId}' resolves outside the allowed spawn margin.`)
+  }
+  return position
 }
 
 export function resolveHitRadius(hitbox: ContentHitboxPreset | undefined): number {
@@ -86,9 +92,10 @@ export function resolveEnemyPatternBaseDirection(input: {
   const baseAngleDeg = readPatternNumericParam(input.pattern, "baseAngleDeg", 90)
   const oscillationDeg = readPatternNumericParam(input.pattern, "oscillationDeg", 0)
   const oscillationMs = Math.max(1, readPatternNumericParam(input.pattern, "oscillationMs", 2400))
+  const phaseSeed = readEnemyPatternSeed(input.enemy)
   const phaseOffsetDeg =
     readPatternNumericParam(input.pattern, "phaseOffsetDeg", 0) +
-    pseudoRandomUnit(hashString(input.enemy.enemyInstanceId)) * 28
+    pseudoRandomUnit(hashString(phaseSeed)) * 28
   const oscillation =
     oscillationDeg === 0
       ? 0
@@ -105,11 +112,16 @@ export function readEnemyPatternBaseRotation(input: {
 }): number {
   const baseAngleDeg = readPatternNumericParam(input.pattern, "baseAngleDeg", 90)
   const rotationDegPerSec = readPatternNumericParam(input.pattern, "rotationDegPerSec", 0)
+  const phaseSeed = readEnemyPatternSeed(input.enemy)
   const phaseOffsetDeg =
     readPatternNumericParam(input.pattern, "phaseOffsetDeg", 0) +
-    pseudoRandomUnit(hashString(`${input.enemy.enemyInstanceId}:rot`)) * 32
+    pseudoRandomUnit(hashString(`${phaseSeed}:rot`)) * 32
 
   return ((baseAngleDeg + phaseOffsetDeg + (input.battleElapsedMs / 1000) * rotationDegPerSec) * Math.PI) / 180
+}
+
+function readEnemyPatternSeed(enemy: PatternEnemy): string {
+  return enemy.patternSeed ?? enemy.enemyInstanceId
 }
 
 function vectorFromAngleDeg(angleDeg: number): Vector2 {

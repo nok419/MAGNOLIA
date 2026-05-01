@@ -165,6 +165,78 @@ test("old save migration drops unknown ids and keeps current content defaults", 
   assert.equal(normalized.transmissionProgress[0].archiveRestorationRate, 1)
 })
 
+test("transcript chunk migration remaps old saved spans into split chunks", async () => {
+  const { normalizeTransmissionProgressRows } = await bundleTicket6Normalizer()
+  const rows = normalizeTransmissionProgressRows({
+    profileId: "profile_1",
+    content: {
+      transmissions: {
+        tx_test: {
+          transmissionId: "tx_test",
+          areaId: "area_test",
+          missionId: "mission_test",
+          transcriptChunkIds: ["chunk_new_a", "chunk_new_b"],
+        },
+      },
+      missions: {
+        mission_test: {
+          missionId: "mission_test",
+          transmissionId: "tx_test",
+          durationMs: 10000,
+        },
+      },
+      transcriptChunks: {
+        chunk_new_a: {
+          chunkId: "chunk_new_a",
+          transmissionId: "tx_test",
+          lineId: "line_1",
+          startMs: 0,
+          endMs: 5000,
+          text: "前半",
+        },
+        chunk_new_b: {
+          chunkId: "chunk_new_b",
+          transmissionId: "tx_test",
+          lineId: "line_1",
+          startMs: 5000,
+          endMs: 10000,
+          text: "後半",
+        },
+      },
+      transcriptChunkMigrations: [
+        {
+          kind: "transcriptChunk",
+          transmissionId: "tx_test",
+          fromChunkId: "chunk_old",
+          toChunkIds: ["chunk_new_a", "chunk_new_b"],
+        },
+      ],
+    },
+    rows: [
+      {
+        profileId: "legacy_profile",
+        transmissionId: "tx_test",
+        areaId: "area_test",
+        clearCount: 1,
+        bestAnalysisRate: 0.5,
+        bestRunRestorationRate: 0.5,
+        archiveRestorationRate: 0.5,
+        heardRanges: [],
+        transcriptSpans: [{ chunkId: "chunk_old", startRatio: 0.25, endRatio: 0.75 }],
+        metadataUnlocked: {},
+      },
+    ],
+  })
+
+  assert.deepEqual(rows[0].transcriptSpans, [
+    { chunkId: "chunk_new_a", startRatio: 0.5, endRatio: 1 },
+    { chunkId: "chunk_new_b", startRatio: 0, endRatio: 0.5 },
+  ])
+  assert.deepEqual(rows[0].heardRanges, [
+    { startMs: 2500, endMs: 7500 },
+  ])
+})
+
 function stepBattleUntilResult(session) {
   for (let index = 0; index < 5; index += 1) {
     session.stepBattle({
@@ -235,6 +307,30 @@ async function bundleBackendPhase3() {
     "    }",
     "  }",
     "}",
+    "",
+  ].join("\n").replaceAll("./packages", `${ROOT}/packages`))
+
+  await esbuild.build({
+    entryPoints: [entry],
+    outfile,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    sourcemap: false,
+    logLevel: "silent",
+    tsconfig: path.join(ROOT, "tsconfig.base.json"),
+  })
+
+  return import(`file://${outfile}`)
+}
+
+async function bundleTicket6Normalizer() {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "magnolia-ticket6-"))
+  const entry = path.join(tempDir, "entry.ts")
+  const outfile = path.join(tempDir, "ticket6-normalizer.mjs")
+  writeFileSync(entry, [
+    "import { normalizeTransmissionProgressRows } from './packages/persistence/src/save-normalizer/progress.ts'",
+    "export { normalizeTransmissionProgressRows }",
     "",
   ].join("\n").replaceAll("./packages", `${ROOT}/packages`))
 

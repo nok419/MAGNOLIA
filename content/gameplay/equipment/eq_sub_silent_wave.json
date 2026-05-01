@@ -4,7 +4,7 @@
   "name": "静音波",
   "iconId": "icon_eq_sub_silent_wave",
   "summary": "前方に安全圏を作り、敵弾と磁気災害を抑える。",
-  "description": "前方に有利な円形エリアを射出する。エリア内では敵弾消去・敵継続ダメージ・磁気災害無効化が得られるが、mainの攻撃間隔が伸びる。",
+  "description": "前方に有利な円形エリアを射出する。エリア内では敵弾消去と磁気災害無効化が得られるが、mainの攻撃間隔が伸びる。Lv.3では範囲内の敵に小さな継続ダメージを与える。",
   "flavorText": "",
   "active": {
     "cooldownMs": 12000,
@@ -27,28 +27,34 @@
     {
       "level": 1,
       "selfRepairPointCost": 0,
+      "upgradeSummary": "敵弾と磁気災害を抑えるフィールドを展開する。",
       "effectOverrides": {
         "radius": 60,
-        "dpsInField": 5,
-        "durationMs": 5000
+        "dpsInField": 0,
+        "durationMs": 5000,
+        "cooldownMs": 12000
       }
     },
     {
       "level": 2,
       "selfRepairPointCost": 120,
+      "upgradeSummary": "範囲が広がり、クールタイムが少し短くなる。",
       "effectOverrides": {
-        "radius": 72,
-        "dpsInField": 7,
-        "durationMs": 5500
+        "radius": 76,
+        "dpsInField": 0,
+        "durationMs": 5500,
+        "cooldownMs": 10800
       }
     },
     {
       "level": 3,
       "selfRepairPointCost": 200,
+      "upgradeSummary": "クールタイムがさらに短くなり、範囲内の敵に小ダメージを与える。",
       "effectOverrides": {
         "radius": 84,
-        "dpsInField": 9,
-        "durationMs": 6000
+        "dpsInField": 4,
+        "durationMs": 6000,
+        "cooldownMs": 9600
       }
     }
   ]

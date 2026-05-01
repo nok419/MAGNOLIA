@@ -8,6 +8,10 @@
     "unlocksEquipmentAccess": true,
     "unlocksMinimapDisplay": true,
     "unlocksStrengthMeter": true,
-    "unlocksInfoPanel": true
+    "unlocksInfoPanel": true,
+    "exploreVisionBonus": 0,
+    "exploreScanRadiusBonus": 0,
+    "exploreScanCooldownMultiplier": 1,
+    "exploreSpeedMultiplier": 1
   }
 }

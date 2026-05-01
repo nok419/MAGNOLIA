@@ -7,6 +7,7 @@
   "behaviorParams": {
     "speed": 28
   },
+  "movementPatternId": "move_linear_standard",
   "bulletPatternIds": [
     "bp_standard_spread"
   ],

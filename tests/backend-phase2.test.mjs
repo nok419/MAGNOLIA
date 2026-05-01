@@ -12,6 +12,16 @@ test("equipment catalog ViewModel and purchase precondition use the same reason"
   const session = await createSession()
   await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
 
+  const pulseItem = session.getSnapshot().equipment.catalog.items.find(
+    (item) => item.equipmentId === "eq_main_pulse",
+  )
+  assert.equal(pulseItem.statGroups[0].label, "弾丸")
+  assert.ok(pulseItem.statGroups[0].stats.some((stat) => stat.label === "威力" && stat.value === "9"))
+  assert.equal(
+    pulseItem.upgradePreview.summary,
+    "メインショットの威力が上がり、近接攻撃の範囲が広がる。",
+  )
+
   const purchaseItem = session.getSnapshot().equipment.catalog.items.find(
     (item) => item.equipmentId === "eq_main_carrier",
   )
@@ -27,6 +37,87 @@ test("equipment catalog ViewModel and purchase precondition use the same reason"
     session.getProfileAggregate().profile.ownedEquipmentIds.includes("eq_main_carrier"),
     false,
   )
+})
+
+test("subsystem equipment cannot be equipped in both subsystem slots", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  const profile = session.getProfileAggregate().profile
+  profile.ownedEquipmentIds.push("eq_subsystem_guided_wave")
+  profile.equipmentLevels.eq_subsystem_guided_wave = 1
+  await session.dispatch({
+    type: "equipItem",
+    slot: "subsystem",
+    subsystemIndex: 0,
+    equipmentId: "eq_subsystem_guided_wave",
+  })
+  await session.dispatch({
+    type: "equipItem",
+    slot: "subsystem",
+    subsystemIndex: 1,
+    equipmentId: "eq_subsystem_guided_wave",
+  })
+
+  assert.deepEqual(profile.equipped.subsystems, ["eq_subsystem_guided_wave", null])
+  assert.equal(session.getLastCommandErrorReason(), "もう一方のサブシステム枠で装備中です")
+})
+
+test("broken OS final upgrade grants and equips OS LILY", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  const profile = session.getProfileAggregate().profile
+  profile.equipped.os = "eq_os_broken"
+  profile.equipmentLevels.eq_os_broken = 9
+  profile.selfRepairPoints = 140
+
+  await session.dispatch({ type: "upgradeEquipment", equipmentId: "eq_os_broken" })
+
+  assert.equal(profile.equipmentLevels.eq_os_broken, 10)
+  assert.ok(profile.ownedEquipmentIds.includes("eq_os_lily"))
+  assert.equal(profile.equipmentLevels.eq_os_lily, 1)
+  assert.equal(profile.equipped.os, "eq_os_lily")
+  assert.equal(profile.selfRepairPoints, 0)
+})
+
+test("equipment equip and unequip commands emit audio domain events", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+  session.drainDomainEvents()
+
+  const profile = session.getProfileAggregate().profile
+  profile.ownedEquipmentIds.push("eq_sub_silent_wave")
+  profile.equipmentLevels.eq_sub_silent_wave = 1
+
+  await session.dispatch({
+    type: "equipItem",
+    slot: "sub",
+    equipmentId: "eq_sub_silent_wave",
+  })
+
+  assert.equal(profile.equipped.sub, "eq_sub_silent_wave")
+  assert.deepEqual(session.drainDomainEvents(), [{
+    type: "equipmentEquipped",
+    equipmentId: "eq_sub_silent_wave",
+    slot: "sub",
+  }])
+
+  await session.dispatch({
+    type: "unequipItem",
+    slot: "sub",
+    equipmentId: "eq_sub_silent_wave",
+  })
+
+  assert.equal(profile.equipped.sub, undefined)
+  assert.deepEqual(session.drainDomainEvents(), [{
+    type: "equipmentUnequipped",
+    equipmentId: "eq_sub_silent_wave",
+    slot: "sub",
+  }])
 })
 
 test("collect command rejects nodes that are not currently collectible", async () => {
@@ -105,6 +196,28 @@ test("scan tutorial hint is dismissed by scan or the first mission clear", async
   assert.equal(clearedSession.getExploreRenderState().shouldShowScanHint, false)
 })
 
+test("explore node interaction keeps visual-near icons clickable", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  const profile = session.getProfileAggregate().profile
+  profile.playerPosition = { x: 300, y: -34 }
+  profile.identifiedNodeIds.push("node_collect_repair_cluster_e")
+  const target = session.getExploreRenderState().interactionTargets.find(
+    (entry) => entry.nodeId === "node_collect_repair_cluster_e",
+  )
+
+  assert.equal(target?.clickable, true)
+  assert.equal(target?.interactionRadius, 44)
+
+  const pointsBeforeCollect = profile.selfRepairPoints
+  await session.dispatch({ type: "interactExploreNode", nodeId: "node_collect_repair_cluster_e" })
+
+  assert.ok(profile.collectedNodeIds.includes("node_collect_repair_cluster_e"))
+  assert.equal(profile.selfRepairPoints, pointsBeforeCollect + 16)
+})
+
 test("mission beat events become PresentationRequest without mission-specific frontend branches", async () => {
   const { createSession } = await bundleBackendPhase2()
   const session = await createSession()
@@ -136,6 +249,40 @@ test("mission beat events become PresentationRequest without mission-specific fr
   )
 })
 
+test("battle render state exposes transmission audio sync state", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+  await session.dispatch({ type: "startMission", missionId: "mission_good_morning" })
+  const battle = session.battleState
+  battle.transmission = {
+    ...battle.transmission,
+    audioAssetId: "asset.voice.radioBlip",
+    audioDurationMs: 57000,
+  }
+
+  const introState = session.getBattleRenderState().transmissionAudio
+  assert.equal(introState.transmissionId, "tx_good_morning")
+  assert.equal(introState.audioAssetId, "asset.voice.radioBlip")
+  assert.equal(introState.audioStartDelayMs, 1200)
+  assert.equal(introState.audioPlaybackMs, 0)
+  assert.equal(introState.phase, "intro")
+  assert.equal(introState.isPaused, false)
+
+  session.stepBattle({
+    dtMs: 1300,
+    move: { x: 0, y: 0 },
+    fireMain: false,
+    fireSub: false,
+    focus: false,
+    pausePressed: false,
+  })
+
+  const playingState = session.getBattleRenderState().transmissionAudio
+  assert.equal(playingState.phase, "playing")
+  assert.equal(playingState.audioPlaybackMs, 1300)
+})
+
 test("main pulse and noise canceller can be used in the same battle frame", async () => {
   const { createSession } = await bundleBackendPhase2()
   const session = await createSession()
@@ -162,11 +309,17 @@ test("pulse melee collision follows the visible sweep after the first frame", as
   await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
   await session.dispatch({ type: "startMission", missionId: "mission_good_morning" })
   const battle = session.battleState
+  const enemyPosition = {
+    x: battle.playerPosition.x + 95,
+    y: battle.playerPosition.y - 55,
+  }
   battle.enemies = [{
     enemyInstanceId: "test.right-side-noise",
     enemyId: "enemy_standard",
-    spawnPosition: { x: battle.playerPosition.x + 120, y: battle.playerPosition.y },
-    position: { x: battle.playerPosition.x + 120, y: battle.playerPosition.y },
+    spawnId: "test.right-side-noise",
+    patternSeed: "test.right-side-noise",
+    spawnPosition: enemyPosition,
+    position: enemyPosition,
     hp: 56,
     maxHp: 56,
     enteredAtMs: battle.elapsedMs,
@@ -199,6 +352,105 @@ test("pulse melee collision follows the visible sweep after the first frame", as
   }
 
   assert.equal(battle.enemies.length, 0)
+})
+
+test("visual-only enemy bullets stay non-colliding across runtime clears", async () => {
+  const {
+    applyBattleEffectRequests,
+    fireEnemyPatterns,
+    loadContentBundle,
+    resolveBattleCollisions,
+  } = await bundleBackendPhase2()
+  const content = loadContentBundle()
+  const playerPosition = { x: 240, y: 456 }
+  const battle = {
+    elapsedMs: 0,
+    projectiles: [],
+    enemies: [],
+    supportFields: [],
+    playerPosition,
+    noiseState: { invincibleUntilMs: 0, noiseLevel: 0 },
+    barrier: {
+      barrierId: "test_barrier",
+      radius: 999,
+      remainingMs: 1000,
+      maxMs: 1000,
+      moveSpeedMultiplier: 1,
+      allowAttackDuringUse: true,
+      blocksEnemyBullets: true,
+    },
+  }
+  const enemy = {
+    enemyInstanceId: "enemy_test_1",
+    enemyId: "enemy_scout",
+    spawnId: "enemy_test_1",
+    patternSeed: "visual-only-test",
+    spawnPosition: playerPosition,
+    position: playerPosition,
+    hp: 10,
+    maxHp: 10,
+    enteredAtMs: 0,
+    patternLastFiredAtMs: {},
+    burnDamagePerSec: 0,
+    burnUntilMs: 0,
+    radius: 12,
+  }
+  const visualOnlyPattern = {
+    ...content.bulletPatterns.bp_scout_single,
+    params: {
+      ...content.bulletPatterns.bp_scout_single.params,
+      visualOnly: true,
+    },
+  }
+
+  fireEnemyPatterns({
+    battle,
+    enemy,
+    enemyDefinition: {
+      ...content.enemies.enemy_scout,
+      bulletPatternIds: [visualOnlyPattern.bulletPatternId],
+    },
+    bulletPatterns: {
+      [visualOnlyPattern.bulletPatternId]: visualOnlyPattern,
+    },
+    projectiles: content.projectiles,
+    hitboxPresets: content.contentHitboxPresets,
+    difficultyModifiers: content.difficultyModifiers.calm,
+    nextInstanceId: (prefix) => `${prefix}_1`,
+  })
+
+  assert.equal(battle.projectiles.length, 1)
+  assert.equal(battle.projectiles[0].nonColliding, true)
+  assert.equal(battle.projectiles[0].damage, 0)
+  assert.equal(battle.projectiles[0].noiseDamage, 0)
+
+  const collision = resolveBattleCollisions({
+    battle,
+    dtMs: 16,
+    content,
+    resolvePlayerHitRadius: () => 12,
+    spawnSelfRepairPickup() {},
+    nextInstanceId: (prefix) => `${prefix}_2`,
+  })
+
+  assert.equal(collision.playerNoiseDamage, 0)
+  assert.deepEqual(collision.events, [])
+  assert.equal(battle.projectiles.length, 1)
+
+  applyBattleEffectRequests({
+    battle,
+    effectRequests: [{
+      kind: "clearEnemyProjectiles",
+      position: playerPosition,
+      radius: 999,
+    }],
+    projectiles: content.projectiles,
+    hitboxPresets: content.contentHitboxPresets,
+    nextInstanceId: (prefix) => `${prefix}_3`,
+    mainCadenceMultiplier: 1,
+  })
+
+  assert.equal(battle.projectiles.length, 1)
 })
 
 test("equipment runtime applies level overrides to active and passive effects", async () => {
@@ -240,11 +492,12 @@ test("equipment runtime applies level overrides to active and passive effects", 
   })[0]
   assert.equal(pulseRequest.damage, 9)
   assert.equal(pulseRequest.params.meleeDamage, 72)
-  assert.equal(pulseRequest.params.meleeCollisionRange, 166)
+  assert.equal(pulseRequest.params.meleeCollisionRange, 122)
 
   const pulseLevel3 = resolve({ main: "eq_main_pulse" }, { eq_main_pulse: 3 })
   assert.equal(pulseLevel3.main.activeEffects[0].params.damage, 11)
-  assert.equal(pulseLevel3.main.activeEffects[0].params.meleeDamage, 96)
+  assert.equal(pulseLevel3.main.activeEffects[0].params.extraSideShotCount, 2)
+  assert.equal(pulseLevel3.main.activeEffects[0].params.meleeDamage, 92)
 
   const carrierLevel3 = resolve({ main: "eq_main_carrier" }, { eq_main_carrier: 3 })
   const carrierRequest = fireEquippedMainWeapon({
@@ -272,9 +525,21 @@ test("equipment runtime applies level overrides to active and passive effects", 
       stock: 3,
     },
   })[0]
-  assert.equal(barrierRequest.radius, 64)
-  assert.equal(barrierRequest.durationMs, 1600)
+  assert.equal(barrierRequest.radius, 48)
+  assert.equal(barrierRequest.durationMs, 1400)
   assert.equal(barrierRequest.allowAttackDuringUse, true)
+  const barrierCooldownRequest = useEquippedSubWeapon({
+    bindings: bindingsFor(cancellerLevel3),
+    context: {
+      playerPosition: { x: 240, y: 450 },
+      facing: { x: 0, y: -1 },
+      resolvedLoadout: cancellerLevel3,
+      frameTimeMs: 16,
+      stock: 3,
+    },
+  }).find((request) => request.kind === "applyCooldown")
+  assert.ok(barrierCooldownRequest)
+  assert.equal(barrierCooldownRequest.durationMs, 1500)
 
   const silentWaveLevel3 = resolve({ sub: "eq_sub_silent_wave" }, { eq_sub_silent_wave: 3 })
   const fieldRequest = useEquippedSubWeapon({
@@ -288,7 +553,7 @@ test("equipment runtime applies level overrides to active and passive effects", 
     },
   })[0]
   assert.equal(fieldRequest.radius, 84)
-  assert.equal(fieldRequest.dpsInField, 9)
+  assert.equal(fieldRequest.dpsInField, 4)
   assert.equal(fieldRequest.blocksMagneticDisaster, true)
 
   const guidedLevel3 = resolve({ subsystem: "eq_subsystem_guided_wave" }, { eq_subsystem_guided_wave: 3 })
@@ -296,17 +561,27 @@ test("equipment runtime applies level overrides to active and passive effects", 
     bindings: bindingsFor(guidedLevel3),
     context: { phase: "battle", resolvedLoadout: guidedLevel3 },
   })
-  assert.equal(guidedPatch.statModifiers.homingStrength, 2.05)
-  assert.equal(guidedPatch.statModifiers.homingRange, 310)
+  assert.equal(guidedPatch.statModifiers.homingStrength, 0.82)
+  assert.equal(guidedPatch.statModifiers.homingRange, 250)
 
   const burnLevel3 = resolve({ subsystem: "eq_subsystem_inverse_phase" }, { eq_subsystem_inverse_phase: 3 })
   const burnPatch = applyEquippedPassives({
     bindings: bindingsFor(burnLevel3),
     context: { phase: "battle", resolvedLoadout: burnLevel3 },
   })
-  assert.equal(burnPatch.statModifiers.burnDamagePerSec, 7)
-  assert.equal(burnPatch.statModifiers.burnDurationMs, 4000)
+  assert.equal(burnPatch.statModifiers.burnDamagePerSec, 3.2)
+  assert.equal(burnPatch.statModifiers.burnDurationMs, 3800)
   assert.equal(burnPatch.visibilityModifiers.burnEnabled, true)
+
+  const magnoliaLevel3 = resolve({ os: "eq_os_magnolia" }, { eq_os_magnolia: 3 })
+  const magnoliaPatch = applyEquippedPassives({
+    bindings: bindingsFor(magnoliaLevel3),
+    context: { phase: "explore", resolvedLoadout: magnoliaLevel3 },
+  })
+  assert.equal(magnoliaPatch.statModifiers.exploreVisionBonus, 18)
+  assert.equal(magnoliaPatch.statModifiers.exploreScanRadiusBonus, 120)
+  assert.ok(Math.abs(magnoliaPatch.statModifiers.exploreScanCooldownMultiplier + 0.18) < 0.000001)
+  assert.ok(Math.abs(magnoliaPatch.statModifiers.exploreSpeedMultiplier - 0.04) < 0.000001)
 
   const precision = resolve({ subsystem: "eq_subsystem_precision_control" }, { eq_subsystem_precision_control: 1 })
   const precisionPatch = applyEquippedPassives({
@@ -423,11 +698,14 @@ async function bundleBackendPhase2() {
   const outfile = path.join(tempDir, "backend-phase2.mjs")
   writeFileSync(entry, [
     "import { MagnoliaGameSession } from './packages/game-session/src/game-session.ts'",
+    "import { applyBattleEffectRequests } from './packages/game-session/src/battle-effects.ts'",
+    "import { resolveBattleCollisions } from './packages/game-session/src/battle/collision-system.ts'",
+    "import { fireEnemyPatterns } from './packages/game-session/src/battle/enemy-pattern-system.ts'",
     "import { loadContentBundle } from './packages/persistence/src/load-content-bundle.ts'",
     "import { applyEquippedPassives, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEquippedMainWeapon, resolveLoadout, runSubsystemHooks, useEquippedSubWeapon } from './packages/game-session/src/equipment-runtime.ts'",
     "import { normalizePersistedAggregate, normalizePersistedSettings } from './packages/persistence/src/save-normalizer.ts'",
     "import { createDefaultSaveSlots, createDefaultSettings } from './packages/persistence/src/defaults.ts'",
-    "export { applyEquippedPassives, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEquippedMainWeapon, loadContentBundle, normalizePersistedAggregate, resolveLoadout, runSubsystemHooks, useEquippedSubWeapon }",
+    "export { applyBattleEffectRequests, applyEquippedPassives, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEnemyPatterns, fireEquippedMainWeapon, loadContentBundle, normalizePersistedAggregate, resolveBattleCollisions, resolveLoadout, runSubsystemHooks, useEquippedSubWeapon }",
     "export async function createSession() {",
     "  const repository = createMemoryRepository()",
     "  const session = new MagnoliaGameSession({ content: loadContentBundle(), repository })",

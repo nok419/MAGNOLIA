@@ -177,6 +177,25 @@
   animation: mg-interaction-prompt-key-pulse 1.8s ease-in-out infinite 1200ms;
 }
 
+.interaction-prompt--static .interaction-prompt__anchor-dot {
+  animation: none;
+  opacity: 0.82;
+}
+
+.interaction-prompt--static .interaction-prompt__anchor-ring {
+  animation: none;
+  opacity: 0.52;
+  transform: scale(0.7);
+}
+
+.interaction-prompt--static .interaction-prompt__key {
+  animation: none;
+  transform: scale(1);
+  box-shadow:
+    0 0 0 1px rgba(var(--interaction-prompt-rgb), 0.7),
+    0 0 10px rgba(var(--interaction-prompt-rgb), 0.4);
+}
+
 .interaction-prompt__text {
   opacity: 0.86;
 }

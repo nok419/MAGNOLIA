@@ -12,6 +12,7 @@ import {
 import {
   normalizeTimeRanges,
   normalizeTranscriptSpans,
+  readTranscriptChunkMigrationsForTransmission,
   readTranscriptChunksForMission,
   timeRangesFromTranscriptSpans,
   transcriptSpansFromTimeRanges,
@@ -56,10 +57,14 @@ export function normalizeMissionRuns(input: {
       const chunks = input.content
         ? readTranscriptChunksForMission(input.content, row.missionId)
         : []
+      const migrations = input.content
+        ? readTranscriptChunkMigrationsForTransmission(input.content, row.transmissionId)
+        : []
       const heardRanges = normalizeTimeRanges(row.heardRanges, durationMs)
       const transcriptSpans = normalizeTranscriptSpans(
         Array.isArray(row.transcriptSpans) ? row.transcriptSpans : [],
         chunks,
+        migrations,
       )
       const restoredSpans = transcriptSpans.length > 0
         ? transcriptSpans

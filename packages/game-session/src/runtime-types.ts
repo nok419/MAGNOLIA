@@ -15,6 +15,7 @@ import type {
   MapId,
   MissionId,
   MissionResult,
+  MissionPhase,
   ProjectileContentVisualPreset,
   TimeRange,
   TranscriptSpan,
@@ -290,6 +291,15 @@ export type BattleResultViewModel = {
   transcriptPreview: TranscriptViewChunk[]
 }
 
+export type TransmissionAudioSyncState = {
+  transmissionId: TransmissionId
+  audioAssetId?: string
+  audioPlaybackMs: number
+  audioStartDelayMs: number
+  phase: MissionPhase | "result"
+  isPaused: boolean
+}
+
 export type BattleRenderState = {
   missionId: MissionId
   backgroundPresetId: VisualPresetId
@@ -314,6 +324,7 @@ export type BattleRenderState = {
   pendingResult?: MissionResult
   resultTranscriptPreview?: TranscriptViewChunk[]
   resultViewModel?: BattleResultViewModel
+  transmissionAudio: TransmissionAudioSyncState
   equippedMainId?: EquipmentId
   equippedSubId?: EquipmentId
 }

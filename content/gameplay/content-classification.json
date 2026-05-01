@@ -24,6 +24,11 @@
       "proj_player_carrier_blast",
       "proj_player_pulse",
       "proj_player_pulse_melee"
+    ],
+    "movementPatterns": [
+      "move_linear_standard",
+      "move_sine_drift_scout",
+      "move_pause_then_drift_heavy"
     ]
   },
   "prototype": {
@@ -43,12 +48,19 @@
     "projectiles": [
       "proj_enemy_core",
       "proj_enemy_lance"
+    ],
+    "movementPatterns": [
+      "move_linear_a2",
+      "move_sine_drift_a1",
+      "move_pause_then_drift_b1",
+      "move_pause_then_drift_c1"
     ]
   },
   "deprecated": {
     "missions": [],
     "enemies": [],
     "bulletPatterns": [],
-    "projectiles": []
+    "projectiles": [],
+    "movementPatterns": []
   }
 }

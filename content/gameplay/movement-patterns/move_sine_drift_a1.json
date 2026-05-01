@@ -1,0 +1,11 @@
+{
+  "movementPatternId": "move_sine_drift_a1",
+  "patternKind": "sineDrift",
+  "speed": 40,
+  "driftX": 0,
+  "driftY": 0,
+  "wobbleAmplitude": 24,
+  "wobblePeriodMs": 3000,
+  "authoringLabel": "A1 prototype sine drift",
+  "intendedUse": "prototype.a1.default"
+}

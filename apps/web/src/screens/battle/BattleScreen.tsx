@@ -365,18 +365,18 @@ function renderSubtitleGraphemes(input: {
     }
 
     const roll = seededUnit(`${input.seed}:${index}`)
-    // damagedSpans は session が確定した欠損範囲です。UI 側では範囲だけを見て mask 種別を決めます。
-    const hardMask = input.reduceFlashing || roll < Math.max(0.42, input.severity * 0.5)
-    const replacement = hardMask
-      ? "█"
-      : roll < Math.max(0.64, input.severity * 0.74)
-        ? "░"
-        : GLITCH_GLYPHS[Math.floor(seededUnit(`${input.seed}:g:${index}`) * GLITCH_GLYPHS.length)] ?? "…"
+    const variant = readSubtitleCorruptionVariant({
+      roll,
+      severity: input.severity,
+      reduceFlashing: input.reduceFlashing,
+    })
+    const replacement = readSubtitleCorruptionGlyph(variant, `${input.seed}:g:${index}`)
 
     return (
       <span
         key={`${index}:${glyph}`}
-        className={hardMask ? "subtitle-corrupt subtitle-corrupt--mask" : "subtitle-corrupt"}
+        className={`subtitle-corrupt subtitle-corrupt--${variant}`}
+        data-shadow={variant === "glitch" ? readSubtitleCorruptionGlyph("scramble", `${input.seed}:s:${index}`) : undefined}
         aria-hidden="true"
       >
         {replacement}
@@ -415,7 +415,38 @@ function isRatioInsideAnySpan(ratio: number, spans: TranscriptSpan[]): boolean {
   return spans.some((span) => ratio >= span.startRatio && ratio <= span.endRatio)
 }
 
-const GLITCH_GLYPHS = ["…", "▧", "░", "ノ", "ヰ", "�"]
+type SubtitleCorruptionVariant = "mask" | "mojibake" | "scramble" | "glitch"
+
+const MOJIBAKE_GLYPHS = ["�", "Ã", "¥", "Â", "□", "�"]
+const SCRAMBLE_GLYPHS = ["░", "▒", "▓", "▧", "ノ", "ヰ", "ヱ", "0", "1"]
+
+function readSubtitleCorruptionVariant(input: {
+  roll: number
+  severity: number
+  reduceFlashing: boolean
+}): SubtitleCorruptionVariant {
+  if (input.reduceFlashing) {
+    return "mask"
+  }
+  const maskThreshold = Math.max(0.3, input.severity * 0.42)
+  const mojibakeThreshold = Math.max(0.54, input.severity * 0.64)
+  const scrambleThreshold = Math.max(0.78, input.severity * 0.82)
+  if (input.roll < maskThreshold) return "mask"
+  if (input.roll < mojibakeThreshold) return "mojibake"
+  if (input.roll < scrambleThreshold) return "scramble"
+  return "glitch"
+}
+
+function readSubtitleCorruptionGlyph(
+  variant: SubtitleCorruptionVariant,
+  seed: string,
+): string {
+  if (variant === "mask") {
+    return "█"
+  }
+  const pool = variant === "mojibake" ? MOJIBAKE_GLYPHS : SCRAMBLE_GLYPHS
+  return pool[Math.floor(seededUnit(seed) * pool.length)] ?? "░"
+}
 
 function readSubtitleCorruptionSeverity(noiseLevel: number, hearingThreshold: number): number {
   const overThreshold = noiseLevel / Math.max(0.01, hearingThreshold) - 1

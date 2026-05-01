@@ -23,6 +23,7 @@ if ([...options].some((option) => option !== "--check")) {
 const groups = [
   { exportName: "areas", roots: ["areas"], flattenArrays: false },
   { exportName: "backgroundPresets", roots: ["background-presets"], flattenArrays: false },
+  { exportName: "battleSpawnPoints", roots: ["battle-spawn-points"], flattenArrays: false },
   { exportName: "bulletPatterns", roots: ["bullet-patterns"], flattenArrays: false },
   { exportName: "enemies", roots: ["enemies"], flattenArrays: false },
   { exportName: "equipment", roots: ["equipment"], flattenArrays: false, excludePrefix: "equipment/effects/" },
@@ -30,6 +31,7 @@ const groups = [
   { exportName: "hitboxPresets", roots: ["hitbox-presets"], flattenArrays: false },
   { exportName: "mapLogic", roots: ["map-logic"], flattenArrays: false },
   { exportName: "missions", roots: ["missions"], flattenArrays: false },
+  { exportName: "movementPatterns", roots: ["movement-patterns"], flattenArrays: false },
   { exportName: "conditions", roots: ["progression/conditions"], flattenArrays: false },
   { exportName: "projectiles", roots: ["projectiles"], flattenArrays: false },
   { exportName: "transmissions", roots: ["transmissions"], flattenArrays: false, excludeSuffix: ".chunks.json" },

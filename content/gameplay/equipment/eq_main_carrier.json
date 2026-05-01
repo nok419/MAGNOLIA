@@ -27,6 +27,7 @@
     {
       "level": 1,
       "selfRepairPointCost": 0,
+      "upgradeSummary": "単発の信号柱と周期爆発を使える。",
       "effectOverrides": {
         "damage": 36,
         "cadenceMs": 360,
@@ -38,6 +39,7 @@
     {
       "level": 2,
       "selfRepairPointCost": 120,
+      "upgradeSummary": "爆発半径が広がり、軌道上の爆発頻度が上がる。",
       "effectOverrides": {
         "damage": 42,
         "cadenceMs": 330,
@@ -49,6 +51,7 @@
     {
       "level": 3,
       "selfRepairPointCost": 200,
+      "upgradeSummary": "爆発半径がさらに広がり、射撃間隔が短くなる。",
       "effectOverrides": {
         "damage": 48,
         "cadenceMs": 300,

@@ -3,6 +3,7 @@ import type {
   PresentationRequest,
   RootSnapshot,
 } from "@magnolia/contracts"
+import type { BattleRenderState } from "@magnolia/game-session"
 import { audioEvents } from "@/audio"
 
 export type AudioEventAdapterState = {
@@ -13,6 +14,7 @@ type PlaySessionAudioEventsInput = {
   state: AudioEventAdapterState
   previousSnapshot: RootSnapshot | null
   nextSnapshot: RootSnapshot
+  battleRenderState: BattleRenderState | null
   presentationRequests: PresentationRequest[]
   domainEvents: DomainEvent[]
 }
@@ -34,6 +36,7 @@ export function createAudioEventAdapterState(): AudioEventAdapterState {
 
 export function playSessionAudioEvents(input: PlaySessionAudioEventsInput): void {
   playScreenTransitionAudio(input.previousSnapshot, input.nextSnapshot, input.domainEvents)
+  syncTransmissionVoicePlayback(input.nextSnapshot, input.battleRenderState)
 
   for (const event of input.domainEvents) {
     playDomainAudio(event)
@@ -48,13 +51,44 @@ export function playSessionAudioEvents(input: PlaySessionAudioEventsInput): void
   }
 }
 
+function syncTransmissionVoicePlayback(
+  snapshot: RootSnapshot,
+  renderState: BattleRenderState | null,
+): void {
+  const audioState = renderState?.transmissionAudio
+  if (snapshot.screen !== "battle" || !audioState) {
+    audioEvents.stopTransmissionVoice()
+    return
+  }
+
+  if (!audioState.audioAssetId || audioState.phase === "result") {
+    audioEvents.stopTransmissionVoice()
+    return
+  }
+
+  // 字幕の仮想時計を正本にし、実音声は drift が出た時だけ seek して戻します。
+  audioEvents.syncTransmissionVoice({
+    transmissionId: audioState.transmissionId,
+    audioAssetId: audioState.audioAssetId,
+    audioPlaybackMs: audioState.audioPlaybackMs,
+    playing: audioState.phase === "playing" && !audioState.isPaused,
+  })
+}
+
 function playScreenTransitionAudio(
   previousSnapshot: RootSnapshot | null,
   nextSnapshot: RootSnapshot,
   domainEvents: DomainEvent[],
 ): void {
   const previousScreen = previousSnapshot?.screen
-  if (!previousScreen || previousScreen === nextSnapshot.screen) {
+  if (!previousScreen) {
+    if (nextSnapshot.screen === "title") {
+      audioEvents.titleOpened()
+    }
+    return
+  }
+
+  if (previousScreen === nextSnapshot.screen) {
     return
   }
 
@@ -62,13 +96,20 @@ function playScreenTransitionAudio(
   const nextIsMenu = MENU_SCREENS.has(nextSnapshot.screen)
 
   if (!previousWasMenu && nextIsMenu) {
-    audioEvents.uiOpen()
+    if (previousScreen === "explore" && nextSnapshot.screen === "equipment") {
+      audioEvents.equipmentPanelOpen()
+    } else {
+      audioEvents.uiOpen()
+    }
   } else if (previousWasMenu && !nextIsMenu) {
     audioEvents.uiClose()
   }
 
   if (nextSnapshot.screen === "title") {
     audioEvents.titleOpened()
+  }
+  if (previousScreen === "title" && nextSnapshot.screen === "explore") {
+    audioEvents.explorationEntered()
   }
 
   const startedMission = domainEvents.some((event) => event.type === "missionStarted")
@@ -104,8 +145,11 @@ function playDomainAudio(event: DomainEvent): void {
     case "equipmentEquipped":
       audioEvents.equipmentSwitch()
       break
+    case "equipmentUnequipped":
+      audioEvents.equipmentSwitch()
+      break
     case "saveWritten":
-      audioEvents.menuConfirm()
+      audioEvents.saveWritten()
       break
     case "playerMainWeaponFired":
       audioEvents.playerShot()
@@ -120,7 +164,12 @@ function playDomainAudio(event: DomainEvent): void {
       audioEvents.enemyDestroyed()
       break
     case "playerSubWeaponUsed":
-      audioEvents.equipmentUse()
+      // サブ装備の汎用イベントから、専用音源がある静音波だけを分けます。
+      if (event.runtimeHandlerId === "sub.field.silent_wave") {
+        audioEvents.silentWave()
+      } else {
+        audioEvents.equipmentUse()
+      }
       break
     case "playerBarrierStarted":
       audioEvents.barrierEnabled()

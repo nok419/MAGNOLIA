@@ -14,8 +14,10 @@ test("loadContentBundle loads content presets and presentation cues", async () =
   writeFileSync(entry, [
     "import { loadContentBundle } from './packages/persistence/src/load-content-bundle.ts'",
     "const bundle = loadContentBundle()",
-    "export const counts = {",
-    "  visualPresets: Object.keys(bundle.contentVisualPresets).length,",
+  "export const counts = {",
+  "  battleSpawnPoints: Object.keys(bundle.battleSpawnPoints).sort(),",
+  "  movementPatterns: Object.keys(bundle.movementPatterns).sort(),",
+  "  visualPresets: Object.keys(bundle.contentVisualPresets).length,",
     "  hitboxPresets: Object.keys(bundle.contentHitboxPresets).length,",
     "  backgroundPresets: Object.keys(bundle.backgroundPresets).length,",
     "  presentationCues: Object.keys(bundle.presentationCues).length,",
@@ -40,6 +42,21 @@ test("loadContentBundle loads content presets and presentation cues", async () =
 
   const { counts } = await import(`file://${outfile}`)
 
+  assert.deepEqual(counts.battleSpawnPoints, [
+    "spawn_mid_left",
+    "spawn_mid_right",
+    "spawn_player_center",
+    "spawn_side_left",
+    "spawn_side_right",
+    "spawn_top_center",
+    "spawn_top_left",
+    "spawn_top_right",
+  ])
+  assert.deepEqual(counts.movementPatterns, [
+    "move_linear_standard",
+    "move_pause_then_drift_heavy",
+    "move_sine_drift_scout",
+  ])
   assert.equal(counts.visualPresets, 18)
   assert.equal(counts.hitboxPresets, 7)
   assert.equal(counts.backgroundPresets, 2)

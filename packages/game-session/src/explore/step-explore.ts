@@ -45,6 +45,11 @@ export type ExploreRuntimeState = {
 
 export type ExploreStepHost = {
   content: ContentBundle
+  equipment: {
+    exploreMoveSpeedMultiplier: number
+    scanRadius: number
+    scanCooldownMs: number
+  }
   snapshot: {
     createExploreSnapshot: () => ExploreSnapshot
   }
@@ -112,7 +117,9 @@ export function stepExploreFrame(input: {
     activeProfile.profile.currentAreaId,
     worldBounds,
   )
-  const moveSpeed = readExploreMoveSpeed(input.host.content, featureAccess, input.frameInput.dashPressed)
+  const moveSpeed =
+    readExploreMoveSpeed(input.host.content, featureAccess, input.frameInput.dashPressed) *
+    input.host.equipment.exploreMoveSpeedMultiplier
   const velocity = normalizeVector(input.frameInput.move)
   const speedRatio = Math.hypot(velocity.x, velocity.y)
 
@@ -163,6 +170,8 @@ export function stepExploreFrame(input: {
     scanPressed: input.frameInput.scanPressed,
     exploreElapsedMs: runtime.exploreElapsedMs,
     lastExploreScanAtMs: runtime.lastExploreScanAtMs,
+    scanRadius: input.host.equipment.scanRadius,
+    scanCooldownMs: input.host.equipment.scanCooldownMs,
     exploreScanPulses: runtime.exploreScanPulses,
     newlyIdentifiedExploreNodeIds: runtime.newlyIdentifiedExploreNodeIds,
     getOrCreateTransmissionProgress: (transmissionId, areaId) =>

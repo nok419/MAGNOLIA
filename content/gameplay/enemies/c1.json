@@ -9,6 +9,7 @@
     "pauseMs": 5200,
     "pauseAtY": 96
   },
+  "movementPatternId": "move_pause_then_drift_c1",
   "bulletPatternIds": [
     "bp_c1_pressure_ring",
     "bp_spiral_stream"

@@ -195,6 +195,8 @@ export function createEquipmentSnapshotForProfile(
   const catalog = input
     ? buildEquipmentCatalogViewModel({
         equipment: input.content.equipment,
+        effects: input.content.effects,
+        projectiles: input.content.projectiles,
         profile: profileAggregate.profile,
         featureAccess: input.featureAccess,
       })

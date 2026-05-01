@@ -175,6 +175,13 @@ export function buildKeyVisualRenderState(
         size: { width: 480 * 0.72, height: 115 },
       },
     ],
+    transmissionAudio: {
+      transmissionId: "tx_key_visual",
+      audioPlaybackMs: elapsedMs,
+      audioStartDelayMs: 0,
+      phase: "playing",
+      isPaused: false,
+    },
   }
 }
 

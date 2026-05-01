@@ -21,25 +21,28 @@
     {
       "level": 1,
       "selfRepairPointCost": 0,
+      "upgradeSummary": "低い継続ダメージをmainショットに付与する。",
       "effectOverrides": {
-        "burnDamagePerSec": 3,
+        "burnDamagePerSec": 1.4,
         "burnDurationMs": 3000
       }
     },
     {
       "level": 2,
       "selfRepairPointCost": 100,
+      "upgradeSummary": "継続ダメージの火力が上がる。",
       "effectOverrides": {
-        "burnDamagePerSec": 5,
-        "burnDurationMs": 3500
+        "burnDamagePerSec": 2.6,
+        "burnDurationMs": 3400
       }
     },
     {
       "level": 3,
       "selfRepairPointCost": 180,
+      "upgradeSummary": "火力が少し上がり、効果持続時間も少し伸びる。",
       "effectOverrides": {
-        "burnDamagePerSec": 7,
-        "burnDurationMs": 4000
+        "burnDamagePerSec": 3.2,
+        "burnDurationMs": 3800
       }
     }
   ]

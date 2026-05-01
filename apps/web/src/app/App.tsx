@@ -80,6 +80,8 @@ export function App() {
           shipVariant={app.settings.shipVariant}
           showEquipmentHint={app.shouldShowEquipmentHint}
           onInteractNode={(nodeId, context) => void app.interactExploreNode(nodeId, context)}
+          onSetMoveTarget={app.setExploreMoveTarget}
+          onConsumePrimaryClick={app.consumePrimaryMousePress}
           displayOptions={displayOptions}
         />
       )
@@ -138,6 +140,13 @@ export function App() {
               void app.equipSubsystem(subsystemIndex ?? 0, equipmentId)
             } else {
               void app.equipPrimary(slot as "main" | "sub" | "os", equipmentId)
+            }
+          }}
+          onUnequip={(equipmentId: string, slot: string, subsystemIndex?: 0 | 1) => {
+            if (slot === "subsystem") {
+              void app.unequipSubsystem(subsystemIndex ?? 0, equipmentId)
+            } else {
+              void app.unequipPrimary(slot as "main" | "sub" | "os", equipmentId)
             }
           }}
           onPurchase={(equipmentId: string) => void app.purchaseEquipment(equipmentId)}

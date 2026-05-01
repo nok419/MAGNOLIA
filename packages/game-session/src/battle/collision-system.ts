@@ -36,7 +36,7 @@ export function resolveBattleCollisions(input: {
     const barrierRadius = battle.barrier.radius
     let blockedProjectileCount = 0
     battle.projectiles = battle.projectiles.filter((projectile) => {
-      if (projectile.side !== "enemy") {
+      if (projectile.side !== "enemy" || projectile.nonColliding) {
         return true
       }
       const blocked = isWithinRadius(projectile.position, battle.playerPosition, barrierRadius)
@@ -53,7 +53,7 @@ export function resolveBattleCollisions(input: {
   for (const field of battle.supportFields) {
     if (field.blocksEnemyBullets) {
       battle.projectiles = battle.projectiles.filter((projectile) => {
-        if (projectile.side !== "enemy") {
+        if (projectile.side !== "enemy" || projectile.nonColliding) {
           return true
         }
         return !isWithinRadius(projectile.position, field.position, field.radius)
@@ -72,6 +72,10 @@ export function resolveBattleCollisions(input: {
     }
 
     if (projectile.side === "enemy") {
+      if (projectile.nonColliding) {
+        remainingProjectiles.push(projectile)
+        continue
+      }
       if (
         battle.noiseState.invincibleUntilMs <= battle.elapsedMs &&
         isWithinRadius(projectile.position, battle.playerPosition, projectile.radius + input.resolvePlayerHitRadius())
@@ -214,6 +218,7 @@ function applyAreaProjectileEffects(input: {
       input.battle.projectiles = input.battle.projectiles.filter(
         (candidate) =>
           candidate.side !== "enemy" ||
+          candidate.nonColliding ||
           !isWithinRadius(candidate.position, projectile.position, projectile.radius),
       )
     }

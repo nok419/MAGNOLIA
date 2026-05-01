@@ -3,8 +3,8 @@
   "slot": "os",
   "name": "MAGNOLIA",
   "iconId": "icon_eq_os_magnolia",
-  "summary": "探索UIと全体マップを解放する基本OS。",
-  "description": "MAGNOLIAの基本UI。ミニマップ・強度計・情報パネルの表示、装備・アーカイブへのアクセス、エリア外部の観測を有効にする。",
+  "summary": "探索UIと全体マップを解放し、スキャン性能を伸ばす基本OS。",
+  "description": "MAGNOLIAの基本UI。ミニマップ・強度計・情報パネルの表示、装備・アーカイブへのアクセス、エリア外部の観測を有効にする。強化すると探索スキャンと視界、探索時の移動性能が少し伸びる。",
   "flavorText": "",
   "passiveEffectIds": [
     "eff_os_magnolia"
@@ -16,12 +16,40 @@
     "kind": "transmissionReward",
     "transmissionId": "tx_good_morning"
   },
-  "maxLevel": 1,
+  "maxLevel": 3,
   "levelParams": [
     {
       "level": 1,
       "selfRepairPointCost": 0,
-      "effectOverrides": {}
+      "upgradeSummary": "基本UI、マップ表示、装備管理を解放する。",
+      "effectOverrides": {
+        "exploreVisionBonus": 0,
+        "exploreScanRadiusBonus": 0,
+        "exploreScanCooldownMultiplier": 1,
+        "exploreSpeedMultiplier": 1
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 120,
+      "upgradeSummary": "スキャン範囲が広がり、探索時の視界範囲も少し広がる。",
+      "effectOverrides": {
+        "exploreVisionBonus": 18,
+        "exploreScanRadiusBonus": 120,
+        "exploreScanCooldownMultiplier": 1,
+        "exploreSpeedMultiplier": 1
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 220,
+      "upgradeSummary": "スキャンのクールタイムが短くなり、探索時の移動速度が少し上がる。",
+      "effectOverrides": {
+        "exploreVisionBonus": 18,
+        "exploreScanRadiusBonus": 120,
+        "exploreScanCooldownMultiplier": 0.82,
+        "exploreSpeedMultiplier": 1.04
+      }
     }
   ]
 }

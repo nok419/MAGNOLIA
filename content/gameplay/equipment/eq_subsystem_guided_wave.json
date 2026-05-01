@@ -20,25 +20,28 @@
     {
       "level": 1,
       "selfRepairPointCost": 0,
+      "upgradeSummary": "弱い追従補正をmainショットに付与する。",
       "effectOverrides": {
-        "homingStrength": 1.35,
-        "homingRange": 230
+        "homingStrength": 0.55,
+        "homingRange": 210
       }
     },
     {
       "level": 2,
       "selfRepairPointCost": 80,
+      "upgradeSummary": "追従精度が少し上がる。",
       "effectOverrides": {
-        "homingStrength": 1.7,
-        "homingRange": 270
+        "homingStrength": 0.68,
+        "homingRange": 230
       }
     },
     {
       "level": 3,
       "selfRepairPointCost": 160,
+      "upgradeSummary": "追従精度がさらに少し上がる。",
       "effectOverrides": {
-        "homingStrength": 2.05,
-        "homingRange": 310
+        "homingStrength": 0.82,
+        "homingRange": 250
       }
     }
   ]

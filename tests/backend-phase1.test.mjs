@@ -23,6 +23,93 @@ test("hitbox JSON controls battle collision radius", async () => {
   assert.doesNotMatch(battleWorldSource, /includes\("small"\)|includes\("large"\)|radiusScale|orbitScale/)
 })
 
+test("battle spawn points and stable spawn IDs are content-driven", async () => {
+  const { loadContentBundle, resolveSpawnPoint, spawnMissionEnemies } = await bundleBattleAuthoring()
+  const content = loadContentBundle()
+
+  assert.deepEqual(resolveSpawnPoint("spawn_player_center", content.battleSpawnPoints), { x: 240, y: 456 })
+  assert.deepEqual(resolveSpawnPoint("spawn_top_left", content.battleSpawnPoints), { x: 72, y: -24 })
+  assert.deepEqual(resolveSpawnPoint("spawn_side_right", content.battleSpawnPoints), { x: 504, y: 80 })
+
+  const battle = {
+    mission: {
+      missionId: "mission_test_spawn",
+      waves: [{
+        waveId: "wave_keep",
+        atMs: 1000,
+        entries: [{
+          spawnId: "spawn_keep",
+          enemyId: "enemy_scout",
+          spawnPointId: "spawn_top_center",
+          seed: 7,
+        }],
+      }],
+    },
+    spawnedWaveIds: new Set(),
+    elapsedMs: 1000,
+    enemies: [],
+  }
+
+  spawnMissionEnemies({
+    battle,
+    previousElapsedMs: 0,
+    enemies: content.enemies,
+    battleSpawnPoints: content.battleSpawnPoints,
+    hitboxPresets: content.contentHitboxPresets,
+    difficultyModifiers: { enemyHpMultiplier: 1 },
+    nextInstanceId: (prefix) => `${prefix}.test`,
+  })
+  spawnMissionEnemies({
+    battle,
+    previousElapsedMs: 0,
+    enemies: content.enemies,
+    battleSpawnPoints: content.battleSpawnPoints,
+    hitboxPresets: content.contentHitboxPresets,
+    difficultyModifiers: { enemyHpMultiplier: 1 },
+    nextInstanceId: (prefix) => `${prefix}.duplicate`,
+  })
+
+  assert.equal(battle.enemies.length, 1)
+  assert.equal(battle.enemies[0].spawnId, "spawn_keep")
+  assert.equal(battle.enemies[0].patternSeed, "spawn_keep:7")
+  assert.ok(battle.spawnedWaveIds.has("wave_keep"))
+})
+
+test("movement pattern content controls enemy route independently from enemy stats", async () => {
+  const { advanceEnemyMovement, loadContentBundle } = await bundleBattleAuthoring()
+  const content = loadContentBundle()
+  const enemy = {
+    enemyInstanceId: "enemy.move.test",
+    enemyId: "enemy_scout",
+    spawnId: "move_spawn",
+    patternSeed: "move_spawn",
+    movementPatternId: "move_sine_drift_scout",
+    spawnPosition: { x: 100, y: -24 },
+    position: { x: 100, y: -24 },
+    hp: content.enemies.enemy_scout.hp,
+    maxHp: content.enemies.enemy_scout.hp,
+    enteredAtMs: 0,
+    patternLastFiredAtMs: {},
+    burnDamagePerSec: 0,
+    burnUntilMs: 0,
+    radius: 8,
+  }
+
+  advanceEnemyMovement({
+    enemy,
+    enemyDefinition: content.enemies.enemy_scout,
+    movementPatterns: content.movementPatterns,
+    battleElapsedMs: 1000,
+    dtMs: 1000,
+  })
+
+  const expectedX = 100 + Math.sin((1000 / 3200) * Math.PI * 2) * 28
+  assert.equal(enemy.position.y, 14)
+  assert.equal(Math.round(enemy.position.x), Math.round(expectedX))
+  assert.equal(enemy.hp, content.enemies.enemy_scout.hp)
+  assert.deepEqual(content.enemies.enemy_scout.bulletPatternIds, ["bp_scout_single"])
+})
+
 test("BattleRenderState exposes resolved battle presets and communication deltas", () => {
   const runtimeTypes = readProjectFile("packages/game-session/src/runtime-types.ts")
   const sessionSource = readProjectFile("packages/game-session/src/game-session.ts")
@@ -127,6 +214,32 @@ async function bundleBattleWorld() {
     "export { resolveHitRadius } from './packages/game-session/src/battle-world.ts'",
     "",
   ].join("\n").replace("./packages", `${ROOT}/packages`))
+
+  await esbuild.build({
+    entryPoints: [entry],
+    outfile,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    sourcemap: false,
+    logLevel: "silent",
+    tsconfig: path.join(ROOT, "tsconfig.base.json"),
+  })
+
+  return import(`file://${outfile}`)
+}
+
+async function bundleBattleAuthoring() {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "magnolia-battle-authoring-"))
+  const entry = path.join(tempDir, "entry.ts")
+  const outfile = path.join(tempDir, "battle-authoring.mjs")
+  writeFileSync(entry, [
+    "export { resolveSpawnPoint } from './packages/game-session/src/battle-world.ts'",
+    "export { spawnMissionEnemies } from './packages/game-session/src/battle/spawn-system.ts'",
+    "export { advanceEnemyMovement } from './packages/game-session/src/battle/movement-system.ts'",
+    "export { loadContentBundle } from './packages/persistence/src/load-content-bundle.ts'",
+    "",
+  ].join("\n").replaceAll("./packages", `${ROOT}/packages`))
 
   await esbuild.build({
     entryPoints: [entry],

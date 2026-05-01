@@ -1,0 +1,55 @@
+{
+  "equipmentId": "eq_os_lily",
+  "slot": "os",
+  "name": "LILY",
+  "iconId": "icon_eq_os_lily",
+  "summary": "破損OSの復旧先として用意されたOS枠。",
+  "description": "LILYのOS枠。現時点ではMAGNOLIAと同じ探索UI、マップ表示、スキャン補助を持つ仮定義として扱う。",
+  "flavorText": "",
+  "passiveEffectIds": [
+    "eff_os_lily"
+  ],
+  "activeEffectIds": [],
+  "unlockConditionId": "cond_always",
+  "visibilityConditionId": "cond_always",
+  "unlockSource": {
+    "kind": "upgradeTransform",
+    "sourceEquipmentId": "eq_os_broken"
+  },
+  "maxLevel": 3,
+  "levelParams": [
+    {
+      "level": 1,
+      "selfRepairPointCost": 0,
+      "upgradeSummary": "MAGNOLIAと同じ基本UI、マップ表示、装備管理を解放する仮効果。",
+      "effectOverrides": {
+        "exploreVisionBonus": 0,
+        "exploreScanRadiusBonus": 0,
+        "exploreScanCooldownMultiplier": 1,
+        "exploreSpeedMultiplier": 1
+      }
+    },
+    {
+      "level": 2,
+      "selfRepairPointCost": 120,
+      "upgradeSummary": "MAGNOLIAと同じ仮効果として、スキャン範囲と視界範囲を少し伸ばす。",
+      "effectOverrides": {
+        "exploreVisionBonus": 18,
+        "exploreScanRadiusBonus": 120,
+        "exploreScanCooldownMultiplier": 1,
+        "exploreSpeedMultiplier": 1
+      }
+    },
+    {
+      "level": 3,
+      "selfRepairPointCost": 220,
+      "upgradeSummary": "MAGNOLIAと同じ仮効果として、スキャンクールタイムと探索移動速度を少し改善する。",
+      "effectOverrides": {
+        "exploreVisionBonus": 18,
+        "exploreScanRadiusBonus": 120,
+        "exploreScanCooldownMultiplier": 0.82,
+        "exploreSpeedMultiplier": 1.04
+      }
+    }
+  ]
+}

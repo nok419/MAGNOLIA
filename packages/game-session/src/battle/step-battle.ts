@@ -6,6 +6,7 @@ import type {
   ContentBundle,
   DifficultyModifiers,
   DomainEvent,
+  EffectSpec,
   MissionState,
   ProfileAggregate,
   RootSnapshot,
@@ -214,6 +215,11 @@ export function stepBattleFrame(input: {
 
   const subJustPressed = frameInput.fireSub && !battle.previousSubPressed
   const subHandlerId = battle.loadout.sub?.runtimeHandlerId
+  const subEquipmentId = battle.loadout.sub?.equipmentId
+  const subEventContext = {
+    ...(subEquipmentId ? { equipmentId: subEquipmentId } : {}),
+    ...(subHandlerId ? { runtimeHandlerId: subHandlerId } : {}),
+  }
   if (
     frameInput.fireSub &&
     battle.subCooldownMs <= 0 &&
@@ -231,9 +237,9 @@ export function stepBattleFrame(input: {
       },
     })
     if (subWeaponRequests.some((request) => request.kind === "spawnBarrier")) {
-      events.push({ type: "playerBarrierStarted" })
+      events.push({ type: "playerBarrierStarted", ...subEventContext })
     } else if (subWeaponRequests.length > 0) {
-      events.push({ type: "playerSubWeaponUsed" })
+      events.push({ type: "playerSubWeaponUsed", ...subEventContext })
     }
     effectRequests.push(...subWeaponRequests)
   }
@@ -244,17 +250,20 @@ export function stepBattleFrame(input: {
     const consumed = battle.barrier.maxMs - battle.barrier.remainingMs
     const ratio = consumed / Math.max(1, battle.barrier.maxMs)
     const subEquipment = host.content.equipment[battle.loadout.sub?.equipmentId ?? ""]
-    const baseCooldown = subEquipment?.active?.cooldownMs ?? 3000
+    const baseCooldown = readSubCooldownMs(
+      battle.loadout.sub?.activeEffects,
+      subEquipment?.active?.cooldownMs ?? 3000,
+    )
     battle.subCooldownMs = Math.max(500, baseCooldown * ratio)
     battle.barrier = undefined
-    events.push({ type: "playerBarrierStopped" })
+    events.push({ type: "playerBarrierStopped", ...subEventContext })
   }
 
   const spawnedEffects = host.effects.applyEffectRequests(battle, effectRequests, battlePassives)
   const hadBarrierBeforeSupportUpdate = Boolean(battle.barrier)
   host.effects.updateSupportFields(battle, frameInput.dtMs)
   if (hadBarrierBeforeSupportUpdate && !battle.barrier) {
-    events.push({ type: "playerBarrierStopped" })
+    events.push({ type: "playerBarrierStopped", ...subEventContext })
   }
   const enemyEvents = host.actors.updateEnemies(battle, frameInput.dtMs)
   host.actors.updateProjectiles(battle, frameInput.dtMs, battlePassives.statModifiers)
@@ -403,4 +412,15 @@ export function stepBattleFrame(input: {
     effectRequests,
     presentationRequests,
   }
+}
+
+function readSubCooldownMs(
+  activeEffects: EffectSpec[] | undefined,
+  fallback: number,
+): number {
+  const cooldownEffect = activeEffects?.find(
+    (effect) => effect.effectKind === "subArmBurst" || effect.effectKind === "subArmField",
+  )
+  const value = cooldownEffect?.params?.cooldownMs
+  return typeof value === "number" ? value : fallback
 }

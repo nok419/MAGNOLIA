@@ -4,7 +4,7 @@
   "runtimeHandlerId": "subsystem.shot.modifier.burn",
   "params": {
     "addBurnOnHit": true,
-    "burnDamagePerSec": 3,
+    "burnDamagePerSec": 1.4,
     "burnDurationMs": 3000
   }
 }

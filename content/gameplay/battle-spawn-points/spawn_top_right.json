@@ -1,0 +1,10 @@
+{
+  "spawnPointId": "spawn_top_right",
+  "side": "noiseSource",
+  "xRatio": 0.85,
+  "yRatio": 0,
+  "offsetX": 0,
+  "offsetY": -24,
+  "authoringLabel": "Top right noise source",
+  "intendedUse": "enemy.entry.top_right"
+}

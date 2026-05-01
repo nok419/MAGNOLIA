@@ -16,64 +16,150 @@
   "repeatDecayRate": 0.3,
   "waves": [
     {
+      "waveId": "gm_wave_01",
       "atMs": 8000,
       "intentTag": "main-confirmation-clear-forward-noise",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_center", "seed": 1 }
-      ]
-    },
-    {
-      "atMs": 12000,
-      "intentTag": "main-confirmation-soft-noise",
-      "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 2, "overrides": { "speed": 24 } },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 3, "overrides": { "speed": 24 } }
-      ]
-    },
-    {
-      "atMs": 17000,
-      "intentTag": "melee-confirmation",
-      "entries": [
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 4, "overrides": { "speed": 18 } }
-      ]
-    },
-    {
-      "atMs": 30500,
-      "intentTag": "hit-noise-confirmation-safe",
-      "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 5 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 7 }
-      ]
-    },
-    {
-      "atMs": 34000,
-      "intentTag": "hit-noise-confirmation-safe",
-      "entries": [
-        { "enemyId": "enemy_standard", "spawnPointId": "spawn_top_center", "seed": 8, "overrides": { "speed": 20 } },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 9 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 10 }
-      ]
-    },
-    {
-      "atMs": 43000,
-      "intentTag": "return-to-explore-preparation",
-      "entries": [
         {
-          "enemyId": "enemy_standard", "spawnPointId": "spawn_side_left", "seed": 11,
-          "overrides": { "speed": 6, "driftX": 38 }
-        },
-        {
-          "enemyId": "enemy_standard", "spawnPointId": "spawn_side_right", "seed": 12,
-          "overrides": { "speed": 6, "driftX": -38 }
+          "spawnId": "gm_wave_01_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_center",
+          "seed": 1
         }
       ]
     },
     {
+      "waveId": "gm_wave_02",
+      "atMs": 12000,
+      "intentTag": "main-confirmation-soft-noise",
+      "entries": [
+        {
+          "spawnId": "gm_wave_02_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 2,
+          "overrides": {
+            "speed": 24
+          }
+        },
+        {
+          "spawnId": "gm_wave_02_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 3,
+          "overrides": {
+            "speed": 24
+          }
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_03",
+      "atMs": 17000,
+      "intentTag": "melee-confirmation",
+      "entries": [
+        {
+          "spawnId": "gm_wave_03_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 4,
+          "overrides": {
+            "speed": 18
+          }
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_04",
+      "atMs": 30500,
+      "intentTag": "hit-noise-confirmation-safe",
+      "entries": [
+        {
+          "spawnId": "gm_wave_04_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 5
+        },
+        {
+          "spawnId": "gm_wave_04_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 7
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_05",
+      "atMs": 34000,
+      "intentTag": "hit-noise-confirmation-safe",
+      "entries": [
+        {
+          "spawnId": "gm_wave_05_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 8,
+          "overrides": {
+            "speed": 20
+          }
+        },
+        {
+          "spawnId": "gm_wave_05_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 9
+        },
+        {
+          "spawnId": "gm_wave_05_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 10
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_06",
+      "atMs": 43000,
+      "intentTag": "return-to-explore-preparation",
+      "entries": [
+        {
+          "spawnId": "gm_wave_06_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_side_left",
+          "seed": 11,
+          "overrides": {
+            "speed": 6,
+            "driftX": 38
+          }
+        },
+        {
+          "spawnId": "gm_wave_06_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_side_right",
+          "seed": 12,
+          "overrides": {
+            "speed": 6,
+            "driftX": -38
+          }
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_07",
       "atMs": 51000,
       "intentTag": "return-to-explore-preparation",
       "entries": [
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_left", "seed": 13 },
-        { "enemyId": "enemy_scout", "spawnPointId": "spawn_top_right", "seed": 14 }
+        {
+          "spawnId": "gm_wave_07_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 13
+        },
+        {
+          "spawnId": "gm_wave_07_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 14
+        }
       ]
     }
   ],
@@ -83,55 +169,96 @@
       "atMs": 0,
       "durationMs": 7000,
       "intentTag": "tutorial-no-enemy-boot",
-      "transcriptChunkIds": ["chunk_gm_001a", "chunk_gm_001b", "chunk_gm_001c", "chunk_gm_002a", "chunk_gm_002b"]
+      "transcriptChunkIds": [
+        "chunk_gm_001a",
+        "chunk_gm_001b",
+        "chunk_gm_001c",
+        "chunk_gm_002a",
+        "chunk_gm_002b"
+      ]
     },
     {
       "beatId": "gm_main_confirmation",
       "atMs": 7000,
       "durationMs": 10000,
       "intentTag": "main-confirmation",
-      "transcriptChunkIds": ["chunk_gm_003a", "chunk_gm_003b"],
-      "relatedEnemyIds": ["enemy_scout"]
+      "transcriptChunkIds": [
+        "chunk_gm_003a",
+        "chunk_gm_003b"
+      ],
+      "relatedEnemyIds": [
+        "enemy_scout"
+      ]
     },
     {
       "beatId": "gm_melee_confirmation",
       "atMs": 17000,
       "durationMs": 6000,
       "intentTag": "melee-confirmation",
-      "transcriptChunkIds": ["chunk_gm_004a", "chunk_gm_004b"],
-      "relatedEnemyIds": ["enemy_standard"]
+      "transcriptChunkIds": [
+        "chunk_gm_004a",
+        "chunk_gm_004b"
+      ],
+      "relatedEnemyIds": [
+        "enemy_standard"
+      ]
     },
     {
       "beatId": "gm_sub_confirmation",
       "atMs": 23000,
       "durationMs": 7000,
       "intentTag": "sub-confirmation",
-      "transcriptChunkIds": ["chunk_gm_005a", "chunk_gm_005b"]
+      "transcriptChunkIds": [
+        "chunk_gm_005a",
+        "chunk_gm_005b"
+      ]
     },
     {
       "beatId": "gm_hit_noise",
       "atMs": 30000,
       "durationMs": 7000,
       "intentTag": "hit-noise-confirmation-safe",
-      "transcriptChunkIds": ["chunk_gm_006a", "chunk_gm_006b"],
-      "relatedEnemyIds": ["enemy_scout", "enemy_standard"],
-      "fragmentWindow": { "startMs": 30000, "endMs": 37000 }
+      "transcriptChunkIds": [
+        "chunk_gm_006a",
+        "chunk_gm_006b"
+      ],
+      "relatedEnemyIds": [
+        "enemy_scout",
+        "enemy_standard"
+      ],
+      "fragmentWindow": {
+        "startMs": 30000,
+        "endMs": 37000
+      }
     },
     {
       "beatId": "gm_hazard",
       "atMs": 37000,
       "durationMs": 7000,
       "intentTag": "hazard-confirmation",
-      "transcriptChunkIds": ["chunk_gm_007a", "chunk_gm_007b"],
-      "relatedHazardIds": ["hazard_gm_01"]
+      "transcriptChunkIds": [
+        "chunk_gm_007a",
+        "chunk_gm_007b"
+      ],
+      "relatedHazardIds": [
+        "hazard_gm_01"
+      ]
     },
     {
       "beatId": "gm_return_prepare",
       "atMs": 44000,
       "durationMs": 11000,
       "intentTag": "return-to-explore-preparation",
-      "transcriptChunkIds": ["chunk_gm_008a", "chunk_gm_008b", "chunk_gm_009a", "chunk_gm_009b"],
-      "relatedEnemyIds": ["enemy_scout", "enemy_standard"]
+      "transcriptChunkIds": [
+        "chunk_gm_008a",
+        "chunk_gm_008b",
+        "chunk_gm_009a",
+        "chunk_gm_009b"
+      ],
+      "relatedEnemyIds": [
+        "enemy_scout",
+        "enemy_standard"
+      ]
     }
   ],
   "hazards": [

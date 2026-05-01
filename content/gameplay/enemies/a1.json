@@ -9,6 +9,7 @@
     "wobbleAmplitude": 24,
     "wobblePeriodMs": 3000
   },
+  "movementPatternId": "move_sine_drift_a1",
   "bulletPatternIds": [
     "bp_scout_single"
   ],

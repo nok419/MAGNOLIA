@@ -7,6 +7,7 @@ import type {
   AreaMaster,
   AreaProgressRow,
   BattlePhase,
+  BattleSpawnPoint,
   BattlefieldHazardArea,
   BattlefieldHazardMotion,
   BackgroundPreset,
@@ -37,6 +38,7 @@ import type {
   MissionMaster,
   MissionPhase,
   MissionRunRow,
+  MovementPattern,
   ProfileId,
   ProfileRow,
   PrimaryEquipmentSlot,
@@ -50,6 +52,7 @@ import type {
   ThemeId,
   TranscriptChunkId,
   TranscriptChunk,
+  TranscriptChunkMigration,
   TranscriptViewChunk,
   TransmissionId,
   TransmissionMaster,
@@ -213,6 +216,19 @@ export type EquipmentCatalogItemViewModel = {
   visibleName: string
   visibleDescription: string
   flavorText?: string
+  statGroups: Array<{
+    label: string
+    stats: Array<{
+      label: string
+      value: string
+      note?: string
+    }>
+  }>
+  upgradePreview?: {
+    fromLevel: number
+    toLevel: number
+    summary: string
+  }
   masked: boolean
   owned: boolean
   equippedSlot?: EquipmentSlot
@@ -357,6 +373,17 @@ export type DomainEvent =
       subsystemIndex: SubsystemIndex
     }
   | {
+      type: "equipmentUnequipped"
+      equipmentId: EquipmentId
+      slot: PrimaryEquipmentSlot
+    }
+  | {
+      type: "equipmentUnequipped"
+      equipmentId: EquipmentId
+      slot: "subsystem"
+      subsystemIndex: SubsystemIndex
+    }
+  | {
       type: "saveWritten"
       slotId: SaveSlotId
     }
@@ -380,6 +407,8 @@ export type DomainEvent =
     }
   | {
       type: "playerSubWeaponUsed"
+      equipmentId?: EquipmentId
+      runtimeHandlerId?: string
     }
   | {
       type: "playerProjectileHit"
@@ -391,9 +420,13 @@ export type DomainEvent =
     }
   | {
       type: "playerBarrierStarted"
+      equipmentId?: EquipmentId
+      runtimeHandlerId?: string
     }
   | {
       type: "playerBarrierStopped"
+      equipmentId?: EquipmentId
+      runtimeHandlerId?: string
     }
   | {
       type: "playerBarrierHit"
@@ -475,6 +508,19 @@ export type EquipSubsystemItemCommand = {
   subsystemIndex: SubsystemIndex
 }
 
+export type UnequipPrimaryItemCommand = {
+  type: "unequipItem"
+  slot: PrimaryEquipmentSlot
+  equipmentId: EquipmentId
+}
+
+export type UnequipSubsystemItemCommand = {
+  type: "unequipItem"
+  slot: "subsystem"
+  equipmentId: EquipmentId
+  subsystemIndex: SubsystemIndex
+}
+
 export type ChangeSettingCommand = {
   type: "changeSetting"
   path: SettingsPath
@@ -538,6 +584,8 @@ export type GameCommand =
   | ClosePanelCommand
   | EquipPrimaryItemCommand
   | EquipSubsystemItemCommand
+  | UnequipPrimaryItemCommand
+  | UnequipSubsystemItemCommand
   | ChangeSettingCommand
   | SaveToCurrentSlotCommand
   | SaveToSlotCommand
@@ -556,7 +604,10 @@ export type ContentBundle = {
   mapLogic: Record<MapId, WorldMapLogic>
   transmissions: Record<TransmissionId, TransmissionMaster>
   transcriptChunks: Record<TranscriptChunkId, TranscriptChunk>
+  transcriptChunkMigrations: TranscriptChunkMigration[]
   missions: Record<MissionId, MissionMaster>
+  battleSpawnPoints: Record<string, BattleSpawnPoint>
+  movementPatterns: Record<string, MovementPattern>
   enemies: Record<EnemyId, EnemyArchetype>
   bulletPatterns: Record<BulletPatternId, BulletPattern>
   projectiles: Record<ProjectileId, ProjectileSpec>

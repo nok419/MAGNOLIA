@@ -1,3 +1,4 @@
+import { forwardRef } from "react"
 import type { ButtonHTMLAttributes, PropsWithChildren } from "react"
 
 type ActionButtonProps = PropsWithChildren<
@@ -6,15 +7,16 @@ type ActionButtonProps = PropsWithChildren<
   }
 >
 
-export function ActionButton({
+export const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(function ActionButton({
   children,
   className,
   tone = "primary",
   type = "button",
   ...rest
-}: ActionButtonProps) {
+}, ref) {
   return (
     <button
+      ref={ref}
       {...rest}
       type={type}
       className={["action-button", `action-button--${tone}`, className]
@@ -24,4 +26,4 @@ export function ActionButton({
       {children}
     </button>
   )
-}
+})

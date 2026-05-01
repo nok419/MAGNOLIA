@@ -2,18 +2,24 @@ import { useEffect, useRef } from "react"
 import type {
   EquipmentCatalogItemViewModel,
   EquipmentPanelViewModel,
-  EquipmentSlot,
   ShipVariant,
 } from "@magnolia/contracts"
 import { ActionButton } from "@/components/ActionButton"
 import { PanelFrame } from "@/components/common"
+import { audioEvents } from "@/audio"
 import { ShipStatusPanel } from "@/screens/menu/ShipStatusPanel"
+import {
+  readEquipmentCategorySlot,
+  readEquipmentCategorySubsystemIndex,
+  type EquipmentCategoryKey,
+} from "@/screens/menu/equipment-category"
 
-const SLOT_CATEGORIES: { key: EquipmentSlot; label: string }[] = [
+const SLOT_CATEGORIES: { key: EquipmentCategoryKey; label: string }[] = [
   { key: "main", label: "main" },
   { key: "sub", label: "sub" },
   { key: "os", label: "os" },
-  { key: "subsystem", label: "subsystem" },
+  { key: "subsystem1", label: "subsystem 1" },
+  { key: "subsystem2", label: "subsystem 2" },
 ]
 
 /**
@@ -30,6 +36,46 @@ function equipmentIdFragment(equipmentId: string): string {
     .toUpperCase()
     .slice(-4)
     .padStart(4, "0")
+}
+
+function readEquipmentListState(eq: EquipmentCatalogItemViewModel): {
+  cardClassName: string
+  badgeLabel: string | null
+  badgeClassName: string
+} {
+  if (!eq.owned) {
+    return {
+      cardClassName: "list-card--unowned",
+      badgeLabel: "未入手",
+      badgeClassName: "equip-badge equip-badge--locked",
+    }
+  }
+  if (eq.canUpgrade) {
+    return {
+      cardClassName: "list-card--upgrade-ready",
+      badgeLabel: "強化可能",
+      badgeClassName: "equip-badge equip-badge--upgrade-ready",
+    }
+  }
+  if (eq.upgradeCost !== undefined) {
+    return {
+      cardClassName: "list-card--upgrade-short",
+      badgeLabel: "ポイント不足",
+      badgeClassName: "equip-badge equip-badge--upgrade-short",
+    }
+  }
+  if (eq.currentLevel >= eq.maxLevel) {
+    return {
+      cardClassName: "list-card--maxed",
+      badgeLabel: "最大LV",
+      badgeClassName: "equip-badge equip-badge--maxed",
+    }
+  }
+  return {
+    cardClassName: "list-card--owned",
+    badgeLabel: null,
+    badgeClassName: "equip-badge",
+  }
 }
 
 function ProcurementPanel({
@@ -116,7 +162,8 @@ function ProcurementPanel({
 
       {!canAct && shortage > 0 ? (
         <p className="procurement__shortage-note">
-          あと <span>{shortage.toLocaleString()}</span> pts で取得可能です
+          あと <span>{shortage.toLocaleString()}</span> pts で
+          {mode === "purchase" ? "取得" : "強化"}可能です
         </p>
       ) : null}
 
@@ -151,6 +198,7 @@ export function EquipmentPanel({
   onSelectCategory,
   onSelectEquipment,
   onEquip,
+  onUnequip,
   onPurchase,
   onUpgrade,
   shipVariant,
@@ -159,11 +207,12 @@ export function EquipmentPanel({
   onMarkEquipmentSeen,
 }: {
   viewModel: EquipmentPanelViewModel
-  selectedCategory: EquipmentSlot
+  selectedCategory: EquipmentCategoryKey
   selectedEquipmentId: string | null
-  onSelectCategory: (slot: EquipmentSlot) => void
+  onSelectCategory: (slot: EquipmentCategoryKey) => void
   onSelectEquipment: (id: string | null) => void
   onEquip: (id: string, slot: string, subsystemIndex?: 0 | 1) => void
+  onUnequip: (id: string, slot: string, subsystemIndex?: 0 | 1) => void
   onPurchase: (id: string) => void
   onUpgrade: (id: string) => void
   shipVariant: ShipVariant
@@ -173,18 +222,20 @@ export function EquipmentPanel({
 }) {
   const catalog = viewModel.catalog
   const equipped = catalog.equipped
-  const filteredItems = catalog.items.filter((eq) => eq.slot === selectedCategory)
+  const selectedSlot = readEquipmentCategorySlot(selectedCategory)
+  const selectedSubsystemIndex = readEquipmentCategorySubsystemIndex(selectedCategory)
+  const filteredItems = catalog.items.filter((eq) => eq.slot === selectedSlot)
 
   // カテゴリ毎の未確認装備を数え、タブ上の NEW バッジ表示に使う。
   // 既所持かつ seen 未登録のものだけが対象。
   const unseenSet = new Set(unseenEquipmentIds)
-  const unseenCountByCategory = new Map<EquipmentSlot, number>()
+  const unseenCountBySlot = new Map<string, number>()
   for (const equipmentId of unseenEquipmentIds) {
     const equipment = catalog.items.find((item) => item.equipmentId === equipmentId)
     if (!equipment) continue
-    unseenCountByCategory.set(
+    unseenCountBySlot.set(
       equipment.slot,
-      (unseenCountByCategory.get(equipment.slot) ?? 0) + 1,
+      (unseenCountBySlot.get(equipment.slot) ?? 0) + 1,
     )
   }
 
@@ -195,6 +246,9 @@ export function EquipmentPanel({
     if (id && unseenSet.has(id)) {
       onMarkEquipmentSeen([id])
     }
+    if (id && id !== selectedEquipmentId) {
+      audioEvents.equipmentArchiveDetailSelect()
+    }
     onSelectEquipment(id)
   }
 
@@ -204,13 +258,22 @@ export function EquipmentPanel({
   const isSelectedOwned = Boolean(selected?.owned)
   const isSelectedMasked = Boolean(selected?.masked)
   const currentLevel = selected?.currentLevel ?? 0
+
+  const handleSelectCategory = (category: EquipmentCategoryKey) => {
+    if (category !== selectedCategory) {
+      audioEvents.equipmentArchiveCategorySelect()
+    }
+    onSelectCategory(category)
+    onSelectEquipment(null)
+  }
+
   return (
     <div className="equip-4col">
       {/* ship status */}
       <ShipStatusPanel
         viewModel={viewModel}
         selectedCategory={selectedCategory}
-        onSelectCategory={(slot) => { onSelectCategory(slot); onSelectEquipment(null) }}
+        onSelectCategory={handleSelectCategory}
         shipVariant={shipVariant}
         onSelectShipVariant={onSelectShipVariant}
       />
@@ -219,14 +282,14 @@ export function EquipmentPanel({
       <div className="equip-categories">
         {SLOT_CATEGORIES.map((cat) => {
           const isActive = cat.key === selectedCategory
-          const unseenCount = unseenCountByCategory.get(cat.key) ?? 0
+          const unseenCount = unseenCountBySlot.get(readEquipmentCategorySlot(cat.key)) ?? 0
           const hasUnseen = unseenCount > 0 && !isActive
           return (
             <button
               key={cat.key}
               type="button"
               className={`equip-cat ${isActive ? "equip-cat--active" : ""}${hasUnseen ? " equip-cat--has-new" : ""}`}
-              onClick={() => { onSelectCategory(cat.key); onSelectEquipment(null) }}
+              onClick={() => handleSelectCategory(cat.key)}
             >
               <span className="equip-cat__label">
                 {isActive ? "▸ " : ""}{cat.label}
@@ -248,6 +311,7 @@ export function EquipmentPanel({
         selectedEquipmentId={selectedEquipmentId}
         onSelectEquipment={handleSelectEquipment}
         unseenEquipmentIds={unseenSet}
+        selectedSubsystemIndex={selectedSubsystemIndex}
       />
 
       {/* detail */}
@@ -319,6 +383,34 @@ export function EquipmentPanel({
                 </span>
               </div>
               <p className="equip-detail__desc">{selected.visibleDescription}</p>
+              {selected.statGroups.length > 0 ? (
+                <div className="equip-detail__stat-groups" aria-label="装備性能">
+                  {selected.statGroups.map((group) => (
+                    <section className="equip-detail__stat-group" key={group.label}>
+                      <h4 className="equip-detail__stat-heading">{group.label}</h4>
+                      <dl className="equip-detail__stat-list">
+                        {group.stats.map((stat) => (
+                          <div className="equip-detail__stat-row" key={`${group.label}-${stat.label}`}>
+                            <dt>{stat.label}</dt>
+                            <dd>
+                              <span>{stat.value}</span>
+                              {stat.note ? <small>{stat.note}</small> : null}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </section>
+                  ))}
+                </div>
+              ) : null}
+              {selected.upgradePreview ? (
+                <div className="equip-detail__upgrade-preview" aria-label="次のレベルアップ効果">
+                  <span className="equip-detail__upgrade-track">
+                    LV.{selected.upgradePreview.fromLevel} ▸ LV.{selected.upgradePreview.toLevel}
+                  </span>
+                  <span>{selected.upgradePreview.summary}</span>
+                </div>
+              ) : null}
               <blockquote className="equip-detail__flavor">
                 <span className="equip-detail__flavor-mark" aria-hidden="true" />
                 <span>{selected.flavorText ?? ""}</span>
@@ -328,35 +420,66 @@ export function EquipmentPanel({
                 {isSelectedOwned ? (
                   <div className="button-row">
                     {selected.slot === "subsystem" ? (
-                      <>
-                        {selected.equipTargets.map((target) => {
-                          const alreadyEquippedAtTarget = target.equipped
-                          return (
+                      (() => {
+                        // カテゴリ選択時点で subsystem 1 / 2 を決めるため、詳細では対象枠だけを操作します。
+                        const target = selected.equipTargets.find(
+                          (nextTarget) => nextTarget.subsystemIndex === selectedSubsystemIndex,
+                        )
+                        if (!target) {
+                          return null
+                        }
+                        const alreadyEquippedAtTarget = target.equipped
+                        return (
+                          <div className="button-row" key={target.subsystemIndex ?? target.label}>
                             <ActionButton
-                              key={target.subsystemIndex ?? target.label}
                               tone={alreadyEquippedAtTarget ? "ghost" : "primary"}
+                              className={!alreadyEquippedAtTarget && target.canEquip ? "equip-detail__equip-action" : undefined}
                               disabled={!target.canEquip}
                               onClick={() =>
                                 onEquip(selected.equipmentId, target.slot, target.subsystemIndex)
                               }
-                              style={{ fontSize: 12, padding: "6px 16px", minHeight: 0 }}
                             >
-                              {alreadyEquippedAtTarget ? target.label : `equip ${target.label}`}
+                              {alreadyEquippedAtTarget
+                                ? `${target.label} 装備中`
+                                : target.canEquip
+                                  ? `装備する ${target.label}`
+                                  : (target.lockedReasonLabel ?? "装備不可")}
                             </ActionButton>
-                          )
-                        })}
-                      </>
+                            {alreadyEquippedAtTarget ? (
+                              <ActionButton
+                                tone="danger"
+                                onClick={() =>
+                                  onUnequip(selected.equipmentId, target.slot, target.subsystemIndex)
+                                }
+                                style={{ fontSize: 12, padding: "6px 16px", minHeight: 0 }}
+                              >
+                                解除
+                              </ActionButton>
+                            ) : null}
+                          </div>
+                        )
+                      })()
                     ) : (
                       selected.equipTargets.map((target) => (
-                        <ActionButton
-                          key={target.label}
-                          tone={target.equipped ? "ghost" : "primary"}
-                          disabled={!target.canEquip}
-                          onClick={() => onEquip(selected.equipmentId, target.slot)}
-                          style={{ fontSize: 12, padding: "6px 16px", minHeight: 0 }}
-                        >
-                          {target.equipped ? "装備中" : "装備する"}
-                        </ActionButton>
+                        <div className="button-row" key={target.label}>
+                          <ActionButton
+                            tone={target.equipped ? "ghost" : "primary"}
+                            className={!target.equipped && target.canEquip ? "equip-detail__equip-action" : undefined}
+                            disabled={!target.canEquip}
+                            onClick={() => onEquip(selected.equipmentId, target.slot)}
+                          >
+                            {target.equipped ? "装備中" : "装備する"}
+                          </ActionButton>
+                          {target.equipped ? (
+                            <ActionButton
+                              tone="danger"
+                              onClick={() => onUnequip(selected.equipmentId, target.slot)}
+                              style={{ fontSize: 12, padding: "6px 16px", minHeight: 0 }}
+                            >
+                              解除
+                            </ActionButton>
+                          ) : null}
+                        </div>
                       ))
                     )}
                   </div>
@@ -432,12 +555,14 @@ function EquipmentArcList({
   selectedEquipmentId,
   onSelectEquipment,
   unseenEquipmentIds,
+  selectedSubsystemIndex,
 }: {
   items: EquipmentCatalogItemViewModel[]
   equipped: EquipmentPanelViewModel["equipped"]
   selectedEquipmentId: string | null
   onSelectEquipment: (id: string | null) => void
   unseenEquipmentIds: Set<string>
+  selectedSubsystemIndex?: 0 | 1
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -463,20 +588,19 @@ function EquipmentArcList({
   return (
     <div className="equip-list equip-list--plain" ref={scrollRef}>
       {items.map((eq) => {
-        const isOwn = eq.owned
-        const isEq =
-          equipped.main === eq.equipmentId ||
-          equipped.sub === eq.equipmentId ||
-          equipped.os === eq.equipmentId ||
-          equipped.subsystems.includes(eq.equipmentId)
+        const equippedLabel = readEquippedLabel(eq, equipped)
+        const isEq = equippedLabel !== null
         const isSel = eq.equipmentId === selectedEquipmentId
         const isNew = unseenEquipmentIds.has(eq.equipmentId)
+        // 一覧の状態表示は ViewModel の所持・強化可否だけで決める。
+        // 表示層で profile や cost を再計算しないため、detail と判定がずれない。
+        const listState = readEquipmentListState(eq)
 
         return (
           <button
             key={eq.equipmentId}
             type="button"
-            className={`list-card${isSel ? " list-card--selected" : ""}${isNew ? " list-card--new" : ""}`}
+            className={`list-card ${listState.cardClassName}${isSel ? " list-card--selected" : ""}${isNew ? " list-card--new" : ""}`}
             onClick={() => onSelectEquipment(eq.equipmentId)}
           >
             {isNew ? (
@@ -486,8 +610,13 @@ function EquipmentArcList({
             ) : null}
             <p style={{ fontWeight: 500, fontSize: 14, margin: "0 0 2px" }}>
               {eq.visibleName}
-              {isEq ? <span className="equip-badge">装備中</span> : null}
-              {!isOwn ? <span className="equip-badge equip-badge--locked">未入手</span> : null}
+              {isEq ? <span className="equip-badge">{equippedLabel}</span> : null}
+              {eq.slot === "subsystem" && selectedSubsystemIndex !== undefined && isEquippedInOtherSubsystem(eq, equipped, selectedSubsystemIndex) ? (
+                <span className="equip-badge equip-badge--locked">他枠で使用中</span>
+              ) : null}
+              {listState.badgeLabel ? (
+                <span className={listState.badgeClassName}>{listState.badgeLabel}</span>
+              ) : null}
             </p>
             <p className="muted-text" style={{ fontSize: 12, margin: 0 }}>
               {eq.visibleDescription}
@@ -497,4 +626,30 @@ function EquipmentArcList({
       })}
     </div>
   )
+}
+
+function readEquippedLabel(
+  eq: EquipmentCatalogItemViewModel,
+  equipped: EquipmentPanelViewModel["equipped"],
+): string | null {
+  if (equipped.main === eq.equipmentId) return "MAIN装備中"
+  if (equipped.sub === eq.equipmentId) return "SUB装備中"
+  if (equipped.os === eq.equipmentId) return "OS装備中"
+  const subsystemIndex = equipped.subsystems.findIndex((equipmentId) => equipmentId === eq.equipmentId)
+  if (subsystemIndex === 0 || subsystemIndex === 1) {
+    return `SYS-${subsystemIndex + 1}装備中`
+  }
+  return null
+}
+
+function isEquippedInOtherSubsystem(
+  eq: EquipmentCatalogItemViewModel,
+  equipped: EquipmentPanelViewModel["equipped"],
+  selectedSubsystemIndex: 0 | 1,
+): boolean {
+  if (eq.slot !== "subsystem") {
+    return false
+  }
+  const equippedIndex = equipped.subsystems.findIndex((equipmentId) => equipmentId === eq.equipmentId)
+  return (equippedIndex === 0 || equippedIndex === 1) && equippedIndex !== selectedSubsystemIndex
 }

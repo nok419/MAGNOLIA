@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import { ScrambleText } from "@/components/common"
 
 type GlitchChannel = "r" | "c"
 
@@ -17,6 +18,8 @@ type MagnoliaLogoProps = {
   as?: "h1" | "div"
   className?: string
   text?: string
+  scrambleTrigger?: string | number
+  reduceFlashing?: boolean
 }
 
 function hiddenGlitchFrame(): GlitchFrame {
@@ -71,6 +74,8 @@ export function MagnoliaLogo({
   as = "h1",
   className,
   text = "MAGNOLIA",
+  scrambleTrigger,
+  reduceFlashing,
 }: MagnoliaLogoProps) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const HeadingTag = as
@@ -128,7 +133,20 @@ export function MagnoliaLogo({
       ref={wrapRef}
       className={["title-screen__logo-wrap", className].filter(Boolean).join(" ")}
     >
-      <HeadingTag className="title-screen__logo">{text}</HeadingTag>
+      <HeadingTag className="title-screen__logo">
+        <ScrambleText
+          text={text}
+          trigger={scrambleTrigger}
+          reduceFlashing={reduceFlashing}
+          options={{
+            activeGlyphCount: 2,
+            randomizeStartFrames: true,
+            framesPerGlyph: 92,
+            maxFrames: 150,
+            shuffleProbability: 0.18,
+          }}
+        />
+      </HeadingTag>
       <HeadingTag
         className="title-screen__logo title-screen__logo--glitch-r"
         aria-hidden="true"

@@ -1,0 +1,11 @@
+{
+  "movementPatternId": "move_pause_then_drift_heavy",
+  "patternKind": "pauseThenDrift",
+  "speed": 22,
+  "driftX": 0,
+  "driftY": 0,
+  "pauseAtY": 80,
+  "pauseMs": 2400,
+  "authoringLabel": "Heavy pause then descent",
+  "intendedUse": "enemy_heavy.default"
+}

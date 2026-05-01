@@ -9,6 +9,7 @@
     "pauseMs": 7600,
     "pauseAtY": 112
   },
+  "movementPatternId": "move_pause_then_drift_b1",
   "bulletPatternIds": [
     "bp_b1_core_burst",
     "bp_b1_lance_stream"

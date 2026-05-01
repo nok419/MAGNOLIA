@@ -1,0 +1,11 @@
+{
+  "movementPatternId": "move_sine_drift_scout",
+  "patternKind": "sineDrift",
+  "speed": 38,
+  "driftX": 0,
+  "driftY": 0,
+  "wobbleAmplitude": 28,
+  "wobblePeriodMs": 3200,
+  "authoringLabel": "Scout sine drift",
+  "intendedUse": "enemy_scout.default"
+}

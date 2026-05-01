@@ -1,0 +1,9 @@
+{
+  "movementPatternId": "move_linear_a2",
+  "patternKind": "linear",
+  "speed": 28,
+  "driftX": 0,
+  "driftY": 0,
+  "authoringLabel": "A2 prototype linear descent",
+  "intendedUse": "prototype.a2.default"
+}

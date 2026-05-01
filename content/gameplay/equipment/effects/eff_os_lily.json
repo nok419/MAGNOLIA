@@ -1,0 +1,17 @@
+{
+  "effectId": "eff_os_lily",
+  "effectKind": "mapReveal",
+  "runtimeHandlerId": "os.magnolia.core",
+  "params": {
+    "unlocksAreaVision": true,
+    "unlocksHud": true,
+    "unlocksEquipmentAccess": true,
+    "unlocksMinimapDisplay": true,
+    "unlocksStrengthMeter": true,
+    "unlocksInfoPanel": true,
+    "exploreVisionBonus": 0,
+    "exploreScanRadiusBonus": 0,
+    "exploreScanCooldownMultiplier": 1,
+    "exploreSpeedMultiplier": 1
+  }
+}

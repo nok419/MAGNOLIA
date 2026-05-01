@@ -36,13 +36,13 @@ clean source で該当ファイルなし。
 正本が分かりにくく、将来の作業者が古い patch を新規要件と誤認する。
 
 どうしたか:
-MGN-CLN-002 は音声チーム関連の仕事を含むため保留した。`apps/web/src/audio`、`apps/web/public/sound`、`docs/06_音声管理.md`、`docs/sound-inventory.md`、`sound/` は今回の削除対象にしない。
+MGN-CLN-002 は音声チーム関連の仕事を含むため保留した。音源の配置先は `apps/web/public/sound`、棚卸し正本は `docs/sound-inventory.md` に寄せ、root `sound/` は正本として使わない。
 
 受け入れ条件:
 `*.diff`、空ディレクトリ、未使用 `sound/` が source archive に入らない。
 
 確認:
-保留。音声チーム関連 file は維持する。
+保留。音声チーム関連 file は `apps/web/src/audio`、`apps/web/public/sound`、`docs/06_音声管理.md`、`docs/sound-inventory.md` に限定して維持する。
 
 # MGN-CLN-003 未参照 source wrapper を削除する
 

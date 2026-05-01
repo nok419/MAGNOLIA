@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { validatePresentationCueRules } from "./presentation-cue-rules.js"
+import { validateBulletPatternRules } from "./bullet-pattern-rules.js"
 import { validatePresetRules } from "./preset-rules.js"
 import { validateReferenceRules } from "./reference-rules.js"
 import { validateTimingRules } from "./timing-rules.js"
@@ -29,6 +30,7 @@ export type ValidationContext = {
   store: ContentStore
   issues: ValidationIssue[]
   warnings: ValidationIssue[]
+  reports: string[]
 }
 
 export function addIssue(context: ValidationContext, message: string, file?: string): void {
@@ -37,6 +39,10 @@ export function addIssue(context: ValidationContext, message: string, file?: str
 
 export function addWarning(context: ValidationContext, message: string, file?: string): void {
   context.warnings.push({ file, message })
+}
+
+export function addReport(context: ValidationContext, message: string): void {
+  context.reports.push(message)
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | null {
@@ -143,16 +149,21 @@ function createStore(gameplayDirInput?: string): ContentStore {
 function main(): void {
   const options = readCliOptions(process.argv.slice(2))
   const store = createStore(options.gameplayDir)
-  const context: ValidationContext = { store, issues: [], warnings: [] }
+  const context: ValidationContext = { store, issues: [], warnings: [], reports: [] }
 
   validateReferenceRules(context)
   validateTimingRules(context)
+  validateBulletPatternRules(context)
   validatePresetRules(context)
   validatePresentationCueRules(context)
 
   for (const warning of context.warnings) {
     const prefix = warning.file ? `${warning.file}: ` : ""
     console.warn(`warning: ${prefix}${warning.message}`)
+  }
+
+  for (const report of context.reports) {
+    console.log(report)
   }
 
   if (context.issues.length > 0) {

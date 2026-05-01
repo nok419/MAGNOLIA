@@ -220,6 +220,8 @@ export function useMagnoliaApp() {
     shouldShowEquipmentHint,
     idleAutoSave,
     saveSlots: buildSaveSlotSummaries(state.snapshot, state.content),
+    setExploreMoveTarget: input.setExploreMoveTarget,
+    consumePrimaryMousePress: input.consumePrimaryMousePress,
     ...actions,
   }
 

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react"
 import type {
   EquipmentPanelViewModel,
-  EquipmentSlot,
   ShipVariant,
 } from "@magnolia/contracts"
+import type { EquipmentCategoryKey } from "@/screens/menu/equipment-category"
 import { SHIP_VARIANTS } from "@magnolia/contracts"
 import { drawShip } from "@/app/ship-renderer"
 
@@ -11,8 +11,8 @@ const TAU = Math.PI * 2
 
 type ShipStatusPanelProps = {
   viewModel: EquipmentPanelViewModel
-  selectedCategory: EquipmentSlot
-  onSelectCategory: (slot: EquipmentSlot) => void
+  selectedCategory: EquipmentCategoryKey
+  onSelectCategory: (slot: EquipmentCategoryKey) => void
   shipVariant: ShipVariant
   onSelectShipVariant: (variant: ShipVariant) => void
 }
@@ -137,12 +137,12 @@ export function ShipStatusPanel({
     return () => cancelAnimationFrame(animId)
   }, [])
 
-  const slots: { key: EquipmentSlot; label: string; id: string | null | undefined }[] = [
+  const slots: { key: EquipmentCategoryKey; label: string; id: string | null | undefined }[] = [
     { key: "main", label: "MAIN", id: equipped.main },
     { key: "sub", label: "SUB", id: equipped.sub },
     { key: "os", label: "OS", id: equipped.os },
-    { key: "subsystem", label: "SYS-1", id: equipped.subsystems[0] },
-    { key: "subsystem", label: "SYS-2", id: equipped.subsystems[1] },
+    { key: "subsystem1", label: "SYS-1", id: equipped.subsystems[0] },
+    { key: "subsystem2", label: "SYS-2", id: equipped.subsystems[1] },
   ]
 
   return (

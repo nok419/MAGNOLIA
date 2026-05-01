@@ -37,6 +37,62 @@
   backdrop-filter: blur(20px);
 }
 
+.explore-click-ripples {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.explore-click-ripple {
+  position: absolute;
+  left: var(--explore-ripple-x);
+  top: var(--explore-ripple-y);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 58%, transparent);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--color-signal-readable) 16%, transparent),
+    0 0 24px color-mix(in srgb, var(--color-signal-primary) 18%, transparent);
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--color-signal-primary) 8%, transparent) 0%, transparent 64%);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: explore-click-ripple 900ms var(--ease-out-expo) forwards;
+}
+
+.explore-click-ripple::before,
+.explore-click-ripple::after {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 28%, transparent);
+}
+
+.explore-click-ripple::after {
+  inset: 42%;
+  opacity: 0.22;
+}
+
+@keyframes explore-click-ripple {
+  0% {
+    width: 16px;
+    height: 16px;
+    opacity: 0.62;
+  }
+  76% {
+    opacity: 0.24;
+  }
+  100% {
+    width: 116px;
+    height: 116px;
+    opacity: 0;
+  }
+}
+
 /* =========================================================
    EXPLORE HUD OVERRIDES
    ========================================================= */

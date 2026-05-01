@@ -19,6 +19,17 @@ const enemyShotKey: Record<EnemyShotVariant, SoundKey> = {
 };
 
 const missionBgmById = new Map<string, SoundKey>();
+const playerHitKeys: readonly SoundKey[] = [
+  SOUND_KEYS.COMBAT_PLAYER_HIT,
+  SOUND_KEYS.COMBAT_PLAYER_HIT_HEAVY,
+];
+// タイトル確定後は 1 秒だけ暗転を見せ、音源の長さでは画面遷移を止めません。
+const TITLE_CONFIRM_TRANSITION_WAIT_MS = 1000;
+
+function selectPlayerHitKey(): SoundKey {
+  // damaged_1 / damaged_2 は強弱指定ではなく連番なので、被弾の反復感を減らす用途で交互に近いランダム選択にします。
+  return playerHitKeys[Math.floor(Math.random() * playerHitKeys.length)] ?? SOUND_KEYS.COMBAT_PLAYER_HIT;
+}
 
 export function initializeGameAudio(): void {
   audioHub.preload();
@@ -46,15 +57,24 @@ export const audioEvents = {
     audioHub.playBgm(SOUND_KEYS.BGM_TITLE, options);
   },
 
-  newGameSelected(): void {
+  newGameSelected(): Promise<void> {
     audioHub.unlock();
-    audioHub.play(SOUND_KEYS.TITLE_NEW_GAME);
+    const waitForConfirmCue = audioHub.playAndWait(SOUND_KEYS.TITLE_NEW_GAME, {
+      minimumWaitMs: TITLE_CONFIRM_TRANSITION_WAIT_MS,
+      maxWaitMs: TITLE_CONFIRM_TRANSITION_WAIT_MS,
+    });
     audioHub.stopBgm(450);
+    return waitForConfirmCue;
   },
 
-  loadGameSelected(): void {
+  loadGameSelected(): Promise<void> {
     audioHub.unlock();
-    audioHub.play(SOUND_KEYS.TITLE_LOAD_GAME);
+    const waitForConfirmCue = audioHub.playAndWait(SOUND_KEYS.TITLE_LOAD_GAME, {
+      minimumWaitMs: TITLE_CONFIRM_TRANSITION_WAIT_MS,
+      maxWaitMs: TITLE_CONFIRM_TRANSITION_WAIT_MS,
+    });
+    audioHub.stopBgm(450);
+    return waitForConfirmCue;
   },
 
   menuMove(direction: MenuDirection = 'down'): void {
@@ -74,6 +94,11 @@ export const audioEvents = {
     audioHub.play(SOUND_KEYS.UI_OPEN);
   },
 
+  equipmentPanelOpen(): void {
+    // E キーで開く装備画面は探索操作からの遷移なので、通常の panel open より明瞭に鳴らします。
+    audioHub.play(SOUND_KEYS.UI_OPEN, { volume: 0.5 });
+  },
+
   uiClose(): void {
     audioHub.play(SOUND_KEYS.UI_CLOSE);
   },
@@ -82,12 +107,24 @@ export const audioEvents = {
     audioHub.play(SOUND_KEYS.UI_ERROR);
   },
 
+  saveWritten(): void {
+    audioHub.play(SOUND_KEYS.SYSTEM_SAVE_LOAD);
+  },
+
   explorationEntered(options?: BgmOptions): void {
     audioHub.playBgm(SOUND_KEYS.BGM_EXPLORATION, options ?? { fadeMs: 700 });
   },
 
   explorationStep(options?: PlaySoundOptions): void {
     audioHub.play(SOUND_KEYS.EXPLORE_STEP, options);
+  },
+
+  explorationMoveStart(options?: LoopOptions): void {
+    audioHub.playLoop(SOUND_KEYS.EXPLORE_MOVE, 'explore.move', options ?? { fadeMs: 140 });
+  },
+
+  explorationMoveStop(fadeMs = 320): void {
+    audioHub.stopLoop('explore.move', fadeMs);
   },
 
   scanStarted(): void {
@@ -158,7 +195,7 @@ export const audioEvents = {
   },
 
   playerHit(options?: PlaySoundOptions): void {
-    audioHub.play(SOUND_KEYS.COMBAT_PLAYER_HIT, options);
+    audioHub.play(selectPlayerHitKey(), options);
   },
 
   enemyHit(options?: PlaySoundOptions): void {
@@ -185,8 +222,28 @@ export const audioEvents = {
     audioHub.play(SOUND_KEYS.EQUIPMENT_SWITCH);
   },
 
+  equipmentArchiveCategorySelect(): void {
+    audioHub.play(SOUND_KEYS.EQUIPMENT_ARCHIVE_CATEGORY_SELECT);
+  },
+
+  equipmentArchiveDetailSelect(): void {
+    audioHub.play(SOUND_KEYS.EQUIPMENT_ARCHIVE_DETAIL_SELECT);
+  },
+
+  equipmentArchiveDetailDecision(): void {
+    audioHub.play(SOUND_KEYS.EQUIPMENT_SWITCH);
+  },
+
+  equipmentUpgrade(): void {
+    audioHub.play(SOUND_KEYS.EQUIPMENT_UPGRADE);
+  },
+
   equipmentUse(): void {
     audioHub.play(SOUND_KEYS.EQUIPMENT_USE);
+  },
+
+  silentWave(): void {
+    audioHub.play(SOUND_KEYS.EQUIPMENT_SILENT_WAVE);
   },
 
   barrierEnabled(): void {
@@ -214,6 +271,29 @@ export const audioEvents = {
 
   radioStaticStop(): void {
     audioHub.stopLoop('noise.radioStatic', 400);
+  },
+
+  syncTransmissionVoice(input: {
+    transmissionId: string;
+    audioAssetId: string;
+    audioPlaybackMs: number;
+    playing: boolean;
+  }): void {
+    audioHub.syncTransmissionVoice({
+      transmissionId: input.transmissionId,
+      assetId: input.audioAssetId,
+      playbackMs: input.audioPlaybackMs,
+      playing: input.playing,
+      driftToleranceMs: 160,
+    });
+  },
+
+  pauseTransmissionVoice(): void {
+    audioHub.pauseTransmissionVoice();
+  },
+
+  stopTransmissionVoice(fadeMs = 120): void {
+    audioHub.stopTransmissionVoice(fadeMs);
   },
 
   lowHpStart(options?: LoopOptions): void {

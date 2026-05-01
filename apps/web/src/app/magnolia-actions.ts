@@ -107,19 +107,24 @@ export function createMagnoliaActions({
         return
       }
 
+      // タイトル確定後は短い暗転を見せてから session を進めます。
+      const waitForTitleConfirmCue =
+        mode === "newGame"
+          ? audioEvents.newGameSelected()
+          : audioEvents.loadGameSelected()
+      await waitForTitleConfirmCue
+
       if (mode === "newGame") {
         await session.dispatch({
           type: "startNewGameAtSlot",
           slotId,
           difficulty: session.getSettings().difficulty,
         })
-        audioEvents.newGameSelected()
       } else {
         await session.dispatch({
           type: "resumeSaveSlot",
           slotId,
         })
-        audioEvents.loadGameSelected()
       }
 
       setState((current) => ({
@@ -241,6 +246,31 @@ export function createMagnoliaActions({
       })
       syncFromSession(session)
     },
+    async unequipPrimary(slot: "main" | "sub" | "os", equipmentId: EquipmentId) {
+      const session = sessionRef.current
+      if (!session) {
+        return
+      }
+      await session.dispatch({
+        type: "unequipItem",
+        slot,
+        equipmentId,
+      })
+      syncFromSession(session)
+    },
+    async unequipSubsystem(subsystemIndex: 0 | 1, equipmentId: EquipmentId) {
+      const session = sessionRef.current
+      if (!session) {
+        return
+      }
+      await session.dispatch({
+        type: "unequipItem",
+        slot: "subsystem",
+        subsystemIndex,
+        equipmentId,
+      })
+      syncFromSession(session)
+    },
     async purchaseEquipment(equipmentId: EquipmentId) {
       const session = sessionRef.current
       if (!session) {
@@ -250,6 +280,9 @@ export function createMagnoliaActions({
         type: "purchaseEquipment",
         equipmentId,
       })
+      if (!session.getLastCommandErrorReason()) {
+        audioEvents.equipmentArchiveDetailDecision()
+      }
       syncFromSession(session)
     },
     async upgradeEquipment(equipmentId: EquipmentId) {
@@ -261,6 +294,9 @@ export function createMagnoliaActions({
         type: "upgradeEquipment",
         equipmentId,
       })
+      if (!session.getLastCommandErrorReason()) {
+        audioEvents.equipmentUpgrade()
+      }
       syncFromSession(session)
     },
     async saveToSlot(slotId: SaveSlotId) {

@@ -128,6 +128,7 @@ function createEnemyProjectile(input: EnemyPatternHandlerInput, direction: { x: 
   if (!hitbox) {
     throw new Error(`Missing hitbox preset: ${input.projectile.hitboxPresetId}`)
   }
+  const nonColliding = input.pattern.params.nonColliding === true || input.pattern.params.visualOnly === true
   return {
     projectileInstanceId: input.nextInstanceId(input.pattern.projectileId),
     projectileId: input.pattern.projectileId,
@@ -140,7 +141,8 @@ function createEnemyProjectile(input: EnemyPatternHandlerInput, direction: { x: 
     radius: resolveHitRadius(hitbox),
     remainingMs: input.projectile.lifetimeMs,
     spawnDelayMs: 0,
-    damage: input.projectile.damage,
-    noiseDamage: input.projectile.noiseDamage * input.noiseDamageMultiplier,
+    damage: nonColliding ? 0 : input.projectile.damage,
+    noiseDamage: nonColliding ? 0 : input.projectile.noiseDamage * input.noiseDamageMultiplier,
+    nonColliding,
   }
 }

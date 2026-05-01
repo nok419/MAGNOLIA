@@ -285,6 +285,26 @@ export function fireDefaultMainShot(input: {
       },
     },
   ]
+  const extraSideShotCount = Math.max(0, readNumericParam(mainShotEffect, "extraSideShotCount", 0))
+  const extraSideShotDamage = readNumericParam(mainShotEffect, "extraSideShotDamage", 0)
+  if (extraSideShotCount > 0 && extraSideShotDamage > 0) {
+    requests.push({
+      kind: "spawnProjectile",
+      projectileId,
+      position: input.playerPosition,
+      direction: normalizeVector(input.facing),
+      speed,
+      count: extraSideShotCount,
+      spreadDeg: readNumericParam(mainShotEffect, "extraSideShotSpreadDeg", 52),
+      damage: extraSideShotDamage,
+      params: {
+        foldSideProjectiles: Boolean(mainShotEffect?.params?.foldSideProjectiles),
+        foldBendAfterMs: readNumericParam(mainShotEffect, "foldBendAfterMs", 140),
+        foldBendDurationMs: readNumericParam(mainShotEffect, "foldBendDurationMs", 70),
+        meleeEnabled: false,
+      },
+    })
+  }
 
   requests.push(
     {
@@ -758,6 +778,16 @@ export const defaultEquipmentRuntimeRegistry: EquipmentRuntimeRegistry = {
   },
   passiveHandlers: {
     "os.magnolia.core": ({ effect }) => ({
+      statModifiers: {
+        exploreVisionBonus: readNumericParam(effect, "exploreVisionBonus", 0),
+        exploreScanRadiusBonus: readNumericParam(effect, "exploreScanRadiusBonus", 0),
+        exploreScanCooldownMultiplier: readNumericParam(
+          effect,
+          "exploreScanCooldownMultiplier",
+          1,
+        ) - 1,
+        exploreSpeedMultiplier: readNumericParam(effect, "exploreSpeedMultiplier", 1) - 1,
+      },
       visibilityModifiers: {
         mapRevealEnabled: Boolean(effect.params?.unlocksAreaVision),
         hudEnabled: Boolean(effect.params?.unlocksHud),

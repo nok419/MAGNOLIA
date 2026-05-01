@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
-import type { CSSProperties, MouseEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react"
 import type {
   ExploreSnapshot,
   ExploreTransitionSourceFrame,
@@ -34,6 +34,8 @@ type ExploreScreenProps = {
   shipVariant: ShipVariant
   showEquipmentHint?: boolean
   onInteractNode?: (nodeId: WorldMapNodeId, context: ExploreInteractionContext) => void
+  onSetMoveTarget?: (worldPosition: { x: number; y: number } | null) => void
+  onConsumePrimaryClick?: () => void
   displayOptions: DisplayOptions
 }
 
@@ -41,6 +43,12 @@ type ExploreInteractionContext = {
   nodeId: WorldMapNodeId
   worldPosition: { x: number; y: number }
   sourceFrame: ExploreTransitionSourceFrame
+}
+
+type ExploreClickRipple = {
+  id: number
+  x: number
+  y: number
 }
 
 // signal パネルは非言語 User Interface（UI）を志向します。
@@ -51,6 +59,12 @@ const STRENGTH_SEGMENT_COUNT = 18
 const WAVEFORM_FRAME_MS = 72
 const TAU = Math.PI * 2
 const OVERLAY_FRAME_EPSILON = 0.25
+const TRANSMISSION_ICON_CAPTURE_RADIUS_PX = 64
+const WARP_ICON_CAPTURE_RADIUS_PX = 56
+const EQUIPMENT_ICON_CAPTURE_RADIUS_PX = 52
+const RESOURCE_ICON_CAPTURE_RADIUS_PX = 46
+const NAV_CUE_CAPTURE_RADIUS_PX = 42
+const NEARBY_ICON_INTERACT_RADIUS_PX = 72
 
 export function ExploreScreen({
   snapshot,
@@ -61,6 +75,8 @@ export function ExploreScreen({
   shipVariant,
   showEquipmentHint = false,
   onInteractNode,
+  onSetMoveTarget,
+  onConsumePrimaryClick,
   displayOptions,
 }: ExploreScreenProps) {
   const strength = renderState.nearestTransmissionStrength
@@ -97,6 +113,14 @@ export function ExploreScreen({
       : undefined
   const [waveformFrame, setWaveformFrame] = useState(0)
   const [overlayFrame, setOverlayFrame] = useState<ExploreOverlayFrame | null>(null)
+  const [clickRipples, setClickRipples] = useState<ExploreClickRipple[]>([])
+  const clickRippleIdRef = useRef(0)
+
+  const emitExploreClickRipple = useCallback((point: { x: number; y: number }) => {
+    const id = clickRippleIdRef.current + 1
+    clickRippleIdRef.current = id
+    setClickRipples((current) => [...current.slice(-7), { id, x: point.x, y: point.y }])
+  }, [])
 
   const handleOverlayFrame = useCallback((nextFrame: ExploreOverlayFrame) => {
     setOverlayFrame((currentFrame) =>
@@ -139,22 +163,31 @@ export function ExploreScreen({
     ? resolveInteractionPromptPlacement(overlayFrame.playerPoint, overlayFrame.width)
     : "right-up"
 
-  const handleCanvasClick = useCallback(
-    (event: MouseEvent<HTMLElement>) => {
-      if (!canShowPrompts || !overlayFrame || !onInteractNode) {
+  const handleCanvasPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (event.button !== 0 || !canShowPrompts || !overlayFrame) {
         return
       }
       const target = event.target as HTMLElement | null
       if (target?.closest(".ehud, .interaction-prompt, .explore-item-popup-stack")) {
         return
       }
+      onConsumePrimaryClick?.()
       const rect = event.currentTarget.getBoundingClientRect()
       const point = {
         x: event.clientX - rect.left,
         y: event.clientY - rect.top,
       }
-      const hitTarget = readClickableExploreTarget(renderState, overlayFrame, point)
+      // クリック位置の波紋は探索入力の結果ではなく、背景への短い手触りとして表示します。
+      emitExploreClickRipple(point)
+      const hitTarget = readNearbyInteractTarget(renderState, overlayFrame) ?? readExploreTargetAtPoint(renderState, overlayFrame, point)
       if (!hitTarget) {
+        onSetMoveTarget?.(overlayPointToWorld(overlayFrame, point))
+        return
+      }
+      // アイコン付近にいるとき、またはアイコン上を押したときはインタラクトを優先します。
+      onSetMoveTarget?.(null)
+      if (!onInteractNode) {
         return
       }
       onInteractNode(hitTarget.nodeId, {
@@ -170,11 +203,11 @@ export function ExploreScreen({
         },
       })
     },
-    [canShowPrompts, onInteractNode, overlayFrame, renderState],
+    [canShowPrompts, emitExploreClickRipple, onConsumePrimaryClick, onInteractNode, onSetMoveTarget, overlayFrame, renderState],
   )
 
   return (
-    <main className="explore-fullscreen" onClick={handleCanvasClick}>
+    <main className="explore-fullscreen" onPointerDown={handleCanvasPointerDown}>
       <ExploreCanvas
         snapshot={snapshot}
         renderState={renderState}
@@ -184,6 +217,21 @@ export function ExploreScreen({
         onOverlayFrame={handleOverlayFrame}
         displayOptions={displayOptions}
       />
+      <div className="explore-click-ripples" aria-hidden="true">
+        {clickRipples.map((ripple) => (
+          <span
+            key={ripple.id}
+            className="explore-click-ripple"
+            style={{
+              ["--explore-ripple-x" as keyof CSSProperties]: `${ripple.x}px`,
+              ["--explore-ripple-y" as keyof CSSProperties]: `${ripple.y}px`,
+            }}
+            onAnimationEnd={() => {
+              setClickRipples((current) => current.filter((item) => item.id !== ripple.id))
+            }}
+          />
+        ))}
+      </div>
 
       {/* HUD overlays — OS スロットの有無ではなく、MAGNOLIA が解放した表示機能だけを出します。
            リブート演出中は `ehud--booting` で透明化し、完了後に CSS transition で段階フェードイン。 */}
@@ -335,7 +383,7 @@ export function ExploreScreen({
       ) : null}
 
       <section className={`ehud ehud--help${hudTransitionClass}`} style={hudTransitionStyle}>
-        <ControlHelpRow label="move" keys={["WASD", "arrows"]} />
+        <ControlHelpRow label="move" keys={["WASD", "↑→↓←"]} />
         <ControlHelpRow label="connect" keys={["Enter", "click"]} />
         {renderState.shouldShowScanHint ? (
           <ControlHelpRow label="scan" keys={["Space", "click 2"]} />
@@ -351,6 +399,7 @@ export function ExploreScreen({
           keyLabel={["Space", "click 2"]}
           label="scan"
           tone="warm"
+          motion="static"
           ariaLabel="Space または click 2 でスキャンを出します"
         />
       ) : null}
@@ -362,6 +411,7 @@ export function ExploreScreen({
           keyLabel="E"
           label="equipment"
           tone="warm"
+          motion="static"
           ariaLabel="press E to open equipment"
         />
       ) : null}
@@ -423,38 +473,121 @@ type ExploreClickTarget = {
   x: number
   y: number
   radius: number
+  clickDistance: number
+  clickable: boolean
   distanceToPlayer: number
   worldPosition: { x: number; y: number }
   screenAnchor: { x: number; y: number }
 }
 
-function readClickableExploreTarget(
+function readExploreTargetAtPoint(
   renderState: ExploreRenderState,
   overlayFrame: ExploreOverlayFrame,
   clickPoint: { x: number; y: number },
 ): ExploreClickTarget | null {
   const candidates: ExploreClickTarget[] = renderState.interactionTargets
-    .filter((target) => target.visible && target.clickable)
+    .filter((target) => target.visible)
     .flatMap((target) => {
       const anchor = worldToOverlayPoint(overlayFrame, target.worldPosition.x, target.worldPosition.y)
       if (!isOverlayPointVisible(anchor, overlayFrame)) {
         return []
       }
-      return [{
+      const targetDistance = worldDistance(renderState.playerPosition, target.worldPosition)
+      const visibleCandidates = [buildExploreClickTarget({
         nodeId: target.nodeId,
-        x: anchor.x,
-        y: anchor.y,
-        radius: readOverlayInteractionRadius(target),
-        distanceToPlayer: worldDistance(renderState.playerPosition, target.worldPosition),
+        point: anchor,
+        radius: readOverlayInteractionCaptureRadius(target),
+        clickable: target.clickable,
+        distanceToPlayer: targetDistance,
         worldPosition: target.worldPosition,
-        screenAnchor: anchor,
-      }]
+        clickPoint,
+      })]
+      const navCuePoint = readNavCueCapturePoint(overlayFrame, anchor)
+      if (navCuePoint) {
+        visibleCandidates.push(buildExploreClickTarget({
+          nodeId: target.nodeId,
+          point: navCuePoint,
+          radius: NAV_CUE_CAPTURE_RADIUS_PX,
+          clickable: target.clickable,
+          distanceToPlayer: targetDistance,
+          worldPosition: target.worldPosition,
+          screenAnchor: anchor,
+          clickPoint,
+        }))
+      }
+      return visibleCandidates
     })
 
   const clicked = candidates.filter((candidate) => {
-    return Math.hypot(clickPoint.x - candidate.x, clickPoint.y - candidate.y) <= candidate.radius
+    return candidate.clickDistance <= candidate.radius
   })
-  return clicked.sort((left, right) => left.distanceToPlayer - right.distanceToPlayer)[0] ?? null
+  return clicked.sort((left, right) => {
+    if (left.clickDistance !== right.clickDistance) {
+      return left.clickDistance - right.clickDistance
+    }
+    if (left.clickable !== right.clickable) {
+      return left.clickable ? -1 : 1
+    }
+    return left.distanceToPlayer - right.distanceToPlayer
+  })[0] ?? null
+}
+
+function readNearbyInteractTarget(
+  renderState: ExploreRenderState,
+  overlayFrame: ExploreOverlayFrame,
+): ExploreClickTarget | null {
+  const candidates = renderState.interactionTargets
+    .filter((target) => target.visible)
+    .flatMap((target) => {
+      const anchor = worldToOverlayPoint(overlayFrame, target.worldPosition.x, target.worldPosition.y)
+      if (!isOverlayPointVisible(anchor, overlayFrame)) {
+        return []
+      }
+      return [buildExploreClickTarget({
+        nodeId: target.nodeId,
+        point: anchor,
+        radius: readOverlayInteractionCaptureRadius(target),
+        clickable: target.clickable,
+        distanceToPlayer: worldDistance(renderState.playerPosition, target.worldPosition),
+        worldPosition: target.worldPosition,
+        clickPoint: overlayFrame.playerPoint,
+      })]
+    })
+    .filter((target) => target.clickable || target.clickDistance <= NEARBY_ICON_INTERACT_RADIUS_PX)
+
+  return candidates.sort((left, right) => {
+    if (left.clickable !== right.clickable) {
+      return left.clickable ? -1 : 1
+    }
+    if (left.clickDistance !== right.clickDistance) {
+      return left.clickDistance - right.clickDistance
+    }
+    return left.distanceToPlayer - right.distanceToPlayer
+  })[0] ?? null
+}
+
+function buildExploreClickTarget(input: {
+  nodeId: WorldMapNodeId
+  point: { x: number; y: number }
+  radius: number
+  clickable: boolean
+  distanceToPlayer: number
+  worldPosition: { x: number; y: number }
+  screenAnchor?: { x: number; y: number }
+  clickPoint: { x: number; y: number }
+}): ExploreClickTarget {
+  const screenAnchor = input.screenAnchor ?? input.point
+  return {
+    nodeId: input.nodeId,
+    x: input.point.x,
+    y: input.point.y,
+    radius: input.radius,
+    clickDistance: Math.hypot(input.clickPoint.x - input.point.x, input.clickPoint.y - input.point.y),
+    clickable: input.clickable,
+    distanceToPlayer: input.distanceToPlayer,
+    worldPosition: input.worldPosition,
+    screenAnchor,
+  }
 }
 
 function isSameOverlayFrame(
@@ -490,6 +623,20 @@ function worldToOverlayPoint(
   })
 }
 
+function overlayPointToWorld(
+  overlayFrame: ExploreOverlayFrame,
+  point: { x: number; y: number },
+) {
+  const drawableWidth = Math.max(1, overlayFrame.width - overlayFrame.padding * 2)
+  const drawableHeight = Math.max(1, overlayFrame.height - overlayFrame.padding * 2)
+  const rx = Math.max(0, Math.min(1, (point.x - overlayFrame.padding) / drawableWidth))
+  const ry = Math.max(0, Math.min(1, (point.y - overlayFrame.padding) / drawableHeight))
+  return {
+    x: overlayFrame.viewport.x + overlayFrame.viewport.width * rx,
+    y: overlayFrame.viewport.y + overlayFrame.viewport.height * ry,
+  }
+}
+
 function resolveInteractionPromptPlacement(
   anchor: { x: number; y: number },
   width: number,
@@ -511,6 +658,25 @@ function isOverlayPointVisible(
   })
 }
 
+function readNavCueCapturePoint(
+  overlayFrame: ExploreOverlayFrame,
+  anchor: { x: number; y: number },
+) {
+  const dx = anchor.x - overlayFrame.playerPoint.x
+  const dy = anchor.y - overlayFrame.playerPoint.y
+  const distance = Math.hypot(dx, dy)
+  if (distance <= overlayFrame.visionPx * 0.78 || distance <= 0.001) {
+    return null
+  }
+
+  // 視界端の案内弧もクリック対象に見えるため、実ノード位置とは別に移動入力を抑止します。
+  const scale = overlayFrame.visionPx / distance
+  return {
+    x: overlayFrame.playerPoint.x + dx * scale,
+    y: overlayFrame.playerPoint.y + dy * scale,
+  }
+}
+
 function worldDistance(
   a: { x: number; y: number },
   b: { x: number; y: number },
@@ -518,16 +684,21 @@ function worldDistance(
   return Math.hypot(a.x - b.x, a.y - b.y)
 }
 
-function readOverlayInteractionRadius(
+function readOverlayInteractionCaptureRadius(
   target: ExploreRenderState["interactionTargets"][number],
 ) {
+  // 描画上のマーカーは残響リングや衛星部が中心点より外へ出るため、
+  // 背景クリック移動の判定では実アイコンより少し広い範囲を入力予約します。
   if (target.kind === "transmission") {
-    return 24
+    return TRANSMISSION_ICON_CAPTURE_RADIUS_PX
   }
   if (target.kind === "warp") {
-    return 22
+    return WARP_ICON_CAPTURE_RADIUS_PX
   }
-  return target.markerKind === "resource" ? 17 : 20
+  if (target.markerKind === "resource") {
+    return RESOURCE_ICON_CAPTURE_RADIUS_PX
+  }
+  return EQUIPMENT_ICON_CAPTURE_RADIUS_PX
 }
 
 function EquipSlotRow({ label, value }: { label: string; value: string }) {

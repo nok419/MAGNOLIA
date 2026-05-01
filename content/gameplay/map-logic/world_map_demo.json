@@ -88,7 +88,7 @@
       "y": -234,
       "areaId": "area_central_tower",
       "collectibleKind": "selfRepairPoints",
-      "selfRepairPointAmount": 6,
+      "selfRepairPointAmount": 18,
       "interactionRadius": 18,
       "visibilityConditionId": "cond_always",
       "visualHint": "glow"
@@ -100,7 +100,7 @@
       "y": 228,
       "areaId": "area_central_tower",
       "collectibleKind": "selfRepairPoints",
-      "selfRepairPointAmount": 4,
+      "selfRepairPointAmount": 12,
       "interactionRadius": 18,
       "visibilityConditionId": "cond_always",
       "visualHint": "glow"
@@ -112,7 +112,7 @@
       "y": 184,
       "areaId": "area_central_tower",
       "collectibleKind": "selfRepairPoints",
-      "selfRepairPointAmount": 5,
+      "selfRepairPointAmount": 16,
       "interactionRadius": 18,
       "visibilityConditionId": "cond_always",
       "visualHint": "glow"
@@ -124,7 +124,7 @@
       "y": -34,
       "areaId": "area_central_tower",
       "collectibleKind": "selfRepairPoints",
-      "selfRepairPointAmount": 5,
+      "selfRepairPointAmount": 16,
       "interactionRadius": 18,
       "visibilityConditionId": "cond_always",
       "visualHint": "glow"
@@ -148,7 +148,7 @@
       "y": -246,
       "areaId": "area_broadcast_facility",
       "collectibleKind": "selfRepairPoints",
-      "selfRepairPointAmount": 8,
+      "selfRepairPointAmount": 24,
       "interactionRadius": 18,
       "visibilityConditionId": "cond_mission_good_morning_cleared",
       "visualHint": "glow"
@@ -160,7 +160,7 @@
       "y": -42,
       "areaId": "area_broadcast_facility",
       "collectibleKind": "selfRepairPoints",
-      "selfRepairPointAmount": 6,
+      "selfRepairPointAmount": 18,
       "interactionRadius": 18,
       "visibilityConditionId": "cond_mission_good_morning_cleared",
       "visualHint": "glow"

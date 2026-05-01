@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import type { RootSnapshot, SettingsRow, Vector2 } from "@magnolia/contracts"
 
 const ZERO_VECTOR = { x: 0, y: 0 }
+const EXPLORE_CLICK_MOVE_STOP_DISTANCE = 4
 const FALLBACK_MOVE_CODES = {
   up: ["KeyW", "ArrowUp"],
   down: ["KeyS", "ArrowDown"],
@@ -42,6 +43,7 @@ export function useMagnoliaInput() {
   const previousButtonsRef = useRef<Record<string, boolean>>({})
   const lastPointerPressRef = useRef<PointerPressStamp | null>(null)
   const lastActivityAtRef = useRef(Date.now())
+  const exploreMoveTargetRef = useRef<Vector2 | null>(null)
 
   useEffect(() => {
     function markActivity(now = Date.now()) {
@@ -222,6 +224,39 @@ export function useMagnoliaInput() {
     },
     readMovementVector(settings: SettingsRow): Vector2 {
       return readMovementVector(settings, keyStateRef.current)
+    },
+    readExploreMovementVector(settings: SettingsRow, currentPosition: Vector2): Vector2 {
+      const keyboardMove = readMovementVector(settings, keyStateRef.current)
+      if (keyboardMove.x !== 0 || keyboardMove.y !== 0) {
+        // 手動移動が入ったらクリック移動を中断し、意図しない再追従を残しません。
+        exploreMoveTargetRef.current = null
+        return keyboardMove
+      }
+
+      const target = exploreMoveTargetRef.current
+      if (!target) {
+        return ZERO_VECTOR
+      }
+
+      const dx = target.x - currentPosition.x
+      const dy = target.y - currentPosition.y
+      const distance = Math.hypot(dx, dy)
+      if (distance <= EXPLORE_CLICK_MOVE_STOP_DISTANCE) {
+        exploreMoveTargetRef.current = null
+        return ZERO_VECTOR
+      }
+
+      return {
+        x: dx / distance,
+        y: dy / distance,
+      }
+    },
+    setExploreMoveTarget(target: Vector2 | null): void {
+      exploreMoveTargetRef.current = target
+    },
+    consumePrimaryMousePress(): void {
+      queuedMousePressRef.current.left = false
+      previousMouseButtonsRef.current.left = mouseButtonsRef.current.left
     },
     isDashPressed(settings: SettingsRow): boolean {
       return isPressedAny(

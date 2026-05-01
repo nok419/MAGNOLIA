@@ -68,6 +68,7 @@ export function InteractionPromptCallout({
   tone = "warm",
   visible = true,
   color,
+  motion = "pulse",
 }: {
   anchor: { x: number; y: number }
   keyLabel: PromptKeyLabel
@@ -77,6 +78,7 @@ export function InteractionPromptCallout({
   tone?: InteractionPromptTone
   visible?: boolean
   color?: PromptColorOverrides
+  motion?: "pulse" | "static"
 }) {
   const glowId = useId()
   const geometry = CALLOUT_GEOMETRY[placement]
@@ -94,7 +96,7 @@ export function InteractionPromptCallout({
 
   return (
     <div
-      className={`interaction-prompt interaction-prompt--callout interaction-prompt--${tone}`}
+      className={`interaction-prompt interaction-prompt--callout interaction-prompt--${tone} interaction-prompt--${motion}`}
       style={style}
       role="note"
       aria-label={ariaLabel}

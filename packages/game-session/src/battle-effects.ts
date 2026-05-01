@@ -89,6 +89,7 @@ export function applyBattleEffectRequests(input: {
         input.battle.projectiles = input.battle.projectiles.filter(
           (projectile) =>
             projectile.side !== "enemy" ||
+            projectile.nonColliding ||
             !isWithinRadius(
               projectile.position,
               request.position ?? input.battle.playerPosition,
@@ -251,6 +252,7 @@ export function detonatePlayerProjectile(input: {
     input.battle.projectiles = input.battle.projectiles.filter(
       (projectile) =>
         projectile.side !== "enemy" ||
+        projectile.nonColliding ||
         !isWithinRadius(
           projectile.position,
           input.projectile.position,

@@ -1,0 +1,10 @@
+{
+  "spawnPointId": "spawn_side_left",
+  "side": "noiseSource",
+  "xRatio": 0,
+  "yRatio": 0,
+  "offsetX": -24,
+  "offsetY": 80,
+  "authoringLabel": "Left side crossing noise source",
+  "intendedUse": "enemy.entry.side_left"
+}

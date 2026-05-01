@@ -81,6 +81,7 @@ export function syncMagnoliaAppStateFromSession({
     state: audioEventStateRef.current,
     previousSnapshot: stateRef.current.snapshot,
     nextSnapshot: snapshot,
+    battleRenderState,
     presentationRequests,
     domainEvents,
   })

@@ -1,0 +1,11 @@
+{
+  "movementPatternId": "move_pause_then_drift_b1",
+  "patternKind": "pauseThenDrift",
+  "speed": 12,
+  "driftX": 0,
+  "driftY": 0,
+  "pauseAtY": 112,
+  "pauseMs": 7600,
+  "authoringLabel": "B1 prototype pause then descent",
+  "intendedUse": "prototype.b1.default"
+}
