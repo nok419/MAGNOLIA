@@ -19,7 +19,7 @@ test("frontend phase 3 removes render component shims and projectile trail stub"
 
   assert.match(battleScreenSource, /@\/render\/battle\/BattleCanvas/)
   assert.match(exploreScreenSource, /@\/render\/explore\/ExploreCanvas/)
-  assert.match(keyVisualSource, /@\/render\/battle\/BattleCanvas/)
+  assert.match(keyVisualSource, /@\/render\/key-visual\/KeyVisualBattleCanvas/)
   assert.doesNotMatch(`${battleScreenSource}\n${exploreScreenSource}\n${keyVisualSource}`, /@\/components\/(BattleCanvas|ExploreCanvas|battle-renderer)/)
 })
 
@@ -55,6 +55,7 @@ test("key visual render state fixture validates required content presets", async
     sourcemap: false,
     logLevel: "silent",
     tsconfig: path.join(rootDir, "tsconfig.base.json"),
+    plugins: [webAliasPlugin()],
   })
 
   const { result } = await import(`file://${outfile}`)
@@ -110,4 +111,16 @@ function readProjectFile(relativePath) {
 
 function projectPath(relativePath) {
   return path.join(rootDir, relativePath)
+}
+
+function webAliasPlugin() {
+  return {
+    name: "magnolia-web-alias",
+    setup(build) {
+      // key visual fixture は Web source と同じ @ alias を使うため、bundle test でも同じ解決に揃えます。
+      build.onResolve({ filter: /^@\// }, (args) => ({
+        path: path.join(rootDir, "apps", "web", "src", args.path.slice(2)),
+      }))
+    },
+  }
 }

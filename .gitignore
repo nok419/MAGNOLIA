@@ -5,6 +5,7 @@ node_modules/
 dist/
 build/
 .vite/
+.vite-temp/
 
 # TypeScript cache
 *.tsbuildinfo
@@ -29,6 +30,7 @@ pnpm-debug.log*
 # OS and editor metadata
 .DS_Store
 __MACOSX/
+._*
 Thumbs.db
 
 # Local temporary artifacts
@@ -43,3 +45,6 @@ artifacts/*.zip
 *.zip
 *.diff
 *.patch
+**/.claude/settings.local.json
+magnolia_clean_source/
+magnolia_magnolia_clean_source/

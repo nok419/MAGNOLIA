@@ -48,6 +48,11 @@ Before opening a PR, check:
 - The diff matches the Issue.
 - No unrelated formatting changes are included.
 - No secrets, .env files, generated files, or large files are included.
+  - Exception: `packages/persistence/src/generated/content-manifest.ts` is generated source that is committed because runtime loading imports it directly.
+  - When content JSON changes, run `npm run content:manifest` and keep `npm run content:manifest:check` green.
+- Source archives are created only with `npm run archive:source`.
+  - `npm test` runs the archive content tests through `node --test tests/*.test.mjs`.
+  - Do not create review zip files manually.
 - The implementation is simpler than the alternative designs.
 - Duplicated logic is intentional or extracted for a stable reason.
 - Tests were added or updated when behavior changed.

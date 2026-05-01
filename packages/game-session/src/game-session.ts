@@ -23,9 +23,7 @@ import type {
   ExploreFrameInput,
   ExploreFrameResult,
   ExploreScanPulseViewModel,
-  ExploreSignalHintViewModel,
   ExploreSnapshot,
-  FeatureAccessState,
   GameCommand,
   MissionId,
   ProfileAggregate,
@@ -92,7 +90,6 @@ import {
 import {
   createBattleFragmentRecoveredPresentation,
   createMissionBeatPresentation,
-  createExploreTrailPresentation,
   createInitialSystemMessagePresentation,
   createRebootSequencePresentation,
   createTransmissionConnectPresentation,
@@ -101,20 +98,17 @@ import {
   flattenPresentationRequests,
 } from "./presentation"
 import {
-  clampToRect,
   computeAreaBounds,
   computeNearestTransmissionStrength,
   computeNearestAnyTransmissionStrength,
   computeRevealCompletionRate,
   computeWorldBounds,
   createExploreRevealViewport,
-  detectCurrentAreaId,
   findNearbyNode,
   isWithinRadius,
   mergeRevealBitmaps,
   normalizeVector,
   readDisplayArea,
-  readExploreMoveSpeed,
   revealViewportArea,
 } from "./explore-world"
 import {
@@ -129,6 +123,14 @@ import { fireEnemyPatterns as fireEnemyPatternsFromRegistry } from "./battle/ene
 import { spawnMissionEnemies as spawnMissionEnemiesFromSystem } from "./battle/spawn-system"
 import { buildBattleRenderState } from "./battle/battle-render-state"
 import { stepBattleFrame } from "./battle/step-battle"
+import {
+  DEFAULT_EXPLORE_VISION_RADIUS,
+  EXPLORE_SCAN_COOLDOWN_MS,
+  buildExploreInteractionTargets,
+  buildExploreSignalHints,
+  shouldShowScanTutorialHint,
+} from "./explore/explore-session-runtime"
+import { stepExploreFrame } from "./explore/step-explore"
 import { dispatchGameCommand } from "./command/dispatch-command"
 import { createInitialProfileAggregate } from "./profile-factory"
 import {
@@ -151,17 +153,6 @@ import type {
   Rect,
 } from "./runtime-types"
 
-const DEFAULT_EXPLORE_VISION_RADIUS = 150
-const EXPLORE_SCAN_RADIUS = 860
-const EXPLORE_SCAN_COOLDOWN_MS = 2400
-const EXPLORE_SCAN_DURATION_MS = 1250
-const EXPLORE_SIGNAL_HINT_DURATION_MS = 3600
-const EXPLORE_SCAN_RESPONSE_WIDTH = 140
-const EXPLORE_PASSIVE_SIGNAL_RADIUS = 520
-const EXPLORE_PASSIVE_CONFIDENCE_RADIUS = 300
-const EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE = 1
-const SCAN_HINT_DISMISSED_FLAG = "tutorial.scan_hint.dismissed"
-const FIRST_MISSION_ID = "mission_good_morning"
 /**
  * 新規ゲーム開始時にターミナルへ流れるブートログ。
  * 「不調箇所や不完全な初期設定はあるが、かろうじて再起動できた」
@@ -187,34 +178,6 @@ const BOOT_LINES = [
   "",
   "> residual carrier acquired",
 ]
-
-function computeExploreScanConfidenceDelta(distance: number): number {
-  // scan 範囲を広げても遠距離ノードが一度で識別済みにならないよう、距離減衰を強めます。
-  const distanceStrength = clamp01(1 - distance / EXPLORE_SCAN_RADIUS)
-  return Math.pow(distanceStrength, 1.8) * 0.64
-}
-
-function computeExploreScanHintStrength(distance: number, elapsedMs: number): number {
-  const distanceStrength = clamp01(1 - distance / EXPLORE_SCAN_RADIUS)
-  if (distanceStrength <= 0) {
-    return 0
-  }
-
-  // pulse の波面が届いた後にだけ反応を出し、遠距離ほど遅れて弱く見えるようにします。
-  const pulseProgress = easeOutCubic(clamp01(elapsedMs / EXPLORE_SCAN_DURATION_MS))
-  const reachedRadius = EXPLORE_SCAN_RADIUS * pulseProgress
-  if (distance > reachedRadius) {
-    return 0
-  }
-
-  const responseStrength = 0.24 + clamp01((reachedRadius - distance) / EXPLORE_SCAN_RESPONSE_WIDTH) * 0.76
-  return Math.pow(distanceStrength, 1.25) * responseStrength
-}
-
-function easeOutCubic(value: number): number {
-  const inverse = 1 - clamp01(value)
-  return 1 - inverse * inverse * inverse
-}
 
 export class MagnoliaGameSession {
   private readonly content: ContentBundle
@@ -391,7 +354,7 @@ export class MagnoliaGameSession {
             ? "???"
             : "自己修復ポイント",
       }))
-    const interactionTargets = this.buildExploreInteractionTargets({
+    const interactionTargets = buildExploreInteractionTargets({
       visibleTransmissions,
       visibleWarps,
       visibleCollectibles,
@@ -421,10 +384,15 @@ export class MagnoliaGameSession {
         (this.exploreElapsedMs - this.lastExploreScanAtMs) / EXPLORE_SCAN_COOLDOWN_MS,
       ),
       elapsedMs: this.exploreElapsedMs,
-      signalHints: this.buildExploreSignalHints({
+      signalHints: buildExploreSignalHints({
+        content: this.content,
+        profileAggregate: this.activeProfile,
         mapLogic,
         featureAccess,
         playerPosition: this.activeProfile.profile.playerPosition,
+        exploreElapsedMs: this.exploreElapsedMs,
+        lastExploreScanAtMs: this.lastExploreScanAtMs,
+        newlyIdentifiedExploreNodeIds: this.newlyIdentifiedExploreNodeIds,
       }),
       scanPulses: this.exploreScanPulses.filter(
         (pulse) => this.exploreElapsedMs - pulse.startedAtMs <= pulse.durationMs,
@@ -586,87 +554,54 @@ export class MagnoliaGameSession {
   }
 
   stepExplore(input: ExploreFrameInput): ExploreFrameResult {
-    if (!this.activeProfile || this.screen !== "explore") {
-      return {
-        snapshot: this.createExploreSnapshot(),
-        events: [],
-        presentationRequests: [],
-      }
-    }
-
-    const featureAccess = this.buildFeatureAccess()
-    // currentAreaId は HUD 表示と進行判定のための区分で、移動先の map 自体は連続した 1 枚を使います。
-    const mapLogic = this.content.mapLogic[this.content.areas[this.activeProfile.profile.currentAreaId].mapId]
-    const worldBounds = computeWorldBounds(mapLogic)
-    const currentAreaBounds = computeAreaBounds(
-      mapLogic,
-      this.activeProfile.profile.currentAreaId,
-      worldBounds,
-    )
-    const moveSpeed = readExploreMoveSpeed(this.content, featureAccess, input.dashPressed)
-    const velocity = normalizeVector(input.move)
-    const speedRatio = Math.hypot(velocity.x, velocity.y)
-    this.lastExploreVelocity = {
-      x: velocity.x * moveSpeed,
-      y: velocity.y * moveSpeed,
-    }
-    this.lastExploreMovementMode = input.dashPressed
-      ? "wideScan"
-      : speedRatio <= 0.04
-        ? "precisionReceive"
-        : "normal"
-    this.lastExploreSignalStability = this.lastExploreMovementMode === "precisionReceive"
-      ? 0.9
-      : this.lastExploreMovementMode === "wideScan"
-        ? 0.38
-        : 0.64
-    const movementBounds = featureAccess.mapVisionUnlocked ? worldBounds : currentAreaBounds
-    const nextPosition = clampToRect(
-      {
-        x: this.activeProfile.profile.playerPosition.x + velocity.x * moveSpeed * (input.dtMs / 1000),
-        y: this.activeProfile.profile.playerPosition.y + velocity.y * moveSpeed * (input.dtMs / 1000),
+    const { result, runtime } = stepExploreFrame({
+      frameInput: input,
+      screen: this.screen,
+      activeProfile: this.activeProfile,
+      runtime: {
+        lastExploreFacing: this.lastExploreFacing,
+        lastExploreVelocity: this.lastExploreVelocity,
+        lastExploreMovementMode: this.lastExploreMovementMode,
+        lastExploreSignalStability: this.lastExploreSignalStability,
+        exploreElapsedMs: this.exploreElapsedMs,
+        lastExploreScanAtMs: this.lastExploreScanAtMs,
+        exploreScanPulses: this.exploreScanPulses,
+        newlyIdentifiedExploreNodeIds: this.newlyIdentifiedExploreNodeIds,
       },
-      movementBounds,
-    )
-
-    this.activeProfile.profile.playerPosition = nextPosition
-    this.exploreElapsedMs += input.dtMs
-    if (velocity.x !== 0 || velocity.y !== 0) {
-      this.lastExploreFacing = velocity
-    }
-    this.activeProfile.profile.currentAreaId = detectCurrentAreaId(
-      mapLogic,
-      this.content.areas,
-      nextPosition,
-      this.activeProfile.profile.currentAreaId,
-    )
-    const discoveredEvents = this.revealCurrentArea(nextPosition)
-    const scanEvents = this.updateExploreSignalConfidence({
-      mapLogic,
-      featureAccess,
-      playerPosition: nextPosition,
-      dtMs: input.dtMs,
-      scanPressed: input.scanPressed,
+      host: {
+      content: this.content,
+        snapshot: {
+          createExploreSnapshot: () => this.createExploreSnapshot(),
+        },
+        featureAccess: {
+          buildFeatureAccess: () => this.buildFeatureAccess(),
+        },
+        presentation: {
+          revealCurrentArea: (playerPosition) => this.revealCurrentArea(playerPosition),
+          handleExploreInteraction: (mapLogic, playerPosition, interactPressed) =>
+            this.handleExploreInteraction(mapLogic, playerPosition, interactPressed),
+        },
+        menu: {
+          handleExploreMenu: (frameInput) => this.handleExploreMenu(frameInput),
+        },
+        progress: {
+          getOrCreateTransmissionProgress: (transmissionId, areaId) =>
+            this.getOrCreateTransmissionProgress(transmissionId as TransmissionId, areaId),
+        },
+        ids: {
+          nextInstanceId: (prefix) => this.nextInstanceId(prefix),
+        },
+      },
     })
-    const interactionEvents = this.handleExploreInteraction(mapLogic, nextPosition, input.interactPressed)
-    const presentationRequests = flattenPresentationRequests([
-      createExploreTrailPresentation({
-        worldPosition: nextPosition,
-        velocity,
-        lifetimeMs: 280,
-      }),
-      discoveredEvents.presentationRequests,
-      interactionEvents.presentationRequests,
-    ])
-
-    const menuEvents = this.handleExploreMenu(input)
-    this.activeProfile.saveSlot.playTimeMs += input.dtMs
-
-    return {
-      snapshot: this.createExploreSnapshot(),
-      events: [...discoveredEvents.events, ...scanEvents, ...interactionEvents.events, ...menuEvents],
-      presentationRequests,
-    }
+    this.lastExploreFacing = runtime.lastExploreFacing
+    this.lastExploreVelocity = runtime.lastExploreVelocity
+    this.lastExploreMovementMode = runtime.lastExploreMovementMode
+    this.lastExploreSignalStability = runtime.lastExploreSignalStability
+    this.exploreElapsedMs = runtime.exploreElapsedMs
+    this.lastExploreScanAtMs = runtime.lastExploreScanAtMs
+    this.exploreScanPulses = runtime.exploreScanPulses
+    this.newlyIdentifiedExploreNodeIds = runtime.newlyIdentifiedExploreNodeIds
+    return result
   }
 
   stepBattle(input: BattleFrameInput): BattleFrameResult {
@@ -677,38 +612,62 @@ export class MagnoliaGameSession {
       activeProfile: this.activeProfile,
       host: {
         content: this.content,
-        repository: this.repository,
-        createBattleSnapshot: () => this.createBattleSnapshot(),
-        advanceProfilePlayTime: (dtMs) => {
-          if (this.activeProfile) {
-            this.activeProfile.saveSlot.playTimeMs += dtMs
-          }
+        snapshot: {
+          createBattleSnapshot: () => this.createBattleSnapshot(),
         },
-        readMainCadenceMultiplier: (battle) => this.readMainCadenceMultiplier(battle),
-        advanceMissionPhase: (battle) => this.advanceMissionPhase(battle),
-        spawnMissionEnemies: (battle, previousElapsedMs) => this.spawnMissionEnemies(battle, previousElapsedMs),
-        collectMissionBeatPresentationRequests: (battle, previousElapsedMs) =>
-          this.collectMissionBeatPresentationRequests(battle, previousElapsedMs),
-        applyEffectRequests: (battle, effectRequests, battlePassives) =>
-          this.applyEffectRequests(battle, effectRequests, battlePassives),
-        updateSupportFields: (battle, dtMs) => this.updateSupportFields(battle, dtMs),
-        updateEnemies: (battle, dtMs) => this.updateEnemies(battle, dtMs),
-        updateProjectiles: (battle, dtMs, statModifiers) =>
-          this.updateProjectiles(battle, dtMs, statModifiers),
-        updatePickups: (battle, dtMs) => this.updatePickups(battle, dtMs),
-        buildMissionState: () => this.buildMissionState(),
-        applyMagneticDisasterEffects: (battle, dtMs) => this.applyMagneticDisasterEffects(battle, dtMs),
-        resolvePlayerHitRadius: () => this.resolvePlayerHitRadius(),
-        spawnSelfRepairPickup: (battle, position, amount) =>
-          this.spawnSelfRepairPickup(battle, position, amount),
-        nextInstanceId: (prefix) => this.nextInstanceId(prefix),
-        resolveDifficultyModifiers: () => this.resolveDifficultyModifiers(),
-        resolveAudioWindow: (battle, dtMs) => this.resolveAudioWindow(battle, dtMs),
-        maybeSpawnBattleFragment: (fragmentInput) => this.maybeSpawnBattleFragment(fragmentInput),
-        updateBattleFragments: (battle, dtMs) => this.updateBattleFragments(battle, dtMs),
-        getOrCreateTransmissionProgress: (transmissionId, areaId) =>
-          this.getOrCreateTransmissionProgress(transmissionId, areaId),
-        grantEquipment: (equipmentIds) => this.grantEquipment(equipmentIds),
+        profile: {
+          advanceProfilePlayTime: (dtMs) => {
+            if (this.activeProfile) {
+              this.activeProfile.saveSlot.playTimeMs += dtMs
+            }
+          },
+        },
+        mission: {
+          advanceMissionPhase: (battle) => this.advanceMissionPhase(battle),
+          spawnMissionEnemies: (battle, previousElapsedMs) =>
+            this.spawnMissionEnemies(battle, previousElapsedMs),
+          collectMissionBeatPresentationRequests: (battle, previousElapsedMs) =>
+            this.collectMissionBeatPresentationRequests(battle, previousElapsedMs),
+          buildMissionState: () => this.buildMissionState(),
+          saveMissionRun: (missionRun) => this.repository.saveMissionRun(missionRun),
+          getOrCreateTransmissionProgress: (transmissionId, areaId) =>
+            this.getOrCreateTransmissionProgress(transmissionId, areaId),
+          grantEquipment: (equipmentIds) => this.grantEquipment(equipmentIds),
+        },
+        effects: {
+          applyEffectRequests: (battle, effectRequests, battlePassives) =>
+            this.applyEffectRequests(battle, effectRequests, battlePassives),
+          updateSupportFields: (battle, dtMs) => this.updateSupportFields(battle, dtMs),
+          applyMagneticDisasterEffects: (battle, dtMs) =>
+            this.applyMagneticDisasterEffects(battle, dtMs),
+        },
+        actors: {
+          updateEnemies: (battle, dtMs) => this.updateEnemies(battle, dtMs),
+          updateProjectiles: (battle, dtMs, statModifiers) =>
+            this.updateProjectiles(battle, dtMs, statModifiers),
+        },
+        pickups: {
+          updatePickups: (battle, dtMs) => this.updatePickups(battle, dtMs),
+          spawnSelfRepairPickup: (battle, position, amount) =>
+            this.spawnSelfRepairPickup(battle, position, amount),
+        },
+        fragments: {
+          maybeSpawnBattleFragment: (fragmentInput) => this.maybeSpawnBattleFragment(fragmentInput),
+          updateBattleFragments: (battle, dtMs) => this.updateBattleFragments(battle, dtMs),
+        },
+        player: {
+          resolvePlayerHitRadius: () => this.resolvePlayerHitRadius(),
+          readMainCadenceMultiplier: (battle) => this.readMainCadenceMultiplier(battle),
+        },
+        difficulty: {
+          resolveDifficultyModifiers: () => this.resolveDifficultyModifiers(),
+        },
+        audio: {
+          resolveAudioWindow: (battle, dtMs) => this.resolveAudioWindow(battle, dtMs),
+        },
+        ids: {
+          nextInstanceId: (prefix) => this.nextInstanceId(prefix),
+        },
       },
     })
   }
@@ -1428,236 +1387,6 @@ export class MagnoliaGameSession {
       battleState: this.battleState,
       activeProfile: this.activeProfile,
       fallbackMissionId: Object.keys(this.content.missions)[0] ?? "mission_missing",
-    })
-  }
-
-  private updateExploreSignalConfidence(input: {
-    mapLogic: WorldMapLogic
-    featureAccess: FeatureAccessState
-    playerPosition: Vector2
-    dtMs: number
-    scanPressed: boolean
-  }): DomainEvent[] {
-    if (!this.activeProfile) {
-      return []
-    }
-    const events: DomainEvent[] = []
-    let scanHit = false
-    const canStartScan =
-      input.scanPressed &&
-      this.exploreElapsedMs - this.lastExploreScanAtMs >= EXPLORE_SCAN_COOLDOWN_MS
-
-    if (canStartScan) {
-      events.push({ type: "exploreScanStarted" })
-      this.lastExploreScanAtMs = this.exploreElapsedMs
-      this.activeProfile.profile.unlockedFlags = uniqueIds([
-        ...this.activeProfile.profile.unlockedFlags,
-        SCAN_HINT_DISMISSED_FLAG,
-      ])
-      this.exploreScanPulses.push({
-        pulseId: this.nextInstanceId("explore_scan"),
-        startedAtMs: this.exploreElapsedMs,
-        radius: EXPLORE_SCAN_RADIUS,
-        durationMs: EXPLORE_SCAN_DURATION_MS,
-      })
-    }
-    this.exploreScanPulses = this.exploreScanPulses.filter(
-      (pulse) => this.exploreElapsedMs - pulse.startedAtMs <= pulse.durationMs,
-    )
-
-    for (const node of input.mapLogic.transmissionNodes) {
-      if (!input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId)) {
-        continue
-      }
-      const existing = this.activeProfile.transmissionProgress.find(
-        (progress) => progress.transmissionId === node.transmissionId,
-      )
-      if (isTransmissionSignalIdentified(existing)) {
-        continue
-      }
-
-      const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-      const passiveStrength = clamp01(1 - distance / EXPLORE_PASSIVE_CONFIDENCE_RADIUS)
-      const scanConfidenceDelta = canStartScan
-        ? computeExploreScanConfidenceDelta(distance)
-        : 0
-      const confidenceDelta =
-        passiveStrength * (input.dtMs / 1000) * 0.16 +
-        scanConfidenceDelta
-
-      if (confidenceDelta <= 0) {
-        continue
-      }
-
-      const progress = this.getOrCreateTransmissionProgress(
-        node.transmissionId,
-        this.content.transmissions[node.transmissionId]?.areaId ?? node.areaId,
-      )
-      const wasIdentified = isTransmissionSignalIdentified(progress)
-      progress.signalConfidence = Math.min(
-        EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE,
-        readSignalConfidence(progress.signalConfidence) + confidenceDelta,
-      )
-      if (progress.signalConfidence >= EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE && !progress.signalDiscoveredAt) {
-        progress.signalDiscoveredAt = new Date().toISOString()
-        this.newlyIdentifiedExploreNodeIds.add(node.nodeId)
-      }
-      if (canStartScan && !wasIdentified && isTransmissionSignalIdentified(progress)) {
-        scanHit = true
-      }
-    }
-
-    if (!canStartScan) {
-      return events
-    }
-
-    for (const node of input.mapLogic.collectibleNodes) {
-      if (this.activeProfile.profile.collectedNodeIds.includes(node.nodeId)) {
-        continue
-      }
-      if (this.activeProfile.profile.identifiedNodeIds.includes(node.nodeId)) {
-        continue
-      }
-      if (!input.featureAccess.visibleAreaIds.includes(node.areaId)) {
-        continue
-      }
-      const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-      if (computeExploreScanConfidenceDelta(distance) < 0.45) {
-        continue
-      }
-      this.activeProfile.profile.identifiedNodeIds.push(node.nodeId)
-      this.newlyIdentifiedExploreNodeIds.add(node.nodeId)
-      scanHit = true
-    }
-
-    if (scanHit) {
-      events.push({ type: "exploreScanHit" })
-    }
-    return events
-  }
-
-  private buildExploreSignalHints(input: {
-    mapLogic: WorldMapLogic
-    featureAccess: FeatureAccessState
-    playerPosition: Vector2
-  }): ExploreSignalHintViewModel[] {
-    if (!this.activeProfile) {
-      return []
-    }
-    const transmissionProgress = toRecord(this.activeProfile.transmissionProgress, "transmissionId")
-    const scanElapsedMs = this.exploreElapsedMs - this.lastExploreScanAtMs
-    const scanHintActive = scanElapsedMs <= EXPLORE_SIGNAL_HINT_DURATION_MS
-
-    const transmissionHints = input.mapLogic.transmissionNodes
-      .filter((node) => input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId))
-      .flatMap<ExploreSignalHintViewModel>((node) => {
-        const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-        const passiveStrength = clamp01(1 - distance / EXPLORE_PASSIVE_SIGNAL_RADIUS)
-        const scanStrength = scanHintActive
-          ? computeExploreScanHintStrength(distance, scanElapsedMs)
-          : 0
-        const confidence = readSignalConfidence(transmissionProgress[node.transmissionId]?.signalConfidence)
-        const recorded = isTransmissionSignalIdentified(transmissionProgress[node.transmissionId])
-        const strength = Math.max(passiveStrength, scanStrength * 0.9, recorded ? 0.18 : 0)
-        if (strength <= 0.04) {
-          return []
-        }
-        const transmission = this.content.transmissions[node.transmissionId]
-        return [{
-          nodeId: node.nodeId,
-          kind: "transmission",
-          category: transmission?.category,
-          bearingRad: Math.atan2(node.y - input.playerPosition.y, node.x - input.playerPosition.x),
-          distanceBand: readDistanceBand(distance),
-          strength: clamp01(strength),
-          confidence,
-          expiresAtMs: scanStrength > 0 ? this.lastExploreScanAtMs + EXPLORE_SIGNAL_HINT_DURATION_MS : undefined,
-          detectedState: recorded ? "recorded" : readSignalDetectedState(confidence),
-          lastScanAtMs: Number.isFinite(this.lastExploreScanAtMs) ? this.lastExploreScanAtMs : undefined,
-          isNewlyIdentified: this.newlyIdentifiedExploreNodeIds.has(node.nodeId),
-          recorded,
-        }]
-      })
-
-    const collectibleHints = input.mapLogic.collectibleNodes
-      .filter((node) => !this.activeProfile?.profile.collectedNodeIds.includes(node.nodeId))
-      .filter((node) => input.featureAccess.visibleAreaIds.includes(node.areaId))
-      .flatMap<ExploreSignalHintViewModel>((node) => {
-        const distance = Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-        const passiveStrength = clamp01(1 - distance / (EXPLORE_PASSIVE_SIGNAL_RADIUS * 0.72))
-        const scanStrength = scanHintActive
-          ? computeExploreScanHintStrength(distance, scanElapsedMs)
-          : 0
-        const recorded = this.activeProfile?.profile.identifiedNodeIds.includes(node.nodeId) ?? false
-        const strength = Math.max(passiveStrength, scanStrength * 0.85, recorded ? 0.16 : 0)
-        if (strength <= 0.06) {
-          return []
-        }
-        return [{
-          nodeId: node.nodeId,
-          kind: node.collectibleKind === "hiddenEquipment" ? "equipment" : "repair",
-          category: "maintenance",
-          bearingRad: Math.atan2(node.y - input.playerPosition.y, node.x - input.playerPosition.x),
-          distanceBand: readDistanceBand(distance),
-          strength: clamp01(strength),
-          confidence: recorded ? 1 : clamp01(strength),
-          expiresAtMs: scanStrength > 0 ? this.lastExploreScanAtMs + EXPLORE_SIGNAL_HINT_DURATION_MS : undefined,
-          detectedState: recorded ? "recorded" : strength >= 0.82 ? "identified" : strength >= 0.42 ? "ghost" : "hint",
-          lastScanAtMs: Number.isFinite(this.lastExploreScanAtMs) ? this.lastExploreScanAtMs : undefined,
-          isNewlyIdentified: this.newlyIdentifiedExploreNodeIds.has(node.nodeId),
-          recorded,
-        }]
-      })
-
-    return [...transmissionHints, ...collectibleHints]
-      .sort((left, right) => right.strength - left.strength)
-      .slice(0, 6)
-  }
-
-  private buildExploreInteractionTargets(input: {
-    visibleTransmissions: ExploreNodeRenderState[]
-    visibleWarps: ExploreNodeRenderState[]
-    visibleCollectibles: ExploreNodeRenderState[]
-    playerPosition: Vector2
-    visionRadius: number
-  }): ExploreRenderState["interactionTargets"] {
-    const toDistance = (node: ExploreNodeRenderState) =>
-      Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)
-    const toClickable = (node: ExploreNodeRenderState) => {
-      const distance = toDistance(node)
-      return distance <= input.visionRadius && distance <= (node.interactionRadius ?? 0)
-    }
-    const toTarget = (
-      node: ExploreNodeRenderState,
-      kind: ExploreRenderState["interactionTargets"][number]["kind"],
-      screenHintPriority: number,
-    ): ExploreRenderState["interactionTargets"][number] => ({
-      nodeId: node.nodeId,
-      kind,
-      worldPosition: { x: node.x, y: node.y },
-      visible: true,
-      clickable: kind === "transmission" && node.state === "complete" ? false : toClickable(node),
-      interactionRadius: node.interactionRadius ?? 0,
-      screenHintPriority,
-      markerKind: node.markerKind,
-    })
-
-    // UI はクリック可否を再判定せず、この配列の `clickable` だけを入力受付に使います。
-    return [
-      ...input.visibleCollectibles.map((node) => toTarget(node, "collectible", 80)),
-      ...input.visibleTransmissions.map((node) => toTarget(node, "transmission", 70)),
-      ...input.visibleWarps.map((node) => toTarget(node, "warp", 55)),
-    ].sort((left, right) => {
-      if (left.clickable !== right.clickable) {
-        return left.clickable ? -1 : 1
-      }
-      if (left.screenHintPriority !== right.screenHintPriority) {
-        return right.screenHintPriority - left.screenHintPriority
-      }
-      return (
-        Math.hypot(left.worldPosition.x - input.playerPosition.x, left.worldPosition.y - input.playerPosition.y) -
-        Math.hypot(right.worldPosition.x - input.playerPosition.x, right.worldPosition.y - input.playerPosition.y)
-      )
     })
   }
 
@@ -2399,18 +2128,6 @@ export class MagnoliaGameSession {
   }
 }
 
-function uniqueIds<T>(values: T[]): T[] {
-  return Array.from(new Set(values))
-}
-
-function shouldShowScanTutorialHint(profile: ProfileRow): boolean {
-  // 初回scanの誘導は学習用です。scan実行後、または初回ミッション完了後は再表示しません。
-  return (
-    !profile.unlockedFlags.includes(SCAN_HINT_DISMISSED_FLAG) &&
-    !profile.clearedMissionIds.includes(FIRST_MISSION_ID)
-  )
-}
-
 function expandRect(rect: Rect, amount: number): Rect {
   return {
     x: rect.x - amount,
@@ -2447,37 +2164,14 @@ function computeMapAreaBounds(
   }
 }
 
+function uniqueIds<T>(values: T[]): T[] {
+  return Array.from(new Set(values))
+}
+
 function readMapCollectibleMarkerKind(
   node: CollectibleMapNode,
 ): WorldMapCollectibleViewModel["markerKind"] {
   return node.collectibleKind === "hiddenEquipment" ? "equipment" : "resource"
-}
-
-function readDistanceBand(distance: number): ExploreSignalHintViewModel["distanceBand"] {
-  if (distance <= 180) {
-    return "near"
-  }
-  if (distance <= 360) {
-    return "mid"
-  }
-  return "far"
-}
-
-function readSignalDetectedState(
-  confidence: number,
-): NonNullable<ExploreSignalHintViewModel["detectedState"]> {
-  if (confidence >= EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE) {
-    return "identified"
-  }
-  if (confidence >= 0.42) {
-    return "ghost"
-  }
-  return "hint"
-}
-
-function readSignalConfidence(value: number | undefined): number {
-  // 古い保存データや開発中の値が 0..1 を外れても、描画層へ不正な半径を渡さない。
-  return clamp01(value ?? 0)
 }
 
 function hashString(input: string): number {

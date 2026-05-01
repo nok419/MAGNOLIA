@@ -21,20 +21,6 @@
         "#f0c674"
       ]
     },
-    "apps/web/src/components/KeyVisualModal.tsx": {
-      "count": 24,
-      "threatNoiseCandidates": 2,
-      "examples": [
-        "#000508",
-        "rgba(93, 164, 209, 0.03)",
-        "hsl(32, 78%, 68%)",
-        "hsl(32, 65%, 78%)",
-        "hsl(32, 82%, 76%)",
-        "hsl(40, 40%, 96%)",
-        "rgba(0,0,0,0)",
-        "rgba(0,0,0,0.5)"
-      ]
-    },
     "apps/web/src/components/title/SignalBackdropCanvas.tsx": {
       "count": 34,
       "threatNoiseCandidates": 0,

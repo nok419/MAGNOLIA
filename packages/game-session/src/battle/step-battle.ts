@@ -52,54 +52,76 @@ type BattlePresentationRequests = ReturnType<typeof flattenPresentationRequests>
 
 export type BattleStepHost = {
   content: ContentBundle
-  repository: Pick<SaveRepository, "saveMissionRun">
-  createBattleSnapshot: () => BattleSnapshot
-  advanceProfilePlayTime: (dtMs: number) => void
-  readMainCadenceMultiplier: (battle: InternalBattleState) => number
-  advanceMissionPhase: (battle: InternalBattleState) => void
-  spawnMissionEnemies: (battle: InternalBattleState, previousElapsedMs: number) => void
-  collectMissionBeatPresentationRequests: (
-    battle: InternalBattleState,
-    previousElapsedMs: number,
-  ) => BattlePresentationRequests
-  applyEffectRequests: (
-    battle: InternalBattleState,
-    effectRequests: RuntimeEffectRequest[],
-    battlePassives: RuntimeModifierPatch,
-  ) => { presentationRequests: BattlePresentationRequests }
-  updateSupportFields: (battle: InternalBattleState, dtMs: number) => void
-  updateEnemies: (battle: InternalBattleState, dtMs: number) => DomainEvent[]
-  updateProjectiles: (
-    battle: InternalBattleState,
-    dtMs: number,
-    statModifiers: Record<string, number> | undefined,
-  ) => void
-  updatePickups: (battle: InternalBattleState, dtMs: number) => void
-  buildMissionState: () => MissionState
-  applyMagneticDisasterEffects: (battle: InternalBattleState, dtMs: number) => void
-  resolvePlayerHitRadius: () => number
-  spawnSelfRepairPickup: (
-    battle: InternalBattleState,
-    position: Vector2,
-    amount: number,
-  ) => void
-  nextInstanceId: (prefix: string) => string
-  resolveDifficultyModifiers: () => DifficultyModifiers
-  resolveAudioWindow: (battle: InternalBattleState, dtMs: number) => TimeRange | null
-  maybeSpawnBattleFragment: (input: {
-    battle: InternalBattleState
-    audioWindow: TimeRange
-    strength: number
-  }) => void
-  updateBattleFragments: (
-    battle: InternalBattleState,
-    dtMs: number,
-  ) => BattlePresentationRequests
-  getOrCreateTransmissionProgress: (
-    transmissionId: TransmissionId,
-    areaId: AreaId,
-  ) => TransmissionProgressRow
-  grantEquipment: (equipmentIds: string[]) => void
+  snapshot: {
+    createBattleSnapshot: () => BattleSnapshot
+  }
+  profile: {
+    advanceProfilePlayTime: (dtMs: number) => void
+  }
+  mission: {
+    advanceMissionPhase: (battle: InternalBattleState) => void
+    spawnMissionEnemies: (battle: InternalBattleState, previousElapsedMs: number) => void
+    collectMissionBeatPresentationRequests: (
+      battle: InternalBattleState,
+      previousElapsedMs: number,
+    ) => BattlePresentationRequests
+    buildMissionState: () => MissionState
+    saveMissionRun: SaveRepository["saveMissionRun"]
+    getOrCreateTransmissionProgress: (
+      transmissionId: TransmissionId,
+      areaId: AreaId,
+    ) => TransmissionProgressRow
+    grantEquipment: (equipmentIds: string[]) => void
+  }
+  effects: {
+    applyEffectRequests: (
+      battle: InternalBattleState,
+      effectRequests: RuntimeEffectRequest[],
+      battlePassives: RuntimeModifierPatch,
+    ) => { presentationRequests: BattlePresentationRequests }
+    updateSupportFields: (battle: InternalBattleState, dtMs: number) => void
+    applyMagneticDisasterEffects: (battle: InternalBattleState, dtMs: number) => void
+  }
+  actors: {
+    updateEnemies: (battle: InternalBattleState, dtMs: number) => DomainEvent[]
+    updateProjectiles: (
+      battle: InternalBattleState,
+      dtMs: number,
+      statModifiers: Record<string, number> | undefined,
+    ) => void
+  }
+  pickups: {
+    updatePickups: (battle: InternalBattleState, dtMs: number) => void
+    spawnSelfRepairPickup: (
+      battle: InternalBattleState,
+      position: Vector2,
+      amount: number,
+    ) => void
+  }
+  fragments: {
+    maybeSpawnBattleFragment: (input: {
+      battle: InternalBattleState
+      audioWindow: TimeRange
+      strength: number
+    }) => void
+    updateBattleFragments: (
+      battle: InternalBattleState,
+      dtMs: number,
+    ) => BattlePresentationRequests
+  }
+  player: {
+    resolvePlayerHitRadius: () => number
+    readMainCadenceMultiplier: (battle: InternalBattleState) => number
+  }
+  difficulty: {
+    resolveDifficultyModifiers: () => DifficultyModifiers
+  }
+  audio: {
+    resolveAudioWindow: (battle: InternalBattleState, dtMs: number) => TimeRange | null
+  }
+  ids: {
+    nextInstanceId: (prefix: string) => string
+  }
 }
 
 export function stepBattleFrame(input: {
@@ -112,7 +134,7 @@ export function stepBattleFrame(input: {
   const { frameInput, battle, host } = input
   if (!battle || input.screen !== "battle") {
     return {
-      snapshot: host.createBattleSnapshot(),
+      snapshot: host.snapshot.createBattleSnapshot(),
       events: [],
       effectRequests: [],
       presentationRequests: [],
@@ -122,7 +144,7 @@ export function stepBattleFrame(input: {
   const dtSeconds = frameInput.dtMs / 1000
   const previousElapsedMs = battle.elapsedMs
   if (input.activeProfile) {
-    host.advanceProfilePlayTime(frameInput.dtMs)
+    host.profile.advanceProfilePlayTime(frameInput.dtMs)
   }
   battle.elapsedMs += frameInput.dtMs
   battle.mainCooldownMs = Math.max(0, battle.mainCooldownMs - frameInput.dtMs)
@@ -154,9 +176,9 @@ export function stepBattleFrame(input: {
     { x: 8, y: 8, width: BATTLE_WIDTH - 16, height: BATTLE_HEIGHT - 16 },
   )
 
-  host.advanceMissionPhase(battle)
-  host.spawnMissionEnemies(battle, previousElapsedMs)
-  const missionBeatPresentationRequests = host.collectMissionBeatPresentationRequests(
+  host.mission.advanceMissionPhase(battle)
+  host.mission.spawnMissionEnemies(battle, previousElapsedMs)
+  const missionBeatPresentationRequests = host.mission.collectMissionBeatPresentationRequests(
     battle,
     previousElapsedMs,
   )
@@ -228,45 +250,45 @@ export function stepBattleFrame(input: {
     events.push({ type: "playerBarrierStopped" })
   }
 
-  const spawnedEffects = host.applyEffectRequests(battle, effectRequests, battlePassives)
+  const spawnedEffects = host.effects.applyEffectRequests(battle, effectRequests, battlePassives)
   const hadBarrierBeforeSupportUpdate = Boolean(battle.barrier)
-  host.updateSupportFields(battle, frameInput.dtMs)
+  host.effects.updateSupportFields(battle, frameInput.dtMs)
   if (hadBarrierBeforeSupportUpdate && !battle.barrier) {
     events.push({ type: "playerBarrierStopped" })
   }
-  const enemyEvents = host.updateEnemies(battle, frameInput.dtMs)
-  host.updateProjectiles(battle, frameInput.dtMs, battlePassives.statModifiers)
-  host.updatePickups(battle, frameInput.dtMs)
+  const enemyEvents = host.actors.updateEnemies(battle, frameInput.dtMs)
+  host.actors.updateProjectiles(battle, frameInput.dtMs, battlePassives.statModifiers)
+  host.pickups.updatePickups(battle, frameInput.dtMs)
 
   const hazardResult = stepBattlefieldHazards({
     mission: battle.mission,
-    missionState: host.buildMissionState(),
+    missionState: host.mission.buildMissionState(),
     playerPosition: battle.playerPosition,
     dtMs: frameInput.dtMs,
   })
   battle.hazards = hazardResult.missionState.hazards
-  host.applyMagneticDisasterEffects(battle, frameInput.dtMs)
+  host.effects.applyMagneticDisasterEffects(battle, frameInput.dtMs)
 
   const collisionEvents = resolveBattleCollisionsFromSystem({
     battle,
     dtMs: frameInput.dtMs,
     content: host.content,
-    resolvePlayerHitRadius: () => host.resolvePlayerHitRadius(),
-    spawnSelfRepairPickup: (position, amount) => host.spawnSelfRepairPickup(battle, position, amount),
-    nextInstanceId: (prefix) => host.nextInstanceId(prefix),
+    resolvePlayerHitRadius: () => host.player.resolvePlayerHitRadius(),
+    spawnSelfRepairPickup: (position, amount) => host.pickups.spawnSelfRepairPickup(battle, position, amount),
+    nextInstanceId: (prefix) => host.ids.nextInstanceId(prefix),
   })
   if (collisionEvents.effectRequests.length > 0) {
     effectRequests.push(...collisionEvents.effectRequests)
-    host.applyEffectRequests(battle, collisionEvents.effectRequests, battlePassives)
+    host.effects.applyEffectRequests(battle, collisionEvents.effectRequests, battlePassives)
   }
 
   const fieldProtectsFromMagneticDisaster = battle.supportFields.some(
     (field) =>
       field.blocksMagneticDisaster &&
-      isCircleInsideCircle(battle.playerPosition, host.resolvePlayerHitRadius(), field.position, field.radius),
+      isCircleInsideCircle(battle.playerPosition, host.player.resolvePlayerHitRadius(), field.position, field.radius),
   )
 
-  const difficultyModifiers = host.resolveDifficultyModifiers()
+  const difficultyModifiers = host.difficulty.resolveDifficultyModifiers()
   battle.noiseState.noiseLevel = clamp01(
     battle.noiseState.noiseLevel -
       host.content.playerShipSpec.noiseDecayRate *
@@ -297,14 +319,14 @@ export function stepBattleFrame(input: {
       battle.elapsedMs + host.content.playerShipSpec.invincibilityMs
     receivedRestorationDamage = totalNoiseDamage > 0
     if (hitHookResult.effectRequests?.length) {
-      host.applyEffectRequests(battle, hitHookResult.effectRequests, battlePassives)
+      host.effects.applyEffectRequests(battle, hitHookResult.effectRequests, battlePassives)
     }
   }
 
   const currentAudible = battle.noiseState.noiseLevel < battle.noiseState.hearingThreshold
   battle.newlyLostRange = undefined
   battle.newlyRecoveredRange = undefined
-  const audioWindow = host.resolveAudioWindow(battle, frameInput.dtMs)
+  const audioWindow = host.audio.resolveAudioWindow(battle, frameInput.dtMs)
   if (audioWindow && battle.phase === "playing") {
     if (currentAudible && !receivedRestorationDamage) {
       battle.heardRanges = appendTimeRange(battle.heardRanges, audioWindow)
@@ -323,7 +345,7 @@ export function stepBattleFrame(input: {
   }
 
   if (audioWindow && battle.phase === "playing" && (!currentAudible || receivedRestorationDamage)) {
-    host.maybeSpawnBattleFragment({
+    host.fragments.maybeSpawnBattleFragment({
       battle,
       audioWindow,
       strength: receivedRestorationDamage ? 1 : clamp01(
@@ -331,7 +353,7 @@ export function stepBattleFrame(input: {
       ),
     })
   }
-  const fragmentPresentationRequests = host.updateBattleFragments(battle, frameInput.dtMs)
+  const fragmentPresentationRequests = host.fragments.updateBattleFragments(battle, frameInput.dtMs)
 
   const presentationRequests = flattenPresentationRequests([
     collisionEvents.presentationRequests,
@@ -365,18 +387,18 @@ export function stepBattleFrame(input: {
     const finalizedMission = finalizeBattleMission({
       battle,
       activeProfile: input.activeProfile,
-      difficultyModifiers: host.resolveDifficultyModifiers(),
+      difficultyModifiers: host.difficulty.resolveDifficultyModifiers(),
       getOrCreateTransmissionProgress: (transmissionId, areaId) =>
-        host.getOrCreateTransmissionProgress(transmissionId, areaId),
-      grantEquipment: (equipmentIds) => host.grantEquipment(equipmentIds),
+        host.mission.getOrCreateTransmissionProgress(transmissionId, areaId),
+      grantEquipment: (equipmentIds) => host.mission.grantEquipment(equipmentIds),
     })
     battle.activeResult = finalizedMission.result
     events.push({ type: "missionCleared", missionId: battle.mission.missionId })
-    void host.repository.saveMissionRun(finalizedMission.missionRun)
+    void host.mission.saveMissionRun(finalizedMission.missionRun)
   }
 
   return {
-    snapshot: host.createBattleSnapshot(),
+    snapshot: host.snapshot.createBattleSnapshot(),
     events: [...events, ...enemyEvents, ...collisionEvents.events],
     effectRequests,
     presentationRequests,

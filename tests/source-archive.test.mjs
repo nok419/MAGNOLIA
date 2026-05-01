@@ -14,6 +14,13 @@ test("source and release archive commands are separate", () => {
   assert.equal(packageJson.scripts["archive:release"], "npm run build && node tools/create-release-artifact.mjs")
 })
 
+test("archive and source audit checks are part of the root test gate", () => {
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"))
+
+  assert.match(packageJson.scripts.test, /npm run source:audit/)
+  assert.match(packageJson.scripts.test, /node --test tests\/\*\.test\.mjs/)
+})
+
 test("source archive excludes generated files, caches, and OS metadata", () => {
   const output = path.join(mkdtempSync(path.join(os.tmpdir(), "magnolia-archive-")), "source.zip")
   const archive = spawnSync(process.execPath, ["tools/create-source-archive.mjs", output], {
