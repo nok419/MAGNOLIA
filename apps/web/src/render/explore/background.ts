@@ -1,5 +1,13 @@
 import type { Rect } from "@magnolia/game-session"
-import { worldToCanvasPoint } from "@/render/shared/coordinates"
+
+type FogBitmapGrid = {
+  source: string
+  rows: string[]
+  cols: number
+  rowCount: number
+}
+
+let fogBitmapGridCache: FogBitmapGrid | null = null
 
 export function drawBackground(
   ctx: CanvasRenderingContext2D,
@@ -81,44 +89,66 @@ export function drawFogGrid(
   worldBounds: Rect,
   viewport: Rect,
 ) {
-  const rows = fogBitmap.split("|")
-  const cols = rows[0]?.length || 1
-  const cellWorldW = worldBounds.width / Math.max(1, cols)
-  const cellWorldH = worldBounds.height / Math.max(1, rows.length)
-  rows.forEach((row, yi) => {
-    row.split("").forEach((cell, xi) => {
-      if (cell === "1") {
-        return
+  const grid = readFogBitmapGrid(fogBitmap)
+  if (grid.cols <= 0 || grid.rowCount <= 0) {
+    return
+  }
+
+  const cellWorldW = worldBounds.width / grid.cols
+  const cellWorldH = worldBounds.height / grid.rowCount
+  const minCellX = clampInt(Math.floor((viewport.x - worldBounds.x) / cellWorldW) - 1, 0, grid.cols - 1)
+  const maxCellX = clampInt(
+    Math.ceil((viewport.x + viewport.width - worldBounds.x) / cellWorldW) + 1,
+    0,
+    grid.cols - 1,
+  )
+  const minCellY = clampInt(Math.floor((viewport.y - worldBounds.y) / cellWorldH) - 1, 0, grid.rowCount - 1)
+  const maxCellY = clampInt(
+    Math.ceil((viewport.y + viewport.height - worldBounds.y) / cellWorldH) + 1,
+    0,
+    grid.rowCount - 1,
+  )
+  const scaleX = (W - pad * 2) / Math.max(1, viewport.width)
+  const scaleY = (H - pad * 2) / Math.max(1, viewport.height)
+  const drawW = Math.max(0, cellWorldW * scaleX)
+  const drawH = Math.max(0, cellWorldH * scaleY)
+  if (drawW <= 0.5 || drawH <= 0.5) {
+    return
+  }
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)"
+  // フォグは保存済み bitmap 全体ではなく、現在の camera 周辺セルだけを描画します。
+  for (let yi = minCellY; yi <= maxCellY; yi += 1) {
+    const row = grid.rows[yi] ?? ""
+    for (let xi = minCellX; xi <= maxCellX; xi += 1) {
+      if (row.charCodeAt(xi) === 49) {
+        continue
       }
       const worldX = worldBounds.x + xi * cellWorldW
       const worldY = worldBounds.y + yi * cellWorldH
-      const topLeft = toCanvasPoint(viewport, W, H, pad, worldX, worldY)
-      const bottomRight = toCanvasPoint(
-        viewport,
-        W,
-        H,
-        pad,
-        worldX + cellWorldW,
-        worldY + cellWorldH,
-      )
-      const drawX = Math.min(topLeft.x, bottomRight.x)
-      const drawY = Math.min(topLeft.y, bottomRight.y)
-      const drawW = Math.abs(bottomRight.x - topLeft.x)
-      const drawH = Math.abs(bottomRight.y - topLeft.y)
-      if (drawW <= 0.5 || drawH <= 0.5) {
-        return
-      }
-      ctx.fillStyle = "rgba(0, 0, 0, 0.3)"
+      const drawX = pad + (worldX - viewport.x) * scaleX
+      const drawY = pad + (worldY - viewport.y) * scaleY
       ctx.fillRect(drawX, drawY, drawW, drawH)
-    })
-  })
+    }
+  }
 }
 
-function toCanvasPoint(bounds: Rect, W: number, H: number, pad: number, wx: number, wy: number) {
-  return worldToCanvasPoint({
-    bounds,
-    size: { width: W, height: H },
-    padding: pad,
-    worldPosition: { x: wx, y: wy },
-  })
+function readFogBitmapGrid(fogBitmap: string): FogBitmapGrid {
+  if (fogBitmapGridCache?.source === fogBitmap) {
+    return fogBitmapGridCache
+  }
+
+  const rows = fogBitmap.length > 0 ? fogBitmap.split("|") : []
+  const grid = {
+    source: fogBitmap,
+    rows,
+    cols: rows[0]?.length ?? 0,
+    rowCount: rows.length,
+  }
+  fogBitmapGridCache = grid
+  return grid
+}
+
+function clampInt(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
 }

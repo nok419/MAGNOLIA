@@ -23,7 +23,10 @@ export function drawVisionFog(
   fogGrad.addColorStop(0.72, "rgba(0,0,0,0.95)")
   fogGrad.addColorStop(1, "rgba(0,0,0,0)")
   ctx.fillStyle = fogGrad
-  ctx.fillRect(0, 0, W, H)
+  // 透明化が必要なのは視界円の内側だけなので、全画面 fill を避けます。
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, visibleRadius, 0, TAU)
+  ctx.fill()
   ctx.globalCompositeOperation = "source-over"
 
   const pulse = 0.18 + 0.08 * Math.sin(now * 0.0018)

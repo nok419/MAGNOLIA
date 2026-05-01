@@ -147,6 +147,7 @@ export function drawExploreFrame(input: {
     aspectRatio: Math.max(1, drawableWidth / drawableHeight),
     rebootSequence,
     releaseSequence,
+    timeMs: now,
   })
 
   const playerPoint = worldToCanvasPoint({

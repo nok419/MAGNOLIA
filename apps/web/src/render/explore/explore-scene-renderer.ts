@@ -50,6 +50,27 @@ function dist(a: { x: number; y: number }, b: { x: number; y: number }) {
   return Math.hypot(a.x - b.x, a.y - b.y)
 }
 
+const NAV_CUE_TARGET_LIMIT = 8
+const LOW_FRAME_RATE_NAV_CUE_TARGET_LIMIT = 5
+
+function selectNavCueTargets(
+  targets: NavCueTarget[],
+  playerPoint: { x: number; y: number },
+  lowFrameRateMode: boolean,
+): NavCueTarget[] {
+  const limit = lowFrameRateMode ? LOW_FRAME_RATE_NAV_CUE_TARGET_LIMIT : NAV_CUE_TARGET_LIMIT
+  if (targets.length <= limit) {
+    return targets
+  }
+
+  // 画面に複数候補が入る場合は、操作判断に使いやすい近い対象を優先します。
+  return targets
+    .map((target) => ({ target, distance: dist(target.point, playerPoint) }))
+    .sort((left, right) => left.distance - right.distance)
+    .slice(0, limit)
+    .map((entry) => entry.target)
+}
+
 function computeSightAlpha(
   pos: { x: number; y: number },
   player: { x: number; y: number },
@@ -237,13 +258,18 @@ export function drawExploreScene(
   }
 
   // アイテム描画後、探索外ターゲットのナビ層を重ねる (フォグの上、プレイヤー/軌跡の下)。
-  if (offVisionTargets.length > 0) {
+  const navCueTargets = selectNavCueTargets(
+    offVisionTargets,
+    input.playerPoint,
+    input.lowFrameRateMode,
+  )
+  if (navCueTargets.length > 0) {
     ctx.save()
     ctx.globalAlpha = visionIntensity
     drawNavCueLayer(ctx, {
       playerPoint: input.playerPoint,
       visionPx: input.visionPx,
-      targets: offVisionTargets,
+      targets: navCueTargets,
       timeMs: input.timeMs,
     })
     ctx.restore()

@@ -10,10 +10,22 @@ export function prepareDevicePixelCanvas(input: {
   }
 
   // Canvas の内部解像度と CSS 表示サイズを同じ入口で設定し、dpr 処理の分散を避けます。
-  input.canvas.width = input.width * input.pixelRatio
-  input.canvas.height = input.height * input.pixelRatio
-  input.canvas.style.width = `${input.width}px`
-  input.canvas.style.height = `${input.height}px`
+  const pixelWidth = Math.max(1, Math.round(input.width * input.pixelRatio))
+  const pixelHeight = Math.max(1, Math.round(input.height * input.pixelRatio))
+  const cssWidth = `${input.width}px`
+  const cssHeight = `${input.height}px`
+  if (input.canvas.width !== pixelWidth) {
+    input.canvas.width = pixelWidth
+  }
+  if (input.canvas.height !== pixelHeight) {
+    input.canvas.height = pixelHeight
+  }
+  if (input.canvas.style.width !== cssWidth) {
+    input.canvas.style.width = cssWidth
+  }
+  if (input.canvas.style.height !== cssHeight) {
+    input.canvas.style.height = cssHeight
+  }
   context.setTransform(input.pixelRatio, 0, 0, input.pixelRatio, 0, 0)
   return context
 }

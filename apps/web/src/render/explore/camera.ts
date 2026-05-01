@@ -2,8 +2,10 @@ import type { MutableRefObject } from "react"
 import type { Rect } from "@magnolia/game-session"
 import { clampScalar, easeInOutSine, lerpScalar } from "@/render/shared/render-math"
 
-export type CameraState = { x: number; y: number }
+export type CameraState = { x: number; y: number; updatedAtMs: number }
 export type ReleaseFocusEdge = "top" | "right" | "bottom" | "left"
+
+const CAMERA_BASE_FRAME_MS = 1000 / 60
 
 export function resolveCameraViewport(input: {
   cameraRef: MutableRefObject<CameraState | null>
@@ -19,6 +21,7 @@ export function resolveCameraViewport(input: {
     focusPoint: { x: number; y: number }
     focusAnchor: number
   } | null
+  timeMs: number
 }): Rect {
   const viewportWidth = input.viewportHeight * input.aspectRatio
   const targetCenter = input.releaseSequence
@@ -35,14 +38,25 @@ export function resolveCameraViewport(input: {
     viewportWidth,
     input.viewportHeight,
   )
-  const currentCamera =
-    input.cameraRef.current ??
-    { x: clampedTarget.x, y: clampedTarget.y }
-  const followRatio = input.rebootSequence ? 0.26 : input.releaseSequence ? 0.18 : 0.14
+  const currentCamera = input.cameraRef.current
+  if (!currentCamera) {
+    input.cameraRef.current = {
+      x: clampedTarget.x,
+      y: clampedTarget.y,
+      updatedAtMs: input.timeMs,
+    }
+  } else {
+    const baseFollowRatio = input.rebootSequence ? 0.26 : input.releaseSequence ? 0.18 : 0.14
+    const followRatio = readTimeAdjustedFollowRatio(
+      baseFollowRatio,
+      input.timeMs - currentCamera.updatedAtMs,
+    )
 
-  input.cameraRef.current = {
-    x: currentCamera.x + (clampedTarget.x - currentCamera.x) * followRatio,
-    y: currentCamera.y + (clampedTarget.y - currentCamera.y) * followRatio,
+    input.cameraRef.current = {
+      x: currentCamera.x + (clampedTarget.x - currentCamera.x) * followRatio,
+      y: currentCamera.y + (clampedTarget.y - currentCamera.y) * followRatio,
+      updatedAtMs: input.timeMs,
+    }
   }
 
   return {
@@ -51,6 +65,16 @@ export function resolveCameraViewport(input: {
     width: viewportWidth,
     height: input.viewportHeight,
   }
+}
+
+function readTimeAdjustedFollowRatio(baseFollowRatio: number, elapsedMs: number): number {
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) {
+    return baseFollowRatio
+  }
+
+  // React の描画間隔が揺れても、カメラ追従量は実時間に合わせて進めます。
+  const frameCount = clampScalar(elapsedMs / CAMERA_BASE_FRAME_MS, 0.25, 4)
+  return 1 - Math.pow(1 - baseFollowRatio, frameCount)
 }
 
 export function readRebootViewportHeight(baseViewportHeight: number, progress: number): number {

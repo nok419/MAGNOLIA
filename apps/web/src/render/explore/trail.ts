@@ -10,12 +10,19 @@ export type ExploreTrailState = ReturnType<typeof createExploreTrailState>
    カメラ追従でプレイヤーが画面中央に固定されても正しく伸びる。
    ============================================================ */
 type TrailNode = { wx: number; wy: number; time: number }
+type TrailRenderNode = { node: TrailNode; sourceIndex: number }
+type TrailColor = { outer: string; mid: string; spine: string }
 // 伸びやかさ優先で最大寿命を延長。停止時の消散も長めにとって「儚く消える」印象に。
 const TRAIL_MAX_MS = 4200
 const TRAIL_DISSOLVE_MS = 800
 const TRAIL_SAMPLE_WORLD_STEP = 1.6
 const TRAIL_MAX_SAMPLES_PER_FRAME = 4
 const TRAIL_MAX_NODE_COUNT = 420
+const TRAIL_RENDER_NODE_BUDGET = 176
+const TRAIL_LOW_RENDER_NODE_BUDGET = 96
+const TRAIL_RECENT_DETAIL_RATIO = 0.42
+const TRAIL_TWO_PASS_ROUNDING_LIMIT = 96
+const TRAIL_COLOR_STEPS = 192
 const TRAIL_RESET_DISTANCE = 48
 const TRAIL_SMOOTHING = 0.42
 const TRAIL_ROUNDING_RATIO = 0.32
@@ -29,6 +36,7 @@ type LightMote = {
   r: number; phase: number
 }
 const MAX_MOTES = 28
+const TRAIL_COLOR_CACHE: Array<TrailColor | undefined> = []
 
 export function createExploreTrailState() {
   return {
@@ -203,13 +211,16 @@ function catmullRomCP(
 
 type RoundedTrailPoint = { x: number; y: number; nodeIndex: number }
 
-function buildRoundedTrailPath(cx: number[], cy: number[], lowFrameRateMode: boolean): RoundedTrailPoint[] {
-  let points = cx.map((x, index) => ({ x, y: cy[index], nodeIndex: index }))
+function buildRoundedTrailPath(
+  basePoints: RoundedTrailPoint[],
+  lowFrameRateMode: boolean,
+): RoundedTrailPoint[] {
+  let points = basePoints
   if (points.length < 3) {
     return points
   }
 
-  const passCount = lowFrameRateMode ? 1 : points.length > 220 ? 1 : TRAIL_ROUNDING_PASSES
+  const passCount = readTrailRoundingPassCount(points.length, lowFrameRateMode)
   for (let pass = 0; pass < passCount; pass += 1) {
     const nextPoints: RoundedTrailPoint[] = [points[0]]
     for (let index = 0; index < points.length - 1; index += 1) {
@@ -223,6 +234,14 @@ function buildRoundedTrailPath(cx: number[], cy: number[], lowFrameRateMode: boo
   }
 
   return points
+}
+
+function readTrailRoundingPassCount(pointCount: number, lowFrameRateMode: boolean): number {
+  if (lowFrameRateMode) {
+    return 1
+  }
+  // 長い軌跡で 2 回丸めると点数が 4 倍近くまで増えるため、短い軌跡だけ高密度に保ちます。
+  return pointCount > TRAIL_TWO_PASS_ROUNDING_LIMIT ? 1 : TRAIL_ROUNDING_PASSES
 }
 
 function interpolateTrailPoint(
@@ -245,14 +264,22 @@ function interpolateTrailPoint(
  * 3 つのレイヤ (外オーラ / 中間バンド / 中心芯線) ごとに色を持ち、
  * 同じ ratio でも芯線は白く、外層はやや青寄りに振って奥行きを出す。
  */
-function trailColorAt(ratio: number): { outer: string; mid: string; spine: string } {
+function trailColorAt(ratio: number): TrailColor {
   const t = ratio < 0 ? 0 : ratio > 1 ? 1 : ratio
-  const lerp = (a: number, b: number) => Math.round(a + (b - a) * t)
-  return {
-    outer: `${lerp(120, 195)}, ${lerp(180, 218)}, ${lerp(235, 250)}`,
-    mid:   `${lerp(170, 232)}, ${lerp(214, 245)}, 255`,
-    spine: `${lerp(210, 252)}, ${lerp(235, 253)}, 255`,
+  const cacheIndex = Math.round(t * TRAIL_COLOR_STEPS)
+  const cached = TRAIL_COLOR_CACHE[cacheIndex]
+  if (cached) {
+    return cached
   }
+  const steppedRatio = cacheIndex / TRAIL_COLOR_STEPS
+  const lerpStepped = (a: number, b: number) => Math.round(a + (b - a) * steppedRatio)
+  const color = {
+    outer: `${lerpStepped(120, 195)}, ${lerpStepped(180, 218)}, ${lerpStepped(235, 250)}`,
+    mid:   `${lerpStepped(170, 232)}, ${lerpStepped(214, 245)}, 255`,
+    spine: `${lerpStepped(210, 252)}, ${lerpStepped(235, 253)}, 255`,
+  }
+  TRAIL_COLOR_CACHE[cacheIndex] = color
+  return color
 }
 
 export function drawTrail(
@@ -261,18 +288,18 @@ export function drawTrail(
   lowFrameRateMode = false,
 ) {
   const N = state.nodes.length
-  if (N < 2) {
+  const renderNodes = selectTrailRenderNodes(state.nodes, lowFrameRateMode)
+  if (renderNodes.length < 2) {
     drawLightMotes(ctx, state, now, viewport, W, H, pad, lowFrameRateMode)
     return
   }
 
-  // ワールド→キャンバス変換済みの配列を作る
-  const cx: number[] = new Array(N)
-  const cy: number[] = new Array(N)
-  for (let i = 0; i < N; i++) {
-    const p = toCanvasPoint(viewport, W, H, pad, state.nodes[i].wx, state.nodes[i].wy)
-    cx[i] = p.x
-    cy[i] = p.y
+  // 描画用には古い尾だけを間引きます。保存済み node は残すため、寿命や消え方は従来どおりです。
+  const basePoints: RoundedTrailPoint[] = new Array(renderNodes.length)
+  for (let i = 0; i < renderNodes.length; i++) {
+    const node = renderNodes[i]
+    const p = toCanvasPoint(viewport, W, H, pad, node.node.wx, node.node.wy)
+    basePoints[i] = { x: p.x, y: p.y, nodeIndex: node.sourceIndex }
   }
 
   // ── 停止時の儚い横揺らぎ ──
@@ -281,21 +308,21 @@ export function drawTrail(
   const dissolveProg = state.stoppedAt > 0
     ? Math.min(1, (now - state.stoppedAt) / TRAIL_DISSOLVE_MS)
     : 0
-  if (dissolveProg > 0 && N >= 3) {
+  if (dissolveProg > 0 && basePoints.length >= 3) {
     const ampBase = dissolveProg * 2.6
-    for (let i = 1; i < N - 1; i++) {
-      const tx = cx[i + 1] - cx[i - 1]
-      const ty = cy[i + 1] - cy[i - 1]
+    for (let i = 1; i < basePoints.length - 1; i++) {
+      const tx = basePoints[i + 1].x - basePoints[i - 1].x
+      const ty = basePoints[i + 1].y - basePoints[i - 1].y
       const tlen = Math.hypot(tx, ty) || 1
       const perpX = -ty / tlen
       const perpY = tx / tlen
       const amp = ampBase * Math.sin(now * 0.003 + i * 0.35)
-      cx[i] += perpX * amp
-      cy[i] += perpY * amp
+      basePoints[i].x += perpX * amp
+      basePoints[i].y += perpY * amp
     }
   }
 
-  const pathPoints = buildRoundedTrailPath(cx, cy, lowFrameRateMode)
+  const pathPoints = buildRoundedTrailPath(basePoints, lowFrameRateMode)
   const pathPointCount = pathPoints.length
   if (pathPointCount < 2) {
     drawLightMotes(ctx, state, now, viewport, W, H, pad, lowFrameRateMode)
@@ -307,7 +334,7 @@ export function drawTrail(
     new Array(pathPointCount - 1)
   const segFade = new Float64Array(pathPointCount - 1)
   const segRatio = new Float64Array(pathPointCount - 1)
-  const segColors: Array<{ outer: string; mid: string; spine: string }> = new Array(pathPointCount - 1)
+  const segColors: TrailColor[] = new Array(pathPointCount - 1)
   for (let i = 0; i < pathPointCount - 1; i++) {
     const point = pathPoints[i]
     const nextPoint = pathPoints[i + 1]
@@ -379,12 +406,41 @@ export function drawTrail(
     }
   }
 
-  if (!lowFrameRateMode) {
+  if (!lowFrameRateMode && pathPointCount <= 360) {
     drawTrailOrnaments(ctx, pathPoints, segFade, now)
   }
 
   ctx.restore()
   drawLightMotes(ctx, state, now, viewport, W, H, pad, lowFrameRateMode)
+}
+
+function selectTrailRenderNodes(nodes: TrailNode[], lowFrameRateMode: boolean): TrailRenderNode[] {
+  const budget = lowFrameRateMode ? TRAIL_LOW_RENDER_NODE_BUDGET : TRAIL_RENDER_NODE_BUDGET
+  if (nodes.length <= budget) {
+    return nodes.map((node, sourceIndex) => ({ node, sourceIndex }))
+  }
+
+  const recentCount = Math.max(24, Math.floor(budget * TRAIL_RECENT_DETAIL_RATIO))
+  const recentStart = Math.max(0, nodes.length - recentCount)
+  const tailBudget = Math.max(2, budget - recentCount)
+  const selected: TrailRenderNode[] = []
+  let lastSourceIndex = -1
+
+  for (let i = 0; i < tailBudget; i += 1) {
+    const ratio = tailBudget === 1 ? 0 : i / (tailBudget - 1)
+    const sourceIndex = Math.min(recentStart - 1, Math.round(ratio * Math.max(0, recentStart - 1)))
+    if (sourceIndex <= lastSourceIndex) {
+      continue
+    }
+    selected.push({ node: nodes[sourceIndex], sourceIndex })
+    lastSourceIndex = sourceIndex
+  }
+
+  // 自機に近い先端側は間引かず、操作中の手触りと見た目の滑らかさを優先します。
+  for (let sourceIndex = recentStart; sourceIndex < nodes.length; sourceIndex += 1) {
+    selected.push({ node: nodes[sourceIndex], sourceIndex })
+  }
+  return selected
 }
 
 function drawTrailOrnaments(
