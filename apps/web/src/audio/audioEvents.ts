@@ -165,6 +165,10 @@ export const audioEvents = {
     audioHub.play(SOUND_KEYS.COMBAT_ENEMY_HIT, options);
   },
 
+  enemyDestroyed(options?: PlaySoundOptions): void {
+    audioHub.play(SOUND_KEYS.COMBAT_ENEMY_DESTROYED, options);
+  },
+
   reload(): void {
     audioHub.play(SOUND_KEYS.COMBAT_RELOAD);
   },
@@ -192,6 +196,7 @@ export const audioEvents = {
 
   barrierDisabled(): void {
     audioHub.stopLoop('barrier.player', 180);
+    audioHub.play(SOUND_KEYS.BARRIER_DOWN);
   },
 
   barrierHit(options?: PlaySoundOptions): void {

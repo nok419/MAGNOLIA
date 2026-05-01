@@ -3,6 +3,7 @@ import {
   SOUND_ASSETS,
   SOUND_EVENT_BY_KEY,
   SOUND_EVENTS,
+  type SoundAssetDefinition,
   type SoundAssetId,
   type SoundChannel,
   type SoundEventDefinition,
@@ -48,6 +49,8 @@ type LoopState = {
   audio: HTMLAudioElement;
 };
 
+type PlaybackFailureHandler = (error: unknown) => void;
+
 const clamp01 = (value: number): number => {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
@@ -72,6 +75,8 @@ export class AudioHub {
   private pendingBgm?: { key: SoundKey; options?: BgmOptions };
   private warnedMissingEvents = new Set<SoundKey>();
   private warnedMissingAssets = new Set<string>();
+  private warnedPlaybackFailures = new Set<string>();
+  private unavailableAssetIds = new Set<SoundAssetId>();
   private unlockListenersInstalled = false;
   private unlocked = false;
 
@@ -79,6 +84,9 @@ export class AudioHub {
     if (typeof Audio === 'undefined') return;
 
     for (const asset of SOUND_ASSETS) {
+      if (asset.optional) {
+        continue;
+      }
       this.getOrCreateBaseAudio(asset.id);
     }
   }
@@ -101,7 +109,7 @@ export class AudioHub {
     this.unlocked = true;
     this.preload();
 
-    const firstAsset = SOUND_ASSETS[0];
+    const firstAsset = SOUND_ASSETS.find((asset) => !asset.optional) ?? SOUND_ASSETS[0];
     if (!firstAsset) {
       this.flushPendingBgmWhenPossible();
       return true;
@@ -116,18 +124,22 @@ export class AudioHub {
     audio.muted = true;
     audio.volume = 0;
 
-    const playResult = audio.play();
-    if (typeof playResult?.then === 'function') {
-      void playResult
-        .then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          this.flushPendingBgmWhenPossible();
-        })
-        .catch(() => {
-          this.flushPendingBgmWhenPossible();
-        });
-    } else {
+    try {
+      const playResult = audio.play();
+      if (typeof playResult?.then === 'function') {
+        void playResult
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            this.flushPendingBgmWhenPossible();
+          })
+          .catch(() => {
+            this.flushPendingBgmWhenPossible();
+          });
+      } else {
+        this.flushPendingBgmWhenPossible();
+      }
+    } catch {
       this.flushPendingBgmWhenPossible();
     }
 
@@ -173,13 +185,12 @@ export class AudioHub {
     };
     audio.addEventListener('ended', cleanup, { once: true });
     audio.addEventListener('pause', cleanup, { once: true });
-
-    const playResult = audio.play();
-    if (typeof playResult?.then === 'function') {
-      void playResult.catch((error) => {
-        cleanup();
-        console.warn(`[AudioHub] sound play failed: ${definition.key}`, error);
-      });
+    const started = this.tryPlayAudio(audio, (error) => {
+      cleanup();
+      this.handlePlaybackFailure(definition, error);
+    });
+    if (!started) {
+      return false;
     }
 
     this.lastPlayedAt.set(key, currentTime);
@@ -204,10 +215,13 @@ export class AudioHub {
       loop: true,
       volume: fadeMs > 0 ? 0 : targetVolume,
     });
-
-    const playResult = audio.play();
-    if (typeof playResult?.then === 'function') {
-      void playResult.catch((error) => console.warn(`[AudioHub] loop play failed: ${definition.key}`, error));
+    const started = this.tryPlayAudio(audio, (error) => {
+      this.loops.delete(loopId);
+      this.stopAndRelease(audio);
+      this.handlePlaybackFailure(definition, error);
+    });
+    if (!started) {
+      return false;
     }
 
     this.loops.set(loopId, { key, audio });
@@ -258,10 +272,15 @@ export class AudioHub {
       loop: true,
       volume: fadeMs > 0 ? 0 : targetVolume,
     });
-
-    const playResult = audio.play();
-    if (typeof playResult?.then === 'function') {
-      void playResult.catch((error) => console.warn(`[AudioHub] bgm play failed: ${definition.key}`, error));
+    const started = this.tryPlayAudio(audio, (error) => {
+      if (this.currentBgm?.audio === audio) {
+        this.currentBgm = undefined;
+      }
+      this.stopAndRelease(audio);
+      this.handlePlaybackFailure(definition, error);
+    });
+    if (!started) {
+      return false;
     }
 
     this.currentBgm = { key, audio };
@@ -324,6 +343,10 @@ export class AudioHub {
       return undefined;
     }
 
+    if (this.unavailableAssetIds.has(definition.assetId)) {
+      return undefined;
+    }
+
     return definition as SoundEventDefinition & { assetId: SoundAssetId };
   }
 
@@ -332,6 +355,7 @@ export class AudioHub {
     if (cached) return cached;
 
     if (typeof Audio === 'undefined') return undefined;
+    if (this.unavailableAssetIds.has(assetId)) return undefined;
 
     const asset = SOUND_ASSET_BY_ID[assetId];
     if (!asset) {
@@ -340,8 +364,14 @@ export class AudioHub {
     }
 
     const audio = new Audio(asset.url);
-    audio.preload = 'auto';
-    audio.load();
+    audio.preload = asset.optional ? 'none' : 'auto';
+    if (!asset.optional) {
+      try {
+        audio.load();
+      } catch (error) {
+        this.handleAssetLoadFailure(asset, error);
+      }
+    }
     this.assetCache.set(assetId, audio);
     return audio;
   }
@@ -442,6 +472,60 @@ export class AudioHub {
     return Math.round((Math.random() * 2 - 1) * range);
   }
 
+  private tryPlayAudio(audio: HTMLAudioElement, onFailure: PlaybackFailureHandler): boolean {
+    try {
+      const playResult = audio.play();
+      if (typeof playResult?.then === 'function') {
+        void playResult.catch(onFailure);
+      }
+      return true;
+    } catch (error) {
+      onFailure(error);
+      return false;
+    }
+  }
+
+  private handlePlaybackFailure(definition: SoundEventDefinition & { assetId: SoundAssetId }, error: unknown): void {
+    const asset = SOUND_ASSET_BY_ID[definition.assetId];
+    if (asset?.optional && !isAutoplayError(error)) {
+      this.markOptionalAssetUnavailable(asset);
+      this.warnPlaybackFailureOnce(definition, asset, '音源ファイルがまだ配置されていない可能性があります');
+      return;
+    }
+
+    this.warnPlaybackFailureOnce(definition, asset, 'ブラウザが再生を許可しませんでした');
+  }
+
+  private handleAssetLoadFailure(asset: SoundAssetDefinition, error: unknown): void {
+    if (asset.optional) {
+      this.markOptionalAssetUnavailable(asset);
+    }
+    const key = `load:${asset.id}`;
+    if (this.warnedPlaybackFailures.has(key)) return;
+    const reason = error instanceof Error ? error.message : 'unknown reason';
+    console.warn(`[AudioHub] audio asset load skipped: ${asset.url} (${reason})`);
+    this.warnedPlaybackFailures.add(key);
+  }
+
+  private markOptionalAssetUnavailable(asset: SoundAssetDefinition): void {
+    if (!asset.optional) return;
+    this.unavailableAssetIds.add(asset.id);
+    this.assetCache.delete(asset.id);
+  }
+
+  private warnPlaybackFailureOnce(
+    definition: SoundEventDefinition & { assetId: SoundAssetId },
+    asset: SoundAssetDefinition | undefined,
+    reason: string,
+  ): void {
+    const key = `play:${definition.key}`;
+    if (this.warnedPlaybackFailures.has(key)) return;
+
+    const url = asset?.url ?? definition.assetId;
+    console.warn(`[AudioHub] ${reason}: ${definition.key} -> ${url}。音無しで続行します。`);
+    this.warnedPlaybackFailures.add(key);
+  }
+
   private warnMissingEventOnce(key: SoundKey, reason: string): void {
     if (this.warnedMissingEvents.has(key)) return;
 
@@ -455,7 +539,6 @@ export class AudioHub {
     console.warn(`[AudioHub] audio asset is not registered: ${assetId}. soundCatalog.ts の SOUND_ASSETS を確認してください。`);
     this.warnedMissingAssets.add(assetId);
   }
-
 }
 
 export const audioHub = new AudioHub();
@@ -482,4 +565,8 @@ function areMixerGainsEqual(left: AudioMixerGains, right: AudioMixerGains): bool
     left.noise === right.noise &&
     left.muted === right.muted
   );
+}
+
+function isAutoplayError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'NotAllowedError';
 }

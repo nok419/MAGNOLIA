@@ -68,7 +68,7 @@ export type BattleStepHost = {
     battlePassives: RuntimeModifierPatch,
   ) => { presentationRequests: BattlePresentationRequests }
   updateSupportFields: (battle: InternalBattleState, dtMs: number) => void
-  updateEnemies: (battle: InternalBattleState, dtMs: number) => void
+  updateEnemies: (battle: InternalBattleState, dtMs: number) => DomainEvent[]
   updateProjectiles: (
     battle: InternalBattleState,
     dtMs: number,
@@ -234,7 +234,7 @@ export function stepBattleFrame(input: {
   if (hadBarrierBeforeSupportUpdate && !battle.barrier) {
     events.push({ type: "playerBarrierStopped" })
   }
-  host.updateEnemies(battle, frameInput.dtMs)
+  const enemyEvents = host.updateEnemies(battle, frameInput.dtMs)
   host.updateProjectiles(battle, frameInput.dtMs, battlePassives.statModifiers)
   host.updatePickups(battle, frameInput.dtMs)
 
@@ -371,12 +371,13 @@ export function stepBattleFrame(input: {
       grantEquipment: (equipmentIds) => host.grantEquipment(equipmentIds),
     })
     battle.activeResult = finalizedMission.result
+    events.push({ type: "missionCleared", missionId: battle.mission.missionId })
     void host.repository.saveMissionRun(finalizedMission.missionRun)
   }
 
   return {
     snapshot: host.createBattleSnapshot(),
-    events: [...events, ...collisionEvents.events],
+    events: [...events, ...enemyEvents, ...collisionEvents.events],
     effectRequests,
     presentationRequests,
   }

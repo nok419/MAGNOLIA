@@ -34,12 +34,20 @@ export function resolveBattleCollisions(input: {
 
   if (battle.barrier) {
     const barrierRadius = battle.barrier.radius
+    let blockedProjectileCount = 0
     battle.projectiles = battle.projectiles.filter((projectile) => {
       if (projectile.side !== "enemy") {
         return true
       }
-      return !isWithinRadius(projectile.position, battle.playerPosition, barrierRadius)
+      const blocked = isWithinRadius(projectile.position, battle.playerPosition, barrierRadius)
+      if (blocked) {
+        blockedProjectileCount += 1
+      }
+      return !blocked
     })
+    if (blockedProjectileCount > 0) {
+      events.push({ type: "playerBarrierHit", hitCount: blockedProjectileCount })
+    }
   }
 
   for (const field of battle.supportFields) {
@@ -102,6 +110,7 @@ export function resolveBattleCollisions(input: {
         continue
       }
       enemy.hp -= projectile.damage
+      events.push({ type: "playerProjectileHit", enemyId: enemy.enemyId })
       if (projectile.piercing) {
         projectile.hitEnemyInstanceIds = [
           ...(projectile.hitEnemyInstanceIds ?? []),

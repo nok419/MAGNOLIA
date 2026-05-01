@@ -210,7 +210,7 @@ test("presentation reducer dedupes request ids and prunes expired events", () =>
   assert.match(reducerSource, /transitionEvents: current\.transitionEvents\.filter\(\(event\) => event\.expiresAt > now\)/)
 })
 
-test("audio acceptance path has one settings source and guarded placeholder assets", () => {
+test("audio acceptance path has one settings source and optional asset guards", () => {
   const audioHubSource = readProjectFile("apps/web/src/audio/AudioHub.ts")
   const audioControllerSource = readProjectFile("apps/web/src/app/audio-controller.ts")
   const audioAdapterSource = readProjectFile("apps/web/src/app/audio-event-adapter.ts")
@@ -232,16 +232,30 @@ test("audio acceptance path has one settings source and guarded placeholder asse
   assert.match(soundCatalogSource, /PLACEHOLDER_SHOT_MP3_URL = '\/sound\/shot-placeholder\.mp3'/)
   assert.doesNotMatch(soundCatalogSource, /new URL\(|sound\/ショット|ショット\.mp3/)
   assert.ok(fs.existsSync(path.join(rootDir, "apps/web/public/sound/shot-placeholder.mp3")))
+  assert.ok(fs.existsSync(path.join(rootDir, "apps/web/public/sound/shot-placeholder.md")))
   assert.ok(!fs.existsSync(path.join(rootDir, "sound/ショット.mp3")))
 
-  const placeholderLines = soundCatalogSource
-    .split("\n")
-    .filter((line) => line.includes("placeholderEvent("))
-  assert.ok(placeholderLines.length > 0)
-  assert.ok(!placeholderLines.some((line) => /BGM_|NOISE_|BARRIER_LOOP|COMBAT_ENEMY_SHOT/.test(line)))
-  assert.match(soundCatalogSource, /missingEvent\(SOUND_KEYS\.BGM_TITLE/)
-  assert.match(soundCatalogSource, /missingEvent\(SOUND_KEYS\.NOISE_RADIO_STATIC/)
+  assert.match(audioHubSource, /if \(asset\.optional\) \{\s*continue;\s*\}/)
+  assert.match(audioHubSource, /private tryPlayAudio\(audio: HTMLAudioElement/)
+  assert.match(audioHubSource, /catch \(error\) \{\s*onFailure\(error\);\s*return false;\s*\}/)
+  assert.match(audioHubSource, /asset\?\.optional && !isAutoplayError\(error\)/)
+  assert.match(audioHubSource, /markOptionalAssetUnavailable\(asset\)/)
+  assert.match(audioHubSource, /unavailableAssetIds\.has\(definition\.assetId\)/)
+
+  assert.match(soundCatalogSource, /readyEvent\(SOUND_KEYS\.BGM_TITLE/)
+  assert.match(soundCatalogSource, /readyEvent\(SOUND_KEYS\.NOISE_RADIO_STATIC/)
+  assert.doesNotMatch(soundCatalogSource, /placeholderEvent\(/)
+  assert.doesNotMatch(soundCatalogSource, /missingEvent\(SOUND_KEYS\.(BGM_TITLE|NOISE_RADIO_STATIC|BARRIER_LOOP|COMBAT_ENEMY_SHOT)\)/)
   assert.match(soundCatalogSource, /const missingEvent[\s\S]*?undefined, options\)/)
+
+  const requiredSoundFiles = [
+    ...soundCatalogSource.matchAll(/asset\(SOUND_ASSET_IDS\.[A-Z0-9_]+, '([^']+\.mp3)'/g),
+  ].map((match) => match[1])
+  assert.equal(requiredSoundFiles.length, 33)
+  for (const filename of requiredSoundFiles) {
+    const guidePath = path.join(rootDir, "apps/web/public/sound", filename.replace(/\.mp3$/, ".md"))
+    assert.ok(fs.existsSync(guidePath), `${filename} needs a sidecar markdown guide`)
+  }
 })
 
 function readProjectFile(relativePath) {

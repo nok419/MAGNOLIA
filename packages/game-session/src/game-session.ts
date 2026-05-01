@@ -641,7 +641,7 @@ export class MagnoliaGameSession {
       this.activeProfile.profile.currentAreaId,
     )
     const discoveredEvents = this.revealCurrentArea(nextPosition)
-    this.updateExploreSignalConfidence({
+    const scanEvents = this.updateExploreSignalConfidence({
       mapLogic,
       featureAccess,
       playerPosition: nextPosition,
@@ -664,7 +664,7 @@ export class MagnoliaGameSession {
 
     return {
       snapshot: this.createExploreSnapshot(),
-      events: [...discoveredEvents.events, ...interactionEvents.events, ...menuEvents],
+      events: [...discoveredEvents.events, ...scanEvents, ...interactionEvents.events, ...menuEvents],
       presentationRequests,
     }
   }
@@ -1437,15 +1437,18 @@ export class MagnoliaGameSession {
     playerPosition: Vector2
     dtMs: number
     scanPressed: boolean
-  }): void {
+  }): DomainEvent[] {
     if (!this.activeProfile) {
-      return
+      return []
     }
+    const events: DomainEvent[] = []
+    let scanHit = false
     const canStartScan =
       input.scanPressed &&
       this.exploreElapsedMs - this.lastExploreScanAtMs >= EXPLORE_SCAN_COOLDOWN_MS
 
     if (canStartScan) {
+      events.push({ type: "exploreScanStarted" })
       this.lastExploreScanAtMs = this.exploreElapsedMs
       this.activeProfile.profile.unlockedFlags = uniqueIds([
         ...this.activeProfile.profile.unlockedFlags,
@@ -1490,6 +1493,7 @@ export class MagnoliaGameSession {
         node.transmissionId,
         this.content.transmissions[node.transmissionId]?.areaId ?? node.areaId,
       )
+      const wasIdentified = isTransmissionSignalIdentified(progress)
       progress.signalConfidence = Math.min(
         EXPLORE_SIGNAL_IDENTIFIED_CONFIDENCE,
         readSignalConfidence(progress.signalConfidence) + confidenceDelta,
@@ -1498,10 +1502,13 @@ export class MagnoliaGameSession {
         progress.signalDiscoveredAt = new Date().toISOString()
         this.newlyIdentifiedExploreNodeIds.add(node.nodeId)
       }
+      if (canStartScan && !wasIdentified && isTransmissionSignalIdentified(progress)) {
+        scanHit = true
+      }
     }
 
     if (!canStartScan) {
-      return
+      return events
     }
 
     for (const node of input.mapLogic.collectibleNodes) {
@@ -1520,7 +1527,13 @@ export class MagnoliaGameSession {
       }
       this.activeProfile.profile.identifiedNodeIds.push(node.nodeId)
       this.newlyIdentifiedExploreNodeIds.add(node.nodeId)
+      scanHit = true
     }
+
+    if (scanHit) {
+      events.push({ type: "exploreScanHit" })
+    }
+    return events
   }
 
   private buildExploreSignalHints(input: {
@@ -2056,7 +2069,8 @@ export class MagnoliaGameSession {
     })
   }
 
-  private updateEnemies(battle: InternalBattleState, dtMs: number): void {
+  private updateEnemies(battle: InternalBattleState, dtMs: number): DomainEvent[] {
+    const events: DomainEvent[] = []
     const dtSeconds = dtMs / 1000
     for (const enemy of battle.enemies) {
       const definition = this.content.enemies[enemy.enemyId]
@@ -2123,13 +2137,24 @@ export class MagnoliaGameSession {
         continue
       }
 
+      const projectileCountBefore = battle.projectiles.length
       this.fireEnemyPatterns(battle, enemy)
+      const firstSpawnedEnemyProjectile = battle.projectiles
+        .slice(projectileCountBefore)
+        .find((projectile) => projectile.side === "enemy")
+      if (firstSpawnedEnemyProjectile) {
+        events.push({
+          type: "enemyProjectileFired",
+          projectileId: firstSpawnedEnemyProjectile.projectileId,
+        })
+      }
     }
 
     // hp <= 0 の敵は resolveBattleCollisions 側で撃破処理に集約するため、この段階では消さない。
     battle.enemies = battle.enemies.filter(
       (enemy) => enemy.position.y < BATTLE_HEIGHT + 60 || enemy.hp <= 0,
     )
+    return events
   }
 
   private updateProjectiles(

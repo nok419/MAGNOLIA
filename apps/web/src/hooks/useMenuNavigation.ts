@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { audioEvents } from "@/audio"
 
 type MenuNavigationOptions = {
   itemCount: number
@@ -41,22 +42,36 @@ export function useMenuNavigation({
         case "ArrowUp":
         case "KeyW":
           e.preventDefault()
-          setFocusIndex((prev) => clamp(prev - 1))
+          setFocusIndex((prev) => {
+            const next = clamp(prev - 1)
+            if (next !== prev) {
+              audioEvents.menuMove("up")
+            }
+            return next
+          })
           break
         case "ArrowDown":
         case "KeyS":
           e.preventDefault()
-          setFocusIndex((prev) => clamp(prev + 1))
+          setFocusIndex((prev) => {
+            const next = clamp(prev + 1)
+            if (next !== prev) {
+              audioEvents.menuMove("down")
+            }
+            return next
+          })
           break
         case "Enter":
         case "NumpadEnter":
         case "KeyZ":
           e.preventDefault()
+          audioEvents.menuConfirm()
           onSelect(focusIndex)
           break
         case "Escape":
         case "KeyX":
           e.preventDefault()
+          audioEvents.menuCancel()
           onCancel?.()
           break
       }
@@ -65,7 +80,14 @@ export function useMenuNavigation({
     function handleWheel(e: WheelEvent) {
       if (Math.abs(e.deltaY) < 4) return
       e.preventDefault()
-      setFocusIndex((prev) => clamp(prev + (e.deltaY > 0 ? 1 : -1)))
+      const direction = e.deltaY > 0 ? "down" : "up"
+      setFocusIndex((prev) => {
+        const next = clamp(prev + (direction === "down" ? 1 : -1))
+        if (next !== prev) {
+          audioEvents.menuMove(direction)
+        }
+        return next
+      })
     }
 
     window.addEventListener("keydown", handleKeyDown)

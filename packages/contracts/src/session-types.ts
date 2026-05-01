@@ -366,16 +366,38 @@ export type DomainEvent =
       collectibleKind: CollectibleMapNode["collectibleKind"]
     }
   | {
+      type: "exploreScanStarted"
+    }
+  | {
+      type: "exploreScanHit"
+    }
+  | {
+      type: "missionCleared"
+      missionId: MissionId
+    }
+  | {
       type: "playerMainWeaponFired"
     }
   | {
       type: "playerSubWeaponUsed"
     }
   | {
+      type: "playerProjectileHit"
+      enemyId: EnemyId
+    }
+  | {
+      type: "enemyProjectileFired"
+      projectileId: ProjectileId
+    }
+  | {
       type: "playerBarrierStarted"
     }
   | {
       type: "playerBarrierStopped"
+    }
+  | {
+      type: "playerBarrierHit"
+      hitCount: number
     }
 
 export type ExploreFrameInput = {

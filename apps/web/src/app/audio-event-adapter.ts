@@ -92,6 +92,15 @@ function playDomainAudio(event: DomainEvent): void {
     case "missionStarted":
       audioEvents.missionEntered(event.missionId)
       break
+    case "missionCleared":
+      audioEvents.missionCleared()
+      break
+    case "exploreScanStarted":
+      audioEvents.scanStarted()
+      break
+    case "exploreScanHit":
+      audioEvents.scanHit()
+      break
     case "equipmentEquipped":
       audioEvents.equipmentSwitch()
       break
@@ -101,6 +110,15 @@ function playDomainAudio(event: DomainEvent): void {
     case "playerMainWeaponFired":
       audioEvents.playerShot()
       break
+    case "playerProjectileHit":
+      audioEvents.enemyHit()
+      break
+    case "enemyProjectileFired":
+      audioEvents.enemyShot()
+      break
+    case "enemyDestroyed":
+      audioEvents.enemyDestroyed()
+      break
     case "playerSubWeaponUsed":
       audioEvents.equipmentUse()
       break
@@ -109,6 +127,9 @@ function playDomainAudio(event: DomainEvent): void {
       break
     case "playerBarrierStopped":
       audioEvents.barrierDisabled()
+      break
+    case "playerBarrierHit":
+      audioEvents.barrierHit({ volume: Math.min(0.62, 0.32 + event.hitCount * 0.04) })
       break
     default:
       break
