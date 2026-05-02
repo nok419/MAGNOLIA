@@ -404,6 +404,11 @@ export type DomainEvent =
     }
   | {
       type: "playerMainWeaponFired"
+      equipmentId?: EquipmentId
+      runtimeHandlerId?: string
+    }
+  | {
+      type: "playerMainMeleeUsed"
     }
   | {
       type: "playerSubWeaponUsed"
@@ -467,6 +472,11 @@ export type BattleFrameResult = {
 export type StartNewGameAtSlotCommand = {
   type: "startNewGameAtSlot"
   slotId: SaveSlotId
+  difficulty: Difficulty
+}
+
+export type StartDebugModeCommand = {
+  type: "startDebugMode"
   difficulty: Difficulty
 }
 
@@ -576,6 +586,7 @@ export type InteractExploreNodeCommand = {
 
 export type GameCommand =
   | StartNewGameAtSlotCommand
+  | StartDebugModeCommand
   | ResumeSaveSlotCommand
   | OpenMapCommand
   | OpenArchiveCommand

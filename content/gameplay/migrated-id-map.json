@@ -1,6 +1,154 @@
 {
   "version": 1,
-  "migrations": [],
+  "migrations": [
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_001b",
+      "toChunkIds": ["chunk_gm_001a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_001c",
+      "toChunkIds": ["chunk_gm_001a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_002b",
+      "toChunkIds": ["chunk_gm_002a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_003b",
+      "toChunkIds": ["chunk_gm_003a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_004a",
+      "toChunkIds": ["chunk_gm_003a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_004b",
+      "toChunkIds": ["chunk_gm_003a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_005b",
+      "toChunkIds": ["chunk_gm_005a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_006b",
+      "toChunkIds": ["chunk_gm_006a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_007a",
+      "toChunkIds": ["chunk_gm_006a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_007b",
+      "toChunkIds": ["chunk_gm_005a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_008a",
+      "toChunkIds": ["chunk_gm_006a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_008b",
+      "toChunkIds": ["chunk_gm_006a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_009a",
+      "toChunkIds": ["chunk_gm_006a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_good_morning",
+      "fromChunkId": "chunk_gm_009b",
+      "toChunkIds": ["chunk_gm_006a"],
+      "reason": "mission_good_morning tutorial copy was merged into longer multi-line subtitle chunks."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_where_are_you",
+      "fromChunkId": "chunk_way_002a",
+      "toChunkIds": ["chunk_way_002b"],
+      "reason": "mission_where_are_you private messages were reduced to a shorter resident-letter sequence."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_where_are_you",
+      "fromChunkId": "chunk_way_003a",
+      "toChunkIds": ["chunk_way_003b"],
+      "reason": "mission_where_are_you private messages were reduced to a shorter resident-letter sequence."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_where_are_you",
+      "fromChunkId": "chunk_way_004a",
+      "toChunkIds": ["chunk_way_004b"],
+      "reason": "mission_where_are_you private messages were reduced to a shorter resident-letter sequence."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_where_are_you",
+      "fromChunkId": "chunk_way_006a",
+      "toChunkIds": ["chunk_way_007a"],
+      "reason": "mission_where_are_you private messages were reduced to a shorter resident-letter sequence."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_where_are_you",
+      "fromChunkId": "chunk_way_006b",
+      "toChunkIds": ["chunk_way_007a"],
+      "reason": "mission_where_are_you private messages were reduced to a shorter resident-letter sequence."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_where_are_you",
+      "fromChunkId": "chunk_way_007b",
+      "toChunkIds": ["chunk_way_008a"],
+      "reason": "mission_where_are_you private messages were reduced to a shorter resident-letter sequence."
+    },
+    {
+      "kind": "transcriptChunk",
+      "transmissionId": "tx_where_are_you",
+      "fromChunkId": "chunk_way_009a",
+      "toChunkIds": ["chunk_way_009b"],
+      "reason": "mission_where_are_you private messages were reduced to a shorter resident-letter sequence."
+    }
+  ],
   "notes": [
     {
       "id": "proj_enemy_petal",

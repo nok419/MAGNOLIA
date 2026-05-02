@@ -1,0 +1,632 @@
+{
+  "files_count": 184,
+  "edges_count": 563,
+  "unresolved": [
+    {
+      "from": "tools/content-validator/src/bullet-pattern-rules.ts",
+      "specifier": "./validate-content.js"
+    },
+    {
+      "from": "tools/content-validator/src/preset-rules.ts",
+      "specifier": "./validate-content.js"
+    },
+    {
+      "from": "tools/content-validator/src/preset-rules.ts",
+      "specifier": "./content-kinds.js"
+    },
+    {
+      "from": "tools/content-validator/src/reference-rules.ts",
+      "specifier": "./validate-content.js"
+    },
+    {
+      "from": "tools/content-validator/src/reference-rules.ts",
+      "specifier": "./content-kinds.js"
+    },
+    {
+      "from": "tools/content-validator/src/timing-rules.ts",
+      "specifier": "./validate-content.js"
+    },
+    {
+      "from": "tools/content-validator/src/validate-content.ts",
+      "specifier": "./presentation-cue-rules.js"
+    },
+    {
+      "from": "tools/content-validator/src/validate-content.ts",
+      "specifier": "./bullet-pattern-rules.js"
+    },
+    {
+      "from": "tools/content-validator/src/validate-content.ts",
+      "specifier": "./preset-rules.js"
+    },
+    {
+      "from": "tools/content-validator/src/validate-content.ts",
+      "specifier": "./reference-rules.js"
+    },
+    {
+      "from": "tools/content-validator/src/validate-content.ts",
+      "specifier": "./timing-rules.js"
+    },
+    {
+      "from": "tools/content-validator/src/presentation-cue-rules.ts",
+      "specifier": "./validate-content.js"
+    }
+  ],
+  "web_files_count": 130,
+  "web_reachable_count": 176,
+  "web_unreachable": [],
+  "web_zero_inbound": [
+    "apps/web/src/render/battle/fixtures/key-visual-render-state.ts"
+  ],
+  "runtime_scc_count": 0,
+  "runtime_sccs": [],
+  "all_scc_count": 1,
+  "all_sccs": [
+    [
+      "apps/web/src/app/presentation-timers.ts",
+      "apps/web/src/app/session-sync.ts",
+      "apps/web/src/app/magnolia-actions.ts",
+      "apps/web/src/app/idle-auto-save.ts",
+      "apps/web/src/app/use-magnolia-app.ts",
+      "apps/web/src/app/frame-loop/use-magnolia-frame-loop.ts"
+    ]
+  ],
+  "coarse_deps": {
+    "web->contracts(type)": 42,
+    "web->game-session(type)": 28,
+    "web->game-session(runtime)": 3,
+    "web->contracts(runtime)": 4,
+    "web->persistence(runtime)": 1,
+    "game-session->contracts(type)": 24,
+    "game-session->contracts(runtime)": 5,
+    "persistence->contracts(type)": 10,
+    "persistence->contracts(runtime)": 5
+  },
+  "top_inbound": [
+    [
+      "apps/web/src/render/shared/canvas-palette.ts",
+      23
+    ],
+    [
+      "apps/web/src/app/display-options.ts",
+      18
+    ],
+    [
+      "apps/web/src/app/presentation/presentation-state.ts",
+      14
+    ],
+    [
+      "apps/web/src/render/shared/render-math.ts",
+      11
+    ],
+    [
+      "apps/web/src/app/explore-presentation.ts",
+      9
+    ],
+    [
+      "apps/web/src/render/battle/battle-renderer-utils.ts",
+      9
+    ],
+    [
+      "apps/web/src/audio/index.ts",
+      9
+    ],
+    [
+      "apps/web/src/render/shared/coordinates.ts",
+      8
+    ],
+    [
+      "apps/web/src/app/use-magnolia-app.ts",
+      6
+    ],
+    [
+      "apps/web/src/render/shared/effects/effect-options.ts",
+      6
+    ],
+    [
+      "apps/web/src/components/ActionButton.tsx",
+      6
+    ],
+    [
+      "apps/web/src/app/app-types.ts",
+      5
+    ],
+    [
+      "apps/web/src/view-models/map-view-model.ts",
+      5
+    ],
+    [
+      "apps/web/src/app/use-magnolia-input.ts",
+      4
+    ],
+    [
+      "apps/web/src/app/ship-renderer.ts",
+      4
+    ],
+    [
+      "apps/web/src/app/canvas-markers.ts",
+      4
+    ],
+    [
+      "apps/web/src/app/popups/item-popups.ts",
+      4
+    ],
+    [
+      "apps/web/src/render/shared/canvas-path-cache.ts",
+      4
+    ],
+    [
+      "apps/web/src/render/explore/explore-render-utils.ts",
+      4
+    ],
+    [
+      "apps/web/src/render/canvas-host/device-pixel-canvas.ts",
+      4
+    ]
+  ],
+  "top_outbound": [
+    [
+      "apps/web/src/app/use-magnolia-app.ts",
+      16
+    ],
+    [
+      "apps/web/src/render/explore/explore-scene-renderer.ts",
+      15
+    ],
+    [
+      "apps/web/src/render/explore/draw-explore-frame.ts",
+      15
+    ],
+    [
+      "apps/web/src/render/explore/ExploreCanvas.tsx",
+      15
+    ],
+    [
+      "apps/web/src/app/App.tsx",
+      14
+    ],
+    [
+      "apps/web/src/render/battle/draw-battle-frame.ts",
+      14
+    ],
+    [
+      "apps/web/src/styles/global.css",
+      14
+    ],
+    [
+      "apps/web/src/screens/explore/ExploreScreen.tsx",
+      10
+    ],
+    [
+      "apps/web/src/app/magnolia-actions.ts",
+      9
+    ],
+    [
+      "apps/web/src/screens/map/MapScreen.tsx",
+      9
+    ],
+    [
+      "apps/web/src/screens/menu/MenuScreen.tsx",
+      9
+    ],
+    [
+      "apps/web/src/app/session-sync.ts",
+      8
+    ],
+    [
+      "apps/web/src/screens/battle/BattleScreen.tsx",
+      8
+    ],
+    [
+      "apps/web/src/screens/title/TitleScreen.tsx",
+      8
+    ],
+    [
+      "apps/web/src/components/KeyVisualModal.tsx",
+      8
+    ],
+    [
+      "apps/web/src/components/common/index.ts",
+      8
+    ],
+    [
+      "apps/web/src/app/presentation-timers.ts",
+      7
+    ],
+    [
+      "apps/web/src/app/frame-loop/use-magnolia-frame-loop.ts",
+      7
+    ],
+    [
+      "apps/web/src/render/map/map-renderer.ts",
+      7
+    ],
+    [
+      "apps/web/src/render/battle/BattleCanvas.tsx",
+      6
+    ]
+  ],
+  "duplicates": {
+    "clamp01": [
+      [
+        "apps/web/src/app/ship-renderer.ts",
+        644
+      ],
+      [
+        "apps/web/src/render/battle/enemies/enemy-renderer.ts",
+        253
+      ],
+      [
+        "apps/web/src/render/shared/render-math.ts",
+        13
+      ],
+      [
+        "apps/web/src/screens/battle/BattleScreen.tsx",
+        291
+      ],
+      [
+        "apps/web/src/screens/explore/ExploreScreen.tsx",
+        741
+      ],
+      [
+        "packages/game-session/src/explore-world.ts",
+        430
+      ],
+      [
+        "packages/game-session/src/battle-world.ts",
+        74
+      ],
+      [
+        "packages/game-session/src/battle/movement-system.ts",
+        229
+      ]
+    ],
+    "handleKeyDown": [
+      [
+        "apps/web/src/app/use-magnolia-input.ts",
+        53
+      ],
+      [
+        "apps/web/src/screens/menu/MenuScreen.tsx",
+        128
+      ],
+      [
+        "apps/web/src/components/KeyVisualModal.tsx",
+        22
+      ],
+      [
+        "apps/web/src/components/PresentationOverlay.tsx",
+        170
+      ],
+      [
+        "apps/web/src/hooks/useMenuNavigation.ts",
+        40
+      ]
+    ],
+    "hashString": [
+      [
+        "apps/web/src/render/battle/battle-renderer-utils.ts",
+        66
+      ],
+      [
+        "apps/web/src/screens/battle/BattleScreen.tsx",
+        480
+      ],
+      [
+        "packages/game-session/src/game-session.ts",
+        2289
+      ],
+      [
+        "packages/game-session/src/battle-world.ts",
+        135
+      ]
+    ],
+    "readVisualPreset": [
+      [
+        "apps/web/src/render/key-visual/key-visual-render-state.ts",
+        243
+      ],
+      [
+        "apps/web/src/render/key-visual/key-visual-render-state.ts",
+        248
+      ],
+      [
+        "apps/web/src/render/key-visual/key-visual-render-state.ts",
+        253
+      ],
+      [
+        "apps/web/src/render/key-visual/key-visual-render-state.ts",
+        258
+      ]
+    ],
+    "toCanvasPoint": [
+      [
+        "apps/web/src/render/explore/restricted-boundary.ts",
+        14
+      ],
+      [
+        "apps/web/src/render/explore/explore-scene-renderer.ts",
+        25
+      ],
+      [
+        "apps/web/src/render/explore/trail.ts",
+        594
+      ],
+      [
+        "apps/web/src/render/map/map-renderer.ts",
+        312
+      ]
+    ],
+    "normalizeVector": [
+      [
+        "packages/game-session/src/equipment-runtime.ts",
+        560
+      ],
+      [
+        "packages/game-session/src/explore-world.ts",
+        279
+      ],
+      [
+        "packages/persistence/src/save-normalizer/primitives.ts",
+        23
+      ]
+    ],
+    "readNumber": [
+      [
+        "packages/game-session/src/selectors.ts",
+        555
+      ],
+      [
+        "packages/game-session/src/battle/movement-system.ts",
+        225
+      ],
+      [
+        "packages/persistence/src/save-normalizer/primitives.ts",
+        45
+      ]
+    ],
+    "seededUnit": [
+      [
+        "apps/web/src/render/shared/render-math.ts",
+        38
+      ],
+      [
+        "apps/web/src/render/map/map-renderer.ts",
+        328
+      ],
+      [
+        "apps/web/src/screens/battle/BattleScreen.tsx",
+        475
+      ]
+    ],
+    "clampRate": [
+      [
+        "packages/game-session/src/progression.ts",
+        329
+      ],
+      [
+        "packages/persistence/src/save-normalizer/primitives.ts",
+        34
+      ]
+    ],
+    "createDefaultSaveSlots": [
+      [
+        "packages/contracts/src/settings.ts",
+        55
+      ],
+      [
+        "packages/persistence/src/defaults.ts",
+        17
+      ]
+    ],
+    "createDefaultSettings": [
+      [
+        "packages/contracts/src/settings.ts",
+        63
+      ],
+      [
+        "packages/persistence/src/defaults.ts",
+        21
+      ]
+    ],
+    "createEnemyProjectile": [
+      [
+        "apps/web/src/render/key-visual/key-visual-render-state.ts",
+        378
+      ],
+      [
+        "packages/game-session/src/battle/enemy-pattern-system.ts",
+        126
+      ]
+    ],
+    "easeInOutCubic": [
+      [
+        "apps/web/src/render/shared/render-math.ts",
+        26
+      ],
+      [
+        "packages/game-session/src/battle/collision-system.ts",
+        301
+      ]
+    ],
+    "easeOutCubic": [
+      [
+        "apps/web/src/render/shared/render-math.ts",
+        20
+      ],
+      [
+        "packages/game-session/src/explore/explore-session-runtime.ts",
+        328
+      ]
+    ],
+    "expandRect": [
+      [
+        "apps/web/src/render/shared/coordinates.ts",
+        44
+      ],
+      [
+        "packages/game-session/src/game-session.ts",
+        2243
+      ]
+    ],
+    "indexChunkRecords": [
+      [
+        "tools/content-validator/src/reference-rules.ts",
+        111
+      ],
+      [
+        "tools/content-validator/src/timing-rules.ts",
+        144
+      ]
+    ],
+    "isInsideBattlefield": [
+      [
+        "packages/persistence/src/load-content-bundle.ts",
+        264
+      ],
+      [
+        "tools/content-validator/src/reference-rules.ts",
+        691
+      ]
+    ],
+    "isRecord": [
+      [
+        "packages/persistence/src/load-content-bundle.ts",
+        890
+      ],
+      [
+        "packages/persistence/src/save-normalizer/primitives.ts",
+        74
+      ]
+    ],
+    "isTitleSaveSlotEmpty": [
+      [
+        "apps/web/src/app/use-magnolia-app.ts",
+        272
+      ],
+      [
+        "apps/web/src/app/idle-auto-save.ts",
+        160
+      ]
+    ],
+    "lerpPoint": [
+      [
+        "apps/web/src/render/explore/camera.ts",
+        210
+      ],
+      [
+        "packages/game-session/src/battle/movement-system.ts",
+        233
+      ]
+    ],
+    "markActivity": [
+      [
+        "apps/web/src/app/use-magnolia-input.ts",
+        49
+      ],
+      [
+        "apps/web/src/app/use-magnolia-input.ts",
+        93
+      ]
+    ],
+    "pseudoRandomUnit": [
+      [
+        "packages/game-session/src/game-session.ts",
+        2298
+      ],
+      [
+        "packages/game-session/src/battle-world.ts",
+        144
+      ]
+    ],
+    "readSubCooldownMs": [
+      [
+        "packages/game-session/src/battle/step-battle.ts",
+        417
+      ],
+      [
+        "packages/game-session/src/battle/battle-render-state.ts",
+        189
+      ]
+    ],
+    "resize": [
+      [
+        "apps/web/src/screens/menu/MenuBackdropCanvas.tsx",
+        26
+      ],
+      [
+        "apps/web/src/components/title/SignalBackdropCanvas.tsx",
+        44
+      ]
+    ],
+    "rotateVector": [
+      [
+        "apps/web/src/render/key-visual/key-visual-render-state.ts",
+        322
+      ],
+      [
+        "packages/game-session/src/battle-world.ts",
+        148
+      ]
+    ],
+    "splitGraphemes": [
+      [
+        "apps/web/src/screens/battle/BattleScreen.tsx",
+        456
+      ],
+      [
+        "packages/game-session/src/selectors.ts",
+        1036
+      ]
+    ],
+    "tick": [
+      [
+        "apps/web/src/render/canvas-host/use-canvas-animation-loop.ts",
+        17
+      ],
+      [
+        "apps/web/src/components/PresentationOverlay.tsx",
+        129
+      ]
+    ],
+    "timeRangesFromTranscriptSpans": [
+      [
+        "packages/game-session/src/progression.ts",
+        264
+      ],
+      [
+        "packages/persistence/src/save-normalizer/transcript-ranges.ts",
+        164
+      ]
+    ],
+    "transcriptSpansFromTimeRanges": [
+      [
+        "packages/game-session/src/progression.ts",
+        241
+      ],
+      [
+        "packages/persistence/src/save-normalizer/transcript-ranges.ts",
+        141
+      ]
+    ],
+    "validateMigrationRatio": [
+      [
+        "packages/persistence/src/load-content-bundle.ts",
+        880
+      ],
+      [
+        "tools/content-validator/src/reference-rules.ts",
+        506
+      ]
+    ],
+    "validateSpawnPointReference": [
+      [
+        "packages/persistence/src/load-content-bundle.ts",
+        216
+      ],
+      [
+        "tools/content-validator/src/reference-rules.ts",
+        630
+      ]
+    ]
+  }
+}

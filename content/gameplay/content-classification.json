@@ -6,11 +6,19 @@
       "mission_evacuation"
     ],
     "enemies": [
+      "a1",
+      "a2",
+      "b1",
+      "c1",
       "enemy_scout",
       "enemy_standard",
       "enemy_heavy"
     ],
     "bulletPatterns": [
+      "bp_a2_lance_spread",
+      "bp_b1_core_burst",
+      "bp_b1_lance_stream",
+      "bp_c1_pressure_ring",
       "bp_scout_single",
       "bp_standard_spread",
       "bp_heavy_burst",
@@ -18,7 +26,9 @@
     ],
     "projectiles": [
       "proj_enemy_basic",
+      "proj_enemy_core",
       "proj_enemy_geo",
+      "proj_enemy_lance",
       "proj_enemy_petal",
       "proj_player_carrier",
       "proj_player_carrier_blast",
@@ -26,35 +36,22 @@
       "proj_player_pulse_melee"
     ],
     "movementPatterns": [
+      "move_linear_a2",
+      "move_pause_then_drift_b1",
       "move_linear_standard",
-      "move_sine_drift_scout",
-      "move_pause_then_drift_heavy"
+      "move_pause_then_drift_c1",
+      "move_pause_then_drift_heavy",
+      "move_sine_drift_a1",
+      "move_sine_drift_scout"
     ]
   },
   "prototype": {
-    "enemies": [
-      "a1",
-      "a2",
-      "b1",
-      "c1"
-    ],
+    "enemies": [],
     "bulletPatterns": [
-      "bp_a2_lance_spread",
-      "bp_b1_core_burst",
-      "bp_b1_lance_stream",
-      "bp_c1_pressure_ring",
       "bp_radial_burst"
     ],
-    "projectiles": [
-      "proj_enemy_core",
-      "proj_enemy_lance"
-    ],
-    "movementPatterns": [
-      "move_linear_a2",
-      "move_sine_drift_a1",
-      "move_pause_then_drift_b1",
-      "move_pause_then_drift_c1"
-    ]
+    "projectiles": [],
+    "movementPatterns": []
   },
   "deprecated": {
     "missions": [],

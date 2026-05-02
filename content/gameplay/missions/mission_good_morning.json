@@ -1,11 +1,11 @@
 {
   "missionId": "mission_good_morning",
   "transmissionId": "tx_good_morning",
-  "durationMs": 60000,
+  "durationMs": 43000,
   "scrollSpeed": 120,
   "backgroundPresetId": "bg_central_tower",
   "playerSpawnId": "spawn_player_center",
-  "analysisTotal": 50,
+  "analysisTotal": 70,
   "visibilityConditionId": "cond_always",
   "startConditionId": "cond_always",
   "audioStartDelayMs": 1200,
@@ -17,8 +17,8 @@
   "waves": [
     {
       "waveId": "gm_wave_01",
-      "atMs": 8000,
-      "intentTag": "main-confirmation-clear-forward-noise",
+      "atMs": 5500,
+      "intentTag": "main-weapon-drill",
       "entries": [
         {
           "spawnId": "gm_wave_01_spawn_01",
@@ -30,55 +30,52 @@
     },
     {
       "waveId": "gm_wave_02",
-      "atMs": 12000,
-      "intentTag": "main-confirmation-soft-noise",
+      "atMs": 7000,
+      "intentTag": "main-weapon-drill",
       "entries": [
         {
           "spawnId": "gm_wave_02_spawn_01",
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_left",
-          "seed": 2,
-          "overrides": {
-            "speed": 24
-          }
+          "seed": 2
         },
         {
           "spawnId": "gm_wave_02_spawn_02",
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
-          "seed": 3,
-          "overrides": {
-            "speed": 24
-          }
+          "seed": 3
         }
       ]
     },
     {
       "waveId": "gm_wave_03",
-      "atMs": 17000,
-      "intentTag": "melee-confirmation",
+      "atMs": 8400,
+      "intentTag": "main-weapon-drill",
       "entries": [
         {
           "spawnId": "gm_wave_03_spawn_01",
-          "enemyId": "enemy_standard",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 4
+        },
+        {
+          "spawnId": "gm_wave_03_spawn_02",
+          "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_center",
-          "seed": 4,
-          "overrides": {
-            "speed": 18
-          }
+          "seed": 5
         }
       ]
     },
     {
       "waveId": "gm_wave_04",
-      "atMs": 30500,
-      "intentTag": "hit-noise-confirmation-safe",
+      "atMs": 9800,
+      "intentTag": "main-weapon-drill",
       "entries": [
         {
           "spawnId": "gm_wave_04_spawn_01",
           "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_left",
-          "seed": 5
+          "spawnPointId": "spawn_top_center",
+          "seed": 6
         },
         {
           "spawnId": "gm_wave_04_spawn_02",
@@ -90,8 +87,8 @@
     },
     {
       "waveId": "gm_wave_05",
-      "atMs": 34000,
-      "intentTag": "hit-noise-confirmation-safe",
+      "atMs": 11400,
+      "intentTag": "melee-drill",
       "entries": [
         {
           "spawnId": "gm_wave_05_spawn_01",
@@ -99,17 +96,27 @@
           "spawnPointId": "spawn_top_center",
           "seed": 8,
           "overrides": {
+            "speed": 18
+          }
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_06",
+      "atMs": 13600,
+      "intentTag": "melee-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_06_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_left",
+          "seed": 9,
+          "overrides": {
             "speed": 20
           }
         },
         {
-          "spawnId": "gm_wave_05_spawn_02",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_left",
-          "seed": 9
-        },
-        {
-          "spawnId": "gm_wave_05_spawn_03",
+          "spawnId": "gm_wave_06_spawn_02",
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
           "seed": 10
@@ -117,147 +124,296 @@
       ]
     },
     {
-      "waveId": "gm_wave_06",
-      "atMs": 43000,
-      "intentTag": "return-to-explore-preparation",
+      "waveId": "gm_wave_07",
+      "atMs": 15500,
+      "intentTag": "melee-drill",
       "entries": [
         {
-          "spawnId": "gm_wave_06_spawn_01",
+          "spawnId": "gm_wave_07_spawn_01",
           "enemyId": "enemy_standard",
-          "spawnPointId": "spawn_side_left",
+          "spawnPointId": "spawn_top_right",
           "seed": 11,
           "overrides": {
-            "speed": 6,
-            "driftX": 38
-          }
-        },
-        {
-          "spawnId": "gm_wave_06_spawn_02",
-          "enemyId": "enemy_standard",
-          "spawnPointId": "spawn_side_right",
-          "seed": 12,
-          "overrides": {
-            "speed": 6,
-            "driftX": -38
+            "speed": 18
           }
         }
       ]
     },
     {
-      "waveId": "gm_wave_07",
-      "atMs": 51000,
-      "intentTag": "return-to-explore-preparation",
+      "waveId": "gm_wave_08",
+      "atMs": 17400,
+      "intentTag": "sub-weapon-drill",
       "entries": [
         {
-          "spawnId": "gm_wave_07_spawn_01",
-          "enemyId": "enemy_scout",
+          "spawnId": "gm_wave_08_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 12,
+          "overrides": {
+            "speed": 22
+          }
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_09",
+      "atMs": 19500,
+      "intentTag": "sub-weapon-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_09_spawn_01",
+          "enemyId": "enemy_standard",
           "spawnPointId": "spawn_top_left",
-          "seed": 13
+          "seed": 13,
+          "overrides": {
+            "speed": 22
+          }
         },
         {
-          "spawnId": "gm_wave_07_spawn_02",
+          "spawnId": "gm_wave_09_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_right",
+          "seed": 14,
+          "overrides": {
+            "speed": 22
+          }
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_10",
+      "atMs": 21600,
+      "intentTag": "sub-weapon-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_10_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 15
+        },
+        {
+          "spawnId": "gm_wave_10_spawn_02",
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
-          "seed": 14
+          "seed": 16
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_11",
+      "atMs": 23600,
+      "intentTag": "hazard-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_11_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 17
+        },
+        {
+          "spawnId": "gm_wave_11_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 18
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_12",
+      "atMs": 27700,
+      "intentTag": "hazard-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_12_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 19,
+          "overrides": {
+            "speed": 22
+          }
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_13",
+      "atMs": 29600,
+      "intentTag": "combined-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_13_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 20
+        },
+        {
+          "spawnId": "gm_wave_13_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_center",
+          "seed": 21
+        },
+        {
+          "spawnId": "gm_wave_13_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 22
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_14",
+      "atMs": 31400,
+      "intentTag": "combined-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_14_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 23,
+          "overrides": {
+            "speed": 24
+          }
+        },
+        {
+          "spawnId": "gm_wave_14_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_right",
+          "seed": 24,
+          "overrides": {
+            "speed": 22
+          }
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_15",
+      "atMs": 33000,
+      "intentTag": "combined-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_15_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_left",
+          "seed": 25,
+          "overrides": {
+            "speed": 22
+          }
+        },
+        {
+          "spawnId": "gm_wave_15_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_center",
+          "seed": 26
+        },
+        {
+          "spawnId": "gm_wave_15_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 27
+        }
+      ]
+    },
+    {
+      "waveId": "gm_wave_16",
+      "atMs": 34600,
+      "intentTag": "combined-drill",
+      "entries": [
+        {
+          "spawnId": "gm_wave_16_spawn_01",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 28
+        },
+        {
+          "spawnId": "gm_wave_16_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 29
         }
       ]
     }
   ],
   "beatEvents": [
     {
-      "beatId": "gm_tutorial_silence",
+      "beatId": "gm_boot",
       "atMs": 0,
-      "durationMs": 7000,
-      "intentTag": "tutorial-no-enemy-boot",
+      "durationMs": 5400,
+      "intentTag": "boot-sequence",
       "transcriptChunkIds": [
-        "chunk_gm_001a",
-        "chunk_gm_001b",
-        "chunk_gm_001c",
-        "chunk_gm_002a",
-        "chunk_gm_002b"
+        "chunk_gm_001a"
       ]
     },
     {
-      "beatId": "gm_main_confirmation",
-      "atMs": 7000,
-      "durationMs": 10000,
-      "intentTag": "main-confirmation",
+      "beatId": "gm_main_drill",
+      "atMs": 5400,
+      "durationMs": 9600,
+      "intentTag": "main-weapon-drill",
       "transcriptChunkIds": [
-        "chunk_gm_003a",
-        "chunk_gm_003b"
+        "chunk_gm_002a"
       ],
       "relatedEnemyIds": [
         "enemy_scout"
       ]
     },
     {
-      "beatId": "gm_melee_confirmation",
-      "atMs": 17000,
-      "durationMs": 6000,
-      "intentTag": "melee-confirmation",
+      "beatId": "gm_melee_drill",
+      "atMs": 12400,
+      "durationMs": 7000,
+      "intentTag": "melee-drill",
       "transcriptChunkIds": [
-        "chunk_gm_004a",
-        "chunk_gm_004b"
+        "chunk_gm_003a"
       ],
       "relatedEnemyIds": [
         "enemy_standard"
       ]
     },
     {
-      "beatId": "gm_sub_confirmation",
-      "atMs": 23000,
-      "durationMs": 7000,
-      "intentTag": "sub-confirmation",
+      "beatId": "gm_sub_drill",
+      "atMs": 9000,
+      "durationMs": 3500,
+      "intentTag": "sub-weapon-drill",
       "transcriptChunkIds": [
-        "chunk_gm_005a",
-        "chunk_gm_005b"
+        "chunk_gm_002a"
+      ],
+      "relatedEnemyIds": [
+        "enemy_standard"
       ]
     },
     {
-      "beatId": "gm_hit_noise",
-      "atMs": 30000,
-      "durationMs": 7000,
-      "intentTag": "hit-noise-confirmation-safe",
+      "beatId": "gm_hazard_drill",
+      "atMs": 19400,
+      "durationMs": 6800,
+      "intentTag": "hazard-drill",
       "transcriptChunkIds": [
-        "chunk_gm_006a",
-        "chunk_gm_006b"
+        "chunk_gm_005a"
       ],
       "relatedEnemyIds": [
         "enemy_scout",
         "enemy_standard"
-      ],
-      "fragmentWindow": {
-        "startMs": 30000,
-        "endMs": 37000
-      }
-    },
-    {
-      "beatId": "gm_hazard",
-      "atMs": 37000,
-      "durationMs": 7000,
-      "intentTag": "hazard-confirmation",
-      "transcriptChunkIds": [
-        "chunk_gm_007a",
-        "chunk_gm_007b"
       ],
       "relatedHazardIds": [
         "hazard_gm_01"
       ]
     },
     {
-      "beatId": "gm_return_prepare",
-      "atMs": 44000,
-      "durationMs": 11000,
-      "intentTag": "return-to-explore-preparation",
+      "beatId": "gm_combined_drill",
+      "atMs": 26400,
+      "durationMs": 10800,
+      "intentTag": "combined-drill",
       "transcriptChunkIds": [
-        "chunk_gm_008a",
-        "chunk_gm_008b",
-        "chunk_gm_009a",
-        "chunk_gm_009b"
+        "chunk_gm_006a"
       ],
       "relatedEnemyIds": [
         "enemy_scout",
         "enemy_standard"
+      ]
+    },
+    {
+      "beatId": "gm_signoff",
+      "atMs": 37200,
+      "durationMs": 3600,
+      "intentTag": "signoff",
+      "transcriptChunkIds": [
+        "chunk_gm_006a"
       ]
     }
   ],
@@ -265,9 +421,9 @@
     {
       "hazardId": "hazard_gm_01",
       "kind": "magneticDisaster",
-      "spawnAtMs": 37000,
-      "telegraphMs": 1200,
-      "activeMs": 2000,
+      "spawnAtMs": 23800,
+      "telegraphMs": 1300,
+      "activeMs": 2200,
       "fadeOutMs": 600,
       "tickIntervalMs": 300,
       "noiseDamage": 0.06,
@@ -275,9 +431,9 @@
       "area": {
         "shape": "rect",
         "x": -40,
-        "y": 60,
+        "y": 80,
         "width": 440,
-        "height": 80
+        "height": 90
       },
       "motion": {
         "motionKind": "static"

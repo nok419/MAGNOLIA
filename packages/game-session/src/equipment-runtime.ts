@@ -725,14 +725,10 @@ export const defaultEquipmentRuntimeRegistry: EquipmentRuntimeRegistry = {
           position: input.playerPosition,
           radius: readNumericParam(fieldEffect, "radius", 48),
           durationMs: readNumericParam(fieldEffect, "maxDurationMs", 1200),
+          cooldownMs: readNumericParam(fieldEffect, "cooldownMs", 3000),
           moveSpeedMultiplier: readNumericParam(fieldEffect, "moveSpeedMultiplier", 0.8),
           blocksEnemyBullets: Boolean(fieldEffect?.params?.blocksEnemyBullets),
           allowAttackDuringUse: Boolean(fieldEffect?.params?.allowAttackDuringUse),
-        },
-        {
-          kind: "applyCooldown",
-          slot: "sub",
-          durationMs: readNumericParam(fieldEffect, "cooldownMs", 3000),
         },
       ]
     },
@@ -742,7 +738,7 @@ export const defaultEquipmentRuntimeRegistry: EquipmentRuntimeRegistry = {
       )
       const direction = normalizeVector(input.facing)
       const fieldPosition = {
-        // バリアとの差を明確にするため、静音波は自機の少し前へ射出して展開します。
+        // バリアとの差を明確にするため、ミュートチャンバーは自機の少し前へ射出して展開します。
         x: input.playerPosition.x + direction.x * readNumericParam(fieldEffect, "spawnOffset", 72),
         y: input.playerPosition.y + direction.y * readNumericParam(fieldEffect, "spawnOffset", 72),
       }
@@ -763,7 +759,7 @@ export const defaultEquipmentRuntimeRegistry: EquipmentRuntimeRegistry = {
           driftsWithScroll: Boolean(fieldEffect?.params?.driftsWithScroll),
         },
         {
-          // 展開直後に field 内の敵弾を掃くことで、静音波を barrier と見分けやすくします。
+          // 展開直後に field 内の敵弾を掃くことで、ミュートチャンバーを barrier と見分けやすくします。
           kind: "clearEnemyProjectiles",
           position: fieldPosition,
           radius: fieldRadius,

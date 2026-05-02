@@ -859,8 +859,8 @@
 }
 .boot-console__cta--ready {
   cursor: pointer;
-  color: #041326;
-  background: linear-gradient(180deg, #9edbff 0%, var(--mg-accent) 100%);
+  color: var(--color-signal-contrast);
+  background: linear-gradient(180deg, var(--color-signal-highlight) 0%, var(--mg-accent) 100%);
   border-color: var(--mg-accent);
   box-shadow:
     0 12px 28px rgba(93, 164, 209, 0.35),

@@ -1,5 +1,6 @@
 import type {
   ContentBundle,
+  DomainEvent,
   PresentationRequest,
   RuntimeEffectRequest,
 } from "@magnolia/contracts"
@@ -11,12 +12,12 @@ import type {
 import {
   BATTLE_HEIGHT,
   BATTLE_WIDTH,
-  clamp01,
   findNearestEnemyInRange,
   hasEnemyWithinRange,
   resolveHitRadius,
   rotateVector,
 } from "./battle-world"
+import { clamp01 } from "./math"
 import {
   isWithinRadius,
   normalizeVector,
@@ -31,14 +32,16 @@ export function applyBattleEffectRequests(input: {
   nextInstanceId: (prefix: string) => string
   mainCadenceMultiplier: number
 }): {
+  events: DomainEvent[]
   presentationRequests: PresentationRequest[]
 } {
+  const events: DomainEvent[] = []
   const presentationRequests: PresentationRequest[] = []
 
   for (const request of input.effectRequests) {
     switch (request.kind) {
       case "spawnProjectile":
-        spawnProjectilesFromRequest({
+        events.push(...spawnProjectilesFromRequest({
           battle: input.battle,
           request,
           modifierPatch: input.modifierPatch ?? {},
@@ -46,7 +49,7 @@ export function applyBattleEffectRequests(input: {
           hitboxPresets: input.hitboxPresets,
           nextInstanceId: input.nextInstanceId,
           mainCadenceMultiplier: input.mainCadenceMultiplier,
-        })
+        }))
         break
       case "spawnBarrier":
         input.battle.barrier = {
@@ -54,6 +57,7 @@ export function applyBattleEffectRequests(input: {
           radius: request.radius,
           remainingMs: request.durationMs,
           maxMs: request.durationMs,
+          cooldownMs: request.cooldownMs,
           moveSpeedMultiplier: request.moveSpeedMultiplier ?? 1,
           allowAttackDuringUse: request.allowAttackDuringUse,
           blocksEnemyBullets: request.blocksEnemyBullets,
@@ -101,6 +105,7 @@ export function applyBattleEffectRequests(input: {
   }
 
   return {
+    events,
     presentationRequests,
   }
 }
@@ -248,7 +253,7 @@ export function detonatePlayerProjectile(input: {
 
   if (input.projectile.explosionClearsEnemyProjectiles) {
     const explosionRadius = input.projectile.explosiveRadius
-    // キャリア爆発は静音波と同じ範囲で敵弾を消します。磁気災害への抵抗は support field 側だけに残します。
+    // キャリア爆発はミュートチャンバーと同じ範囲で敵弾を消します。磁気災害への抵抗は support field 側だけに残します。
     input.battle.projectiles = input.battle.projectiles.filter(
       (projectile) =>
         projectile.side !== "enemy" ||
@@ -424,7 +429,8 @@ function spawnProjectilesFromRequest(input: {
   hitboxPresets: ContentBundle["contentHitboxPresets"]
   nextInstanceId: (prefix: string) => string
   mainCadenceMultiplier: number
-}): void {
+}): DomainEvent[] {
+  const events: DomainEvent[] = []
   const projectileSpec = input.projectiles[input.request.projectileId]
   const burnEnabled = Boolean(input.modifierPatch.visibilityModifiers?.burnEnabled)
   const burnDamagePerSec = burnEnabled
@@ -576,7 +582,7 @@ function spawnProjectilesFromRequest(input: {
     const meleeDamage = readRequestNumericParam(input.request.params, "meleeDamage", 8)
     const meleeSpreadDeg = readRequestNumericParam(input.request.params, "meleeSpreadDeg", 120)
     if (!hasEnemyWithinRange(input.battle.enemies, input.request.position, meleeCollisionRange)) {
-      return
+      return events
     }
 
     if (meleeStyle === "swordSweep") {
@@ -624,7 +630,8 @@ function spawnProjectilesFromRequest(input: {
       input.battle.mainMeleeCooldownMs =
         readRequestNumericParam(input.request.params, "meleeCooldownMs", 760) *
         input.mainCadenceMultiplier
-      return
+      events.push({ type: "playerMainMeleeUsed" })
+      return events
     }
 
     const meleeCount =
@@ -662,5 +669,8 @@ function spawnProjectilesFromRequest(input: {
         nonColliding: false,
       })
     }
+    events.push({ type: "playerMainMeleeUsed" })
   }
+
+  return events
 }

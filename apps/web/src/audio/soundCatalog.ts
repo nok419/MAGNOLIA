@@ -8,6 +8,7 @@ export const SOUND_ASSET_IDS = {
   UI_PANEL_CLOSE: 'asset.ui.panelClose',
   UI_ERROR: 'asset.ui.error',
   SYSTEM_SAVE_LOAD: 'asset.system.saveLoad',
+  SYSTEM_RECONSTRUCT: 'asset.system.reconstruct',
   TITLE_NEW_GAME: 'asset.title.newGame',
   TITLE_LOAD_GAME: 'asset.title.loadGame',
 
@@ -28,6 +29,7 @@ export const SOUND_ASSET_IDS = {
   EQUIPMENT_PICKUP: 'asset.explore.equipmentPickup',
 
   PLAYER_SHOT: 'asset.combat.playerShot',
+  PLAYER_MELEE: 'asset.combat.playerMelee',
   PLAYER_HIT: 'asset.combat.playerHit',
   PLAYER_HIT_HEAVY: 'asset.combat.playerHitHeavy',
   ENEMY_SHOT: 'asset.combat.enemyShot',
@@ -65,6 +67,7 @@ export const SOUND_KEYS = {
   UI_CLOSE: 'ui.close',
   UI_ERROR: 'ui.error',
   SYSTEM_SAVE_LOAD: 'system.saveLoad',
+  SYSTEM_RECONSTRUCT: 'system.reconstruct',
 
   TITLE_NEW_GAME: 'title.newGame',
   TITLE_LOAD_GAME: 'title.loadGame',
@@ -84,6 +87,7 @@ export const SOUND_KEYS = {
   EXPLORE_DOOR_LOCKED: 'explore.doorLocked',
 
   COMBAT_PLAYER_SHOT: 'combat.playerShot',
+  COMBAT_PLAYER_MELEE: 'combat.playerMelee',
   COMBAT_ENEMY_SHOT: 'combat.enemyShot',
   COMBAT_ENEMY_SHOT_FAST: 'combat.enemyShot.fast',
   COMBAT_ENEMY_SHOT_HEAVY: 'combat.enemyShot.heavy',
@@ -191,6 +195,7 @@ export const SOUND_ASSETS: readonly SoundAssetDefinition[] = [
   asset(SOUND_ASSET_IDS.UI_PANEL_CLOSE, 'ui/ui-panel-close.wav', 'パネル/スロット選択を閉じる'),
   asset(SOUND_ASSET_IDS.UI_ERROR, 'ui/ui-error.wav', '選択不可/弾切れなどの短い警告'),
   asset(SOUND_ASSET_IDS.SYSTEM_SAVE_LOAD, 'system/system-save-load.wav', 'コンソール保存/ロード'),
+  asset(SOUND_ASSET_IDS.SYSTEM_RECONSTRUCT, 'system/reconstruct.wav', 'New Game 後の自機構築ムービー'),
   asset(SOUND_ASSET_IDS.TITLE_NEW_GAME, 'title/title-new-game.wav', 'New Game 開始'),
   asset(SOUND_ASSET_IDS.TITLE_LOAD_GAME, 'title/title-load-game.wav', 'Continue / Load Game 開始'),
 
@@ -211,6 +216,7 @@ export const SOUND_ASSETS: readonly SoundAssetDefinition[] = [
   asset(SOUND_ASSET_IDS.EQUIPMENT_PICKUP, 'explore/equipment-pickup.wav', '装備回収'),
 
   asset(SOUND_ASSET_IDS.PLAYER_SHOT, 'combat/player-shot.wav', 'プレイヤー射撃'),
+  asset(SOUND_ASSET_IDS.PLAYER_MELEE, 'combat/main-melee.wav', 'main パルスの近接スイープ'),
   asset(SOUND_ASSET_IDS.PLAYER_HIT, 'combat/player-hit.wav', 'プレイヤー被弾'),
   asset(SOUND_ASSET_IDS.PLAYER_HIT_HEAVY, 'combat/player-hit-heavy.wav', 'プレイヤー強被弾'),
   asset(SOUND_ASSET_IDS.ENEMY_SHOT, 'combat/enemy-shot.wav', '敵射撃'),
@@ -222,7 +228,7 @@ export const SOUND_ASSETS: readonly SoundAssetDefinition[] = [
   asset(SOUND_ASSET_IDS.EQUIPMENT_ARCHIVE_DETAIL_SELECT, 'equipment/equipment-archive-detail-select.wav', '装備/アーカイブの詳細選択'),
   asset(SOUND_ASSET_IDS.EQUIPMENT_SWITCH, 'equipment/equipment-switch.wav', '装備切替'),
   asset(SOUND_ASSET_IDS.EQUIPMENT_USE, 'equipment/equipment-use.wav', 'サブ装備使用'),
-  asset(SOUND_ASSET_IDS.EQUIPMENT_SILENT_WAVE, 'equipment/static_waves.wav', '静音波展開'),
+  asset(SOUND_ASSET_IDS.EQUIPMENT_SILENT_WAVE, 'equipment/static_waves.wav', 'ミュートチャンバー展開'),
   asset(SOUND_ASSET_IDS.EQUIPMENT_UPGRADE, 'equipment/equipment-upgrade.wav', '装備強化'),
 
   asset(SOUND_ASSET_IDS.BARRIER_UP, 'equipment/noise_camceler.wav', 'ノイズキャンセラー/バリア展開'),
@@ -295,6 +301,7 @@ export const SOUND_EVENTS: readonly SoundEventDefinition[] = [
   readyEvent(SOUND_KEYS.TITLE_NEW_GAME, 'ui', 0.5, 'P0', SOUND_ASSET_IDS.TITLE_NEW_GAME, { cooldownMs: 300, polyphony: 1, description: 'New Game 決定' }),
   readyEvent(SOUND_KEYS.TITLE_LOAD_GAME, 'ui', 0.46, 'P0', SOUND_ASSET_IDS.TITLE_LOAD_GAME, { cooldownMs: 300, polyphony: 1, description: 'Load Game 決定' }),
   readyEvent(SOUND_KEYS.COMBAT_PLAYER_SHOT, 'sfx', 0.44, 'P0', SOUND_ASSET_IDS.PLAYER_SHOT, { cooldownMs: 30, polyphony: 6, detuneRange: 25, description: 'プレイヤー射撃' }),
+  readyEvent(SOUND_KEYS.COMBAT_PLAYER_MELEE, 'sfx', 0.24, 'P0', SOUND_ASSET_IDS.PLAYER_MELEE, { cooldownMs: 180, polyphony: 2, detuneRange: 18, description: 'main パルス近接スイープ' }),
   readyEvent(SOUND_KEYS.COMBAT_PLAYER_HIT, 'sfx', 0.3, 'P0', SOUND_ASSET_IDS.PLAYER_HIT, { cooldownMs: 100, polyphony: 3, description: 'プレイヤー被弾' }),
   readyEvent(SOUND_KEYS.COMBAT_PLAYER_HIT_HEAVY, 'sfx', 0.28, 'P0', SOUND_ASSET_IDS.PLAYER_HIT_HEAVY, { cooldownMs: 100, polyphony: 3, description: 'プレイヤー被弾の別音色' }),
   readyEvent(SOUND_KEYS.BARRIER_UP, 'sfx', 0.42, 'P0', SOUND_ASSET_IDS.BARRIER_UP, { cooldownMs: 280, polyphony: 1, description: 'バリア展開' }),
@@ -323,11 +330,12 @@ export const SOUND_EVENTS: readonly SoundEventDefinition[] = [
   readyEvent(SOUND_KEYS.MISSION_CLEAR, 'sfx', 0.58, 'P2', SOUND_ASSET_IDS.MISSION_CLEAR, { cooldownMs: 500, polyphony: 1, description: 'ミッションクリア' }),
   readyEvent(SOUND_KEYS.MISSION_FAIL, 'sfx', 0.5, 'P2', SOUND_ASSET_IDS.MISSION_FAIL, { cooldownMs: 500, polyphony: 1, description: 'ミッション失敗' }),
   readyEvent(SOUND_KEYS.SYSTEM_SAVE_LOAD, 'ui', 0.42, 'P2', SOUND_ASSET_IDS.SYSTEM_SAVE_LOAD, { cooldownMs: 240, polyphony: 1, description: 'コンソール保存/ロード' }),
+  readyEvent(SOUND_KEYS.SYSTEM_RECONSTRUCT, 'sfx', 0.56, 'P2', SOUND_ASSET_IDS.SYSTEM_RECONSTRUCT, { cooldownMs: 1200, polyphony: 1, description: 'New Game 後の自機構築ムービー' }),
   readyEvent(SOUND_KEYS.EQUIPMENT_ARCHIVE_CATEGORY_SELECT, 'ui', 0.36, 'P2', SOUND_ASSET_IDS.EQUIPMENT_ARCHIVE_CATEGORY_SELECT, { cooldownMs: 80, polyphony: 2, description: '装備/アーカイブの分類選択' }),
   readyEvent(SOUND_KEYS.EQUIPMENT_ARCHIVE_DETAIL_SELECT, 'ui', 0.34, 'P2', SOUND_ASSET_IDS.EQUIPMENT_ARCHIVE_DETAIL_SELECT, { cooldownMs: 70, polyphony: 2, description: '装備/アーカイブの詳細選択' }),
   readyEvent(SOUND_KEYS.EQUIPMENT_SWITCH, 'sfx', 0.34, 'P2', SOUND_ASSET_IDS.EQUIPMENT_SWITCH, { cooldownMs: 120, polyphony: 1, description: '装備切替' }),
   readyEvent(SOUND_KEYS.EQUIPMENT_USE, 'sfx', 0.42, 'P2', SOUND_ASSET_IDS.EQUIPMENT_USE, { cooldownMs: 160, polyphony: 2, description: '装備使用' }),
-  readyEvent(SOUND_KEYS.EQUIPMENT_SILENT_WAVE, 'sfx', 0.48, 'P2', SOUND_ASSET_IDS.EQUIPMENT_SILENT_WAVE, { cooldownMs: 180, polyphony: 1, description: '静音波展開' }),
+  readyEvent(SOUND_KEYS.EQUIPMENT_SILENT_WAVE, 'sfx', 0.48, 'P2', SOUND_ASSET_IDS.EQUIPMENT_SILENT_WAVE, { cooldownMs: 180, polyphony: 1, description: 'ミュートチャンバー展開' }),
   readyEvent(SOUND_KEYS.EQUIPMENT_UPGRADE, 'sfx', 0.46, 'P2', SOUND_ASSET_IDS.EQUIPMENT_UPGRADE, { cooldownMs: 260, polyphony: 1, description: '装備強化' }),
   readyEvent(SOUND_KEYS.VOICE_RADIO_BLIP, 'voice', 0.28, 'P2', SOUND_ASSET_IDS.RADIO_BLIP, { cooldownMs: 120, polyphony: 1, description: '無線ボイス前後のブリップ' }),
 

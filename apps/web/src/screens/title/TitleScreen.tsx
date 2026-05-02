@@ -15,6 +15,7 @@ type TitleScreenProps = {
   onOpenSlotSelect: (mode: SlotSelectMode) => void
   onCloseSlotSelect: () => void
   onConfirmSlot: (slotId: 1 | 2 | 3) => void
+  onStartDebugMode: () => void
   onOpenSettings: () => void
   displayOptions: DisplayOptions
 }
@@ -62,6 +63,7 @@ export function TitleScreen({
   onOpenSlotSelect,
   onCloseSlotSelect,
   onConfirmSlot,
+  onStartDebugMode,
   onOpenSettings,
   displayOptions,
 }: TitleScreenProps) {
@@ -98,7 +100,16 @@ export function TitleScreen({
     { label: "new game", tone: "primary", disabled: false, action: () => onOpenSlotSelect("newGame") },
     { label: "continue", tone: "ghost", disabled: !hasUsedSlot, action: () => onOpenSlotSelect("continue") },
     { label: "option", tone: "ghost", disabled: false, action: onOpenSettings },
-    { label: "exit", tone: "danger", disabled: true, action: () => {} },
+    {
+      label: "debug mode",
+      tone: "ghost",
+      disabled: false,
+      action: () => {
+        // debug mode は slot 選択を経由しないため、ここで title 離脱状態へ切り替えます。
+        setDeparting(true)
+        onStartDebugMode()
+      },
+    },
   ]
   const enabledMenuItems = menuItems.filter((item) => !item.disabled)
   const enabledToFullIndex = enabledMenuItems.map((item) => menuItems.indexOf(item))

@@ -7,14 +7,25 @@ import type {
   TimedPresentationRequest,
 } from "@/app/presentation/presentation-state"
 import { BattleCanvas } from "@/render/battle/BattleCanvas"
+import {
+  BATTLE_CANVAS_HEIGHT,
+  BATTLE_CANVAS_WIDTH,
+} from "@/render/battle/draw-battle-frame"
 import { ActionButton } from "@/components/ActionButton"
+import { TutorialIconCallout } from "@/components/InteractionPrompt"
 import { Meter, PanelFrame, ScrambleText } from "@/components/common"
 import { useEventPulse } from "@/hooks/useEventPulse"
+import { clamp01 } from "@/render/shared/render-math"
 
 // 被弾・字幕欠損で speaker label を再スクランブルするトリガに使う cueId。
 const SCRAMBLE_HIT_CUES = ["battle.player.hit", "battle.subtitle.damage"] as const
 // 復元イベントは「ノイズから読める形に戻る」演出として軽く一度だけ流す。
 const SCRAMBLE_RECOVER_CUES = ["battle.fragment.recovered"] as const
+const BATTLE_START_TUTORIAL_ICON_MS = 6000
+
+type SubtitleWaveInterference = NonNullable<
+  NonNullable<BattleRenderState["activeSubtitle"]>["waveInterference"]
+>
 
 type BattleScreenProps = {
   renderState: BattleRenderState
@@ -42,16 +53,46 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
   const recentlyRecovered = renderState.newlyRecoveredRange != null
   const hitPulse = useEventPulse(battleEvents, SCRAMBLE_HIT_CUES)
   const recoverPulse = useEventPulse(battleEvents, SCRAMBLE_RECOVER_CUES)
+  const shouldShowBattleStartTutorialIcons =
+    !resultViewModel && renderState.elapsedMs <= BATTLE_START_TUTORIAL_ICON_MS
+  const battleTutorialIconAnchor = readBattleTutorialIconAnchor(renderState.player.position)
+  const demoClearProgressLabel = resultViewModel
+    ? `体験版：クリア済み${resultViewModel.demoClearProgress.clearedMissionCount}/${resultViewModel.demoClearProgress.totalMissionCount}`
+    : ""
 
   return (
     <main className="battle-screen">
       <div className="battle-screen__playfield">
-        <BattleCanvas
-          renderState={renderState}
-          battleEvents={battleEvents}
-          shipVariant={shipVariant}
-          displayOptions={displayOptions}
-        />
+        <div className="battle-screen__canvas-wrap">
+          <BattleCanvas
+            renderState={renderState}
+            battleEvents={battleEvents}
+            shipVariant={shipVariant}
+            displayOptions={displayOptions}
+          />
+          {shouldShowBattleStartTutorialIcons ? (
+            <div className="battle-tutorial-icons">
+              <TutorialIconCallout
+                anchor={battleTutorialIconAnchor}
+                placement="right-up"
+                keyLabel="click"
+                label="main"
+                tone="warm"
+                motion="static"
+                ariaLabel="click で main weapon を使います"
+              />
+              <TutorialIconCallout
+                anchor={battleTutorialIconAnchor}
+                placement="left-up"
+                keyLabel="click 2"
+                label="sub"
+                tone="cyan"
+                motion="static"
+                ariaLabel="click 2 で sub weapon を使います"
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="battle-screen__sidebar">
@@ -164,7 +205,11 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
               <p>main — left click</p>
               <p>sub — click 2</p>
               <p>focus — shift</p>
-              <ActionButton tone="ghost" onClick={onReturnToExplore}>
+              <ActionButton
+                tone="danger"
+                className="battle-return-to-explore"
+                onClick={onReturnToExplore}
+              >
                 return to explore
               </ActionButton>
             </div>
@@ -231,11 +276,18 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
                   </p>
                 </div>
               ) : null}
-              <ActionButton onClick={onReturnToExplore}>
+              <ActionButton
+                tone="danger"
+                className="battle-return-to-explore battle-return-to-explore--result"
+                onClick={onReturnToExplore}
+              >
                 return to explore
               </ActionButton>
             </PanelFrame>
           </div>
+          <p className="battle-result-overlay__demo-progress" aria-live="polite">
+            {demoClearProgressLabel}
+          </p>
         </div>
       ) : null}
     </main>
@@ -288,11 +340,12 @@ function hasActiveBattleEvent(
   return events.some((event) => event.cueId === cueId && event.expiresAtMs > elapsedMs)
 }
 
-function clamp01(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0
+function readBattleTutorialIconAnchor(position: { x: number; y: number }) {
+  // canvas は CSS で拡大縮小されるため、内部座標を割合に変換して機体へ追従させます。
+  return {
+    x: `${(position.x / BATTLE_CANVAS_WIDTH) * 100}%`,
+    y: `${(position.y / BATTLE_CANVAS_HEIGHT) * 100}%`,
   }
-  return Math.max(0, Math.min(1, value))
 }
 
 function computeListeningStability(noiseLevel: number, hearingThreshold: number): number {
@@ -315,6 +368,7 @@ function renderSubtitleText(input: {
       text: subtitle.text,
       protectedSpans: subtitle.protectedSpans,
       damagedSpans: subtitle.damagedSpans,
+      waveInterference: subtitle.waveInterference,
       severity: 0,
       seed: `${subtitle.transmissionId}:${subtitle.chunkId}:audible`,
       reduceFlashing: input.reduceFlashing,
@@ -330,6 +384,7 @@ function renderSubtitleText(input: {
     text: subtitle.text,
     protectedSpans: subtitle.protectedSpans,
     damagedSpans: subtitle.damagedSpans,
+    waveInterference: subtitle.waveInterference,
     severity,
     seed,
     reduceFlashing: input.reduceFlashing,
@@ -340,6 +395,7 @@ function renderSubtitleGraphemes(input: {
   text: string
   protectedSpans: TranscriptSpan[]
   damagedSpans: TranscriptSpan[]
+  waveInterference?: SubtitleWaveInterference
   severity: number
   seed: string
   reduceFlashing: boolean
@@ -353,36 +409,169 @@ function renderSubtitleGraphemes(input: {
     const positionRatio = (index + 0.5) / total
     const protectedHere = isRatioInsideAnySpan(positionRatio, input.protectedSpans)
     const damagedHere = isRatioInsideAnySpan(positionRatio, input.damagedSpans)
-    if (!damagedHere) {
-      return (
-        <span
-          key={`${index}:${glyph}`}
-          className={protectedHere ? "subtitle-safe" : undefined}
-        >
-          {glyph}
-        </span>
-      )
+    if (damagedHere) {
+      return renderCorruptSubtitleGlyph({
+        glyph,
+        index,
+        seed: input.seed,
+        severity: input.severity,
+        reduceFlashing: input.reduceFlashing,
+      })
     }
 
-    const roll = seededUnit(`${input.seed}:${index}`)
-    const variant = readSubtitleCorruptionVariant({
-      roll,
-      severity: input.severity,
+    const waveGlyph = renderWaveInterferenceGlyph({
+      glyph,
+      index,
+      seed: input.seed,
+      protectedHere,
+      waveInterference: input.waveInterference,
       reduceFlashing: input.reduceFlashing,
     })
-    const replacement = readSubtitleCorruptionGlyph(variant, `${input.seed}:g:${index}`)
+    if (waveGlyph) {
+      return waveGlyph
+    }
 
     return (
       <span
         key={`${index}:${glyph}`}
-        className={`subtitle-corrupt subtitle-corrupt--${variant}`}
-        data-shadow={variant === "glitch" ? readSubtitleCorruptionGlyph("scramble", `${input.seed}:s:${index}`) : undefined}
-        aria-hidden="true"
+        className={protectedHere ? "subtitle-safe" : undefined}
       >
-        {replacement}
+        {glyph}
       </span>
     )
   })
+}
+
+function renderCorruptSubtitleGlyph(input: {
+  glyph: string
+  index: number
+  seed: string
+  severity: number
+  reduceFlashing: boolean
+}): ReactNode {
+  const roll = seededSubtitleUnit(`${input.seed}:${input.index}`)
+  const variant = readSubtitleCorruptionVariant({
+    roll,
+    severity: input.severity,
+    reduceFlashing: input.reduceFlashing,
+  })
+  const replacement = readSubtitleCorruptionGlyph(variant, `${input.seed}:g:${input.index}`)
+
+  return (
+    <span
+      key={`${input.index}:${input.glyph}`}
+      className={`subtitle-corrupt subtitle-corrupt--${variant}`}
+      data-shadow={
+        variant === "glitch"
+          ? readSubtitleCorruptionGlyph("scramble", `${input.seed}:s:${input.index}`)
+          : undefined
+      }
+      aria-hidden="true"
+    >
+      {replacement}
+    </span>
+  )
+}
+
+function renderWaveInterferenceGlyph(input: {
+  glyph: string
+  index: number
+  seed: string
+  protectedHere: boolean
+  waveInterference?: SubtitleWaveInterference
+  reduceFlashing: boolean
+}): ReactNode {
+  const waveInterference = input.waveInterference
+  if (!waveInterference) {
+    return null
+  }
+
+  const density = readWaveInterferenceDensity(waveInterference)
+  const roll = seededSubtitleUnit(`${input.seed}:wave:${input.index}`)
+  if (roll > density) {
+    return null
+  }
+
+  const hardCorruptionRatio = readWaveHardCorruptionRatio(waveInterference)
+  if (roll > density * hardCorruptionRatio) {
+    // 軽い倒し漏れは原文を残し、読めるノイズだけを重ねます。
+    return (
+      <span
+        key={`${input.index}:${input.glyph}:wave`}
+        className={`subtitle-wave subtitle-wave--readable ${
+          input.protectedHere ? "subtitle-safe" : ""
+        }`}
+        data-shadow={readSubtitleCorruptionGlyph(
+          "scramble",
+          `${input.seed}:wave-shadow:${input.index}`,
+        )}
+      >
+        {input.glyph}
+      </span>
+    )
+  }
+
+  const variant = readWaveCorruptionVariant({
+    waveInterference,
+    roll: seededSubtitleUnit(`${input.seed}:wave-variant:${input.index}`),
+    reduceFlashing: input.reduceFlashing,
+  })
+  const replacement = readSubtitleCorruptionGlyph(variant, `${input.seed}:wave-glyph:${input.index}`)
+
+  return (
+    <span
+      key={`${input.index}:${input.glyph}:wave-hard`}
+      className={`subtitle-corrupt subtitle-corrupt--${variant} subtitle-corrupt--wave`}
+      data-shadow={
+        variant === "glitch"
+          ? readSubtitleCorruptionGlyph("scramble", `${input.seed}:wave-shadow:${input.index}`)
+          : undefined
+      }
+      aria-hidden="true"
+    >
+      {replacement}
+    </span>
+  )
+}
+
+function readWaveInterferenceDensity(waveInterference: SubtitleWaveInterference): number {
+  switch (waveInterference.mode) {
+    case "readableGlitch":
+      return Math.min(0.28, 0.08 + waveInterference.effectiveMissRate * 0.8)
+    case "recovering":
+      return Math.min(0.62, 0.16 + waveInterference.effectiveMissRate * 0.95)
+    case "heavy":
+      return Math.min(0.88, 0.36 + waveInterference.effectiveMissRate * 0.58)
+  }
+}
+
+function readWaveHardCorruptionRatio(waveInterference: SubtitleWaveInterference): number {
+  switch (waveInterference.mode) {
+    case "readableGlitch":
+      return 0
+    case "recovering":
+      return Math.max(0.08, 0.5 - waveInterference.recoveryRatio * 0.42)
+    case "heavy":
+      return Math.max(0.58, 0.82 - waveInterference.recoveryRatio * 0.24)
+  }
+}
+
+function readWaveCorruptionVariant(input: {
+  waveInterference: SubtitleWaveInterference
+  roll: number
+  reduceFlashing: boolean
+}): SubtitleCorruptionVariant {
+  if (input.reduceFlashing) {
+    return "mask"
+  }
+  if (input.waveInterference.mode === "heavy") {
+    if (input.roll < 0.48) return "mask"
+    if (input.roll < 0.76) return "scramble"
+    return "glitch"
+  }
+  if (input.roll < 0.34) return "mask"
+  if (input.roll < 0.72) return "scramble"
+  return "glitch"
 }
 
 function renderSubtitleProtectionSegments(spans: TranscriptSpan[]): ReactNode {
@@ -445,7 +634,7 @@ function readSubtitleCorruptionGlyph(
     return "█"
   }
   const pool = variant === "mojibake" ? MOJIBAKE_GLYPHS : SCRAMBLE_GLYPHS
-  return pool[Math.floor(seededUnit(seed) * pool.length)] ?? "░"
+  return pool[Math.floor(seededSubtitleUnit(seed) * pool.length)] ?? "░"
 }
 
 function readSubtitleCorruptionSeverity(noiseLevel: number, hearingThreshold: number): number {
@@ -472,12 +661,12 @@ function readIntlSegmenter(): { segment(text: string): Iterable<{ segment: strin
     : null
 }
 
-function seededUnit(seed: string): number {
-  const hash = hashString(seed)
+function seededSubtitleUnit(seed: string): number {
+  const hash = hashSubtitleSeed(seed)
   return (hash % 10000) / 10000
 }
 
-function hashString(input: string): number {
+function hashSubtitleSeed(input: string): number {
   let hash = 2166136261
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index)

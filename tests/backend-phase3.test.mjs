@@ -34,6 +34,15 @@ test("state transition, save, reload, and export keep durable progress only", as
   const battleRenderState = session.getBattleRenderState()
   assert.equal(battleRenderState?.missionId, "mission_good_morning")
   assert.ok(battleRenderState?.resultViewModel)
+  assert.deepEqual(battleRenderState?.resultViewModel?.demoClearProgress, {
+    clearedMissionCount: 1,
+    totalMissionCount: 3,
+  })
+  session.getProfileAggregate().profile.clearedMissionIds.push("mission_good_morning")
+  assert.deepEqual(session.getBattleRenderState()?.resultViewModel?.demoClearProgress, {
+    clearedMissionCount: 1,
+    totalMissionCount: 3,
+  })
 
   await session.dispatch({ type: "returnToExplore" })
   await session.dispatch({ type: "openEquipment" })

@@ -44,7 +44,7 @@
   color: var(--mg-text);
 }
 .archive-log__text--damaged {
-  color: rgba(216, 231, 246, 0.72);
+  color: color-mix(in srgb, var(--color-signal-readable) 72%, transparent);
 }
 
 /* =========================================================
@@ -90,8 +90,8 @@
 }
 
 .settings-section {
-  background: rgba(8, 18, 34, 0.4);
-  border: 1px solid rgba(93, 164, 209, 0.2);
+  background: color-mix(in srgb, var(--color-void-panel-solid) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 20%, transparent);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -103,13 +103,13 @@
   top: 0; left: 0;
   width: 4px;
   height: 100%;
-  background: rgba(93, 164, 209, 0.5);
+  background: color-mix(in srgb, var(--color-signal-primary) 50%, transparent);
 }
 .settings-section--danger::before {
-  background: rgba(220, 80, 80, 0.6);
+  background: color-mix(in srgb, var(--color-threat-danger) 60%, transparent);
 }
 .settings-section--danger {
-  border-color: rgba(220, 80, 80, 0.2);
+  border-color: color-mix(in srgb, var(--color-threat-danger) 20%, transparent);
 }
 
 .settings-section__title {
@@ -117,17 +117,17 @@
   padding:
     clamp(10px, 1.5vh, 12px)
     clamp(12px, 1.6vw, 16px);
-  background: rgba(93, 164, 209, 0.08);
+  background: color-mix(in srgb, var(--color-signal-primary) 8%, transparent);
   font-family: var(--font-mono);
   font-size: clamp(10px, 0.8vw, 11px);
   letter-spacing: 0.2em;
   color: var(--mg-text);
-  border-bottom: 1px solid rgba(93, 164, 209, 0.1);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-signal-primary) 10%, transparent);
 }
 .settings-section--danger .settings-section__title {
-  background: rgba(220, 80, 80, 0.06);
-  border-bottom-color: rgba(220, 80, 80, 0.1);
-  color: rgba(255, 180, 180, 0.9);
+  background: color-mix(in srgb, var(--color-threat-danger) 6%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--color-threat-danger) 10%, transparent);
+  color: color-mix(in srgb, var(--color-threat-noise) 90%, var(--color-signal-readable));
 }
 
 .settings-section__content {
@@ -152,7 +152,7 @@
 }
 .settings-row + .settings-row {
   padding-top: 16px;
-  border-top: 1px solid rgba(93, 164, 209, 0.1);
+  border-top: 1px solid color-mix(in srgb, var(--color-signal-primary) 10%, transparent);
 }
 
 .settings-row__info {
@@ -175,7 +175,7 @@
 .settings-save-slots {
   margin-top: 8px;
   padding-top: 20px;
-  border-top: 1px solid rgba(220, 80, 80, 0.15);
+  border-top: 1px solid color-mix(in srgb, var(--color-threat-danger) 15%, transparent);
 }
 
 .settings-save-slots--compact {
@@ -193,8 +193,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 9px 12px;
-  background: rgba(4, 8, 16, 0.6);
-  border: 1px solid rgba(93, 164, 209, 0.2);
+  background: color-mix(in srgb, var(--color-void-base) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 20%, transparent);
 }
 .save-slot-card__info {
   display: flex;

@@ -124,6 +124,7 @@ test("BattleRenderState exposes resolved battle presets and communication deltas
   assert.match(runtimeTypes, /currentChunkProtectedRatio:\s*number/)
   assert.match(runtimeTypes, /protectedSpans:\s*TranscriptSpan\[\]/)
   assert.match(runtimeTypes, /damagedSpans:\s*TranscriptSpan\[\]/)
+  assert.match(runtimeTypes, /waveInterference\?:\s*SubtitleWaveInterferenceState/)
   assert.match(runtimeTypes, /newlyLostRange\?:\s*TimeRange/)
   assert.match(runtimeTypes, /newlyRecoveredRange\?:\s*TimeRange/)
   assert.match(sessionSource, /buildBattleRenderState/)

@@ -1,17 +1,17 @@
 {
   "missionId": "mission_evacuation",
   "transmissionId": "tx_evacuation",
-  "durationMs": 60000,
+  "durationMs": 90000,
   "scrollSpeed": 162,
   "backgroundPresetId": "bg_broadcast_facility",
   "playerSpawnId": "spawn_player_center",
-  "analysisTotal": 160,
+  "analysisTotal": 240,
   "visibilityConditionId": "cond_mission_good_morning_cleared",
   "startConditionId": "cond_mission_good_morning_cleared",
   "audioStartDelayMs": 900,
   "outroMs": 1800,
   "dangerLevel": 3,
-  "baseSelfRepairPoints": 110,
+  "baseSelfRepairPoints": 150,
   "repeatDecayRate": 0.2,
   "waves": [
     {
@@ -49,6 +49,37 @@
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
           "seed": 104
+        },
+        {
+          "spawnId": "evac_wave_02_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_center",
+          "seed": 105
+        }
+      ]
+    },
+    {
+      "waveId": "evac_wave_02b",
+      "atMs": 5500,
+      "intentTag": "broken-public-broadcast-repeat",
+      "entries": [
+        {
+          "spawnId": "evac_wave_02b_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 106
+        },
+        {
+          "spawnId": "evac_wave_02b_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 107
+        },
+        {
+          "spawnId": "evac_wave_02b_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 108
         }
       ]
     },
@@ -89,6 +120,45 @@
           "enemyId": "enemy_heavy",
           "spawnPointId": "spawn_top_center",
           "seed": 113
+        },
+        {
+          "spawnId": "evac_wave_04_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 114
+        },
+        {
+          "spawnId": "evac_wave_04_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 115
+        }
+      ]
+    },
+    {
+      "waveId": "evac_wave_04b",
+      "atMs": 12500,
+      "intentTag": "broken-public-broadcast-dropout",
+      "entries": [
+        {
+          "spawnId": "evac_wave_04b_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_side_left",
+          "seed": 116,
+          "overrides": {
+            "speed": 6,
+            "driftX": 38
+          }
+        },
+        {
+          "spawnId": "evac_wave_04b_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_side_right",
+          "seed": 117,
+          "overrides": {
+            "speed": 6,
+            "driftX": -38
+          }
         }
       ]
     },
@@ -133,6 +203,31 @@
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
           "seed": 124
+        },
+        {
+          "spawnId": "evac_wave_06_spawn_03",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 125
+        }
+      ]
+    },
+    {
+      "waveId": "evac_wave_06b",
+      "atMs": 18500,
+      "intentTag": "shelter-route-fragment",
+      "entries": [
+        {
+          "spawnId": "evac_wave_06b_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 126
+        },
+        {
+          "spawnId": "evac_wave_06b_spawn_02",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_left",
+          "seed": 127
         }
       ]
     },
@@ -152,6 +247,12 @@
           "enemyId": "enemy_standard",
           "spawnPointId": "spawn_top_right",
           "seed": 131
+        },
+        {
+          "spawnId": "evac_wave_07_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_center",
+          "seed": 132
         }
       ]
     },
@@ -164,7 +265,7 @@
           "spawnId": "evac_wave_08_spawn_01",
           "enemyId": "enemy_heavy",
           "spawnPointId": "spawn_top_left",
-          "seed": 132,
+          "seed": 133,
           "overrides": {
             "pauseAtY": 70
           }
@@ -173,7 +274,7 @@
           "spawnId": "evac_wave_08_spawn_02",
           "enemyId": "enemy_heavy",
           "spawnPointId": "spawn_top_right",
-          "seed": 133,
+          "seed": 134,
           "overrides": {
             "pauseAtY": 70
           }
@@ -203,6 +304,19 @@
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_center",
           "seed": 142
+        }
+      ]
+    },
+    {
+      "waveId": "evac_wave_10b",
+      "atMs": 28000,
+      "intentTag": "shelter-route-fragment",
+      "entries": [
+        {
+          "spawnId": "evac_wave_10b_spawn_01",
+          "enemyId": "c1",
+          "spawnPointId": "spawn_top_center",
+          "seed": 143
         }
       ]
     },
@@ -241,6 +355,43 @@
           "enemyId": "enemy_heavy",
           "spawnPointId": "spawn_top_center",
           "seed": 153
+        },
+        {
+          "spawnId": "evac_wave_12_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 154
+        },
+        {
+          "spawnId": "evac_wave_12_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 155
+        }
+      ]
+    },
+    {
+      "waveId": "evac_wave_12b",
+      "atMs": 35500,
+      "intentTag": "broadcast-collapse",
+      "entries": [
+        {
+          "spawnId": "evac_wave_12b_spawn_01",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_left",
+          "seed": 156,
+          "overrides": {
+            "pauseAtY": 60
+          }
+        },
+        {
+          "spawnId": "evac_wave_12b_spawn_02",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_right",
+          "seed": 157,
+          "overrides": {
+            "pauseAtY": 60
+          }
         }
       ]
     },
@@ -297,6 +448,31 @@
       ]
     },
     {
+      "waveId": "evac_wave_14b",
+      "atMs": 43500,
+      "intentTag": "fragment-recovery-window",
+      "entries": [
+        {
+          "spawnId": "evac_wave_14b_spawn_01",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 165
+        },
+        {
+          "spawnId": "evac_wave_14b_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 166
+        },
+        {
+          "spawnId": "evac_wave_14b_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 167
+        }
+      ]
+    },
+    {
       "waveId": "evac_wave_15",
       "atMs": 46000,
       "intentTag": "fragment-recovery-window",
@@ -312,6 +488,12 @@
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
           "seed": 171
+        },
+        {
+          "spawnId": "evac_wave_15_spawn_03",
+          "enemyId": "enemy_standard",
+          "spawnPointId": "spawn_top_center",
+          "seed": 172
         }
       ]
     },
@@ -339,13 +521,51 @@
           "seed": 182
         }
       ]
+    },
+    {
+      "waveId": "evac_wave_16b",
+      "atMs": 54000,
+      "intentTag": "fragment-recovery-window",
+      "entries": [
+        {
+          "spawnId": "evac_wave_16b_spawn_01",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_center",
+          "seed": 183
+        },
+        {
+          "spawnId": "evac_wave_16b_spawn_02",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_left",
+          "seed": 184
+        },
+        {
+          "spawnId": "evac_wave_16b_spawn_03",
+          "enemyId": "enemy_scout",
+          "spawnPointId": "spawn_top_right",
+          "seed": 185
+        }
+      ]
+    },
+    {
+      "waveId": "evac_wave_17_boss",
+      "atMs": 63600,
+      "intentTag": "observation-lock",
+      "entries": [
+        {
+          "spawnId": "evac_wave_17_boss_spawn_01",
+          "enemyId": "b1",
+          "spawnPointId": "spawn_top_center",
+          "seed": 190
+        }
+      ]
     }
   ],
   "beatEvents": [
     {
       "beatId": "evac_public_broadcast",
       "atMs": 0,
-      "durationMs": 8500,
+      "durationMs": 13200,
       "intentTag": "broken-public-broadcast-repeat",
       "transcriptChunkIds": [
         "tx_evacuation_01a",
@@ -356,13 +576,14 @@
         "tx_evacuation_02c"
       ],
       "relatedEnemyIds": [
-        "enemy_scout"
+        "enemy_scout",
+        "enemy_standard"
       ]
     },
     {
       "beatId": "evac_route_update_failed",
-      "atMs": 9000,
-      "durationMs": 20200,
+      "atMs": 13600,
+      "durationMs": 22200,
       "intentTag": "shelter-route-fragment",
       "transcriptChunkIds": [
         "tx_evacuation_03a",
@@ -374,20 +595,23 @@
       ],
       "relatedEnemyIds": [
         "enemy_standard",
-        "enemy_heavy"
+        "enemy_heavy",
+        "c1"
       ],
       "relatedHazardIds": [
-        "hazard_evac_disaster_1"
+        "hazard_evac_disaster_1",
+        "hazard_evac_disaster_4",
+        "hazard_evac_disaster_6"
       ],
       "fragmentWindow": {
-        "startMs": 22500,
-        "endMs": 29200
+        "startMs": 22200,
+        "endMs": 35800
       }
     },
     {
       "beatId": "evac_remaining_voices",
-      "atMs": 30500,
-      "durationMs": 6700,
+      "atMs": 36200,
+      "durationMs": 11000,
       "intentTag": "broadcast-collapse",
       "transcriptChunkIds": [
         "tx_evacuation_06a",
@@ -396,19 +620,22 @@
       "relatedEnemyIds": [
         "enemy_standard",
         "enemy_heavy"
+      ],
+      "relatedHazardIds": [
+        "hazard_evac_disaster_5",
+        "hazard_evac_disaster_7"
       ]
     },
     {
       "beatId": "evac_protection_overload",
-      "atMs": 38800,
-      "durationMs": 16900,
+      "atMs": 47600,
+      "durationMs": 18400,
       "intentTag": "fragment-recovery-window",
       "transcriptChunkIds": [
         "tx_evacuation_07a",
         "tx_evacuation_07b",
         "tx_evacuation_08a",
-        "tx_evacuation_08b",
-        "tx_evacuation_09a"
+        "tx_evacuation_08b"
       ],
       "relatedEnemyIds": [
         "enemy_scout",
@@ -416,34 +643,125 @@
         "enemy_heavy"
       ],
       "relatedHazardIds": [
-        "hazard_evac_disaster_2"
+        "hazard_evac_disaster_2",
+        "hazard_evac_disaster_3",
+        "hazard_evac_disaster_7"
       ],
       "fragmentWindow": {
-        "startMs": 38800,
-        "endMs": 55700
+        "startMs": 47600,
+        "endMs": 62600
       }
+    },
+    {
+      "beatId": "evac_observation_lock",
+      "atMs": 63600,
+      "durationMs": 22400,
+      "intentTag": "observation-lock",
+      "transcriptChunkIds": [
+        "tx_evacuation_09a"
+      ],
+      "relatedEnemyIds": [
+        "b1"
+      ]
     }
   ],
   "hazards": [
+    {
+      "hazardId": "hazard_evac_disaster_4",
+      "kind": "magneticDisaster",
+      "spawnAtMs": 6500,
+      "telegraphMs": 1100,
+      "activeMs": 2800,
+      "fadeOutMs": 800,
+      "tickIntervalMs": 250,
+      "noiseDamage": 0.06,
+      "enemyDamagePerSecond": 20,
+      "area": {
+        "shape": "rect",
+        "x": -60,
+        "y": 50,
+        "width": 240,
+        "height": 110
+      },
+      "motion": {
+        "motionKind": "static"
+      },
+      "visualPresetId": "hazard_magnetic_disaster_standard",
+      "visibilityConditionId": "cond_always"
+    },
     {
       "hazardId": "hazard_evac_disaster_1",
       "kind": "magneticDisaster",
       "spawnAtMs": 16800,
       "telegraphMs": 1300,
-      "activeMs": 3600,
+      "activeMs": 4200,
       "fadeOutMs": 1000,
-      "tickIntervalMs": 250,
+      "tickIntervalMs": 220,
+      "noiseDamage": 0.09,
+      "enemyDamagePerSecond": 28,
+      "area": {
+        "shape": "rect",
+        "x": 20,
+        "y": 30,
+        "width": 420,
+        "height": 150
+      },
+      "motion": {
+        "motionKind": "static"
+      },
+      "visualPresetId": "hazard_magnetic_disaster_standard",
+      "visibilityConditionId": "cond_always"
+    },
+    {
+      "hazardId": "hazard_evac_disaster_6",
+      "kind": "magneticDisaster",
+      "spawnAtMs": 22600,
+      "telegraphMs": 950,
+      "activeMs": 2600,
+      "fadeOutMs": 800,
+      "tickIntervalMs": 230,
       "noiseDamage": 0.07,
       "enemyDamagePerSecond": 24,
       "area": {
         "shape": "rect",
-        "x": 40,
-        "y": 30,
-        "width": 380,
-        "height": 130
+        "x": 250,
+        "y": 20,
+        "width": 160,
+        "height": 250
       },
       "motion": {
-        "motionKind": "static"
+        "motionKind": "linear",
+        "velocity": {
+          "x": -34,
+          "y": 16
+        }
+      },
+      "visualPresetId": "hazard_magnetic_disaster_standard",
+      "visibilityConditionId": "cond_always"
+    },
+    {
+      "hazardId": "hazard_evac_disaster_5",
+      "kind": "magneticDisaster",
+      "spawnAtMs": 27500,
+      "telegraphMs": 1100,
+      "activeMs": 3400,
+      "fadeOutMs": 900,
+      "tickIntervalMs": 240,
+      "noiseDamage": 0.08,
+      "enemyDamagePerSecond": 26,
+      "area": {
+        "shape": "rect",
+        "x": 80,
+        "y": 100,
+        "width": 320,
+        "height": 140
+      },
+      "motion": {
+        "motionKind": "linear",
+        "velocity": {
+          "x": -22,
+          "y": 0
+        }
       },
       "visualPresetId": "hazard_magnetic_disaster_standard",
       "visibilityConditionId": "cond_always"
@@ -453,17 +771,17 @@
       "kind": "magneticDisaster",
       "spawnAtMs": 35000,
       "telegraphMs": 1200,
-      "activeMs": 3000,
+      "activeMs": 3600,
       "fadeOutMs": 900,
-      "tickIntervalMs": 250,
-      "noiseDamage": 0.08,
-      "enemyDamagePerSecond": 24,
+      "tickIntervalMs": 220,
+      "noiseDamage": 0.09,
+      "enemyDamagePerSecond": 28,
       "area": {
         "shape": "rect",
         "x": -40,
-        "y": 150,
-        "width": 420,
-        "height": 120
+        "y": 130,
+        "width": 460,
+        "height": 150
       },
       "motion": {
         "motionKind": "static"
@@ -472,26 +790,53 @@
       "visibilityConditionId": "cond_always"
     },
     {
-      "hazardId": "hazard_evac_disaster_3",
+      "hazardId": "hazard_evac_disaster_7",
       "kind": "magneticDisaster",
-      "spawnAtMs": 52000,
-      "telegraphMs": 1400,
-      "activeMs": 4200,
-      "fadeOutMs": 1000,
-      "tickIntervalMs": 250,
-      "noiseDamage": 0.09,
-      "enemyDamagePerSecond": 28,
+      "spawnAtMs": 42600,
+      "telegraphMs": 900,
+      "activeMs": 3000,
+      "fadeOutMs": 900,
+      "tickIntervalMs": 220,
+      "noiseDamage": 0.08,
+      "enemyDamagePerSecond": 26,
       "area": {
         "shape": "rect",
-        "x": 170,
-        "y": 70,
-        "width": 260,
-        "height": 220
+        "x": -100,
+        "y": 30,
+        "width": 210,
+        "height": 260
       },
       "motion": {
         "motionKind": "linear",
         "velocity": {
-          "x": -18,
+          "x": 38,
+          "y": -12
+        }
+      },
+      "visualPresetId": "hazard_magnetic_disaster_standard",
+      "visibilityConditionId": "cond_always"
+    },
+    {
+      "hazardId": "hazard_evac_disaster_3",
+      "kind": "magneticDisaster",
+      "spawnAtMs": 49000,
+      "telegraphMs": 1400,
+      "activeMs": 5600,
+      "fadeOutMs": 1000,
+      "tickIntervalMs": 220,
+      "noiseDamage": 0.10,
+      "enemyDamagePerSecond": 32,
+      "area": {
+        "shape": "rect",
+        "x": 140,
+        "y": 50,
+        "width": 320,
+        "height": 250
+      },
+      "motion": {
+        "motionKind": "linear",
+        "velocity": {
+          "x": -22,
           "y": 0
         }
       },

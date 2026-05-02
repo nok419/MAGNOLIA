@@ -2,6 +2,7 @@ import { useRef } from "react"
 import type { SaveSlotId, SaveSlotRow, SettingsRow } from "@magnolia/contracts"
 import { SETTINGS_VOLUME_STEPS } from "@magnolia/contracts"
 import { formatTimestamp } from "@/app/display-helpers"
+import { listProgressSaveSlots } from "@/app/save-slot-selectors"
 import { ActionButton } from "@/components/ActionButton"
 
 type VolumeChannel = keyof SettingsRow["volumes"]
@@ -32,6 +33,7 @@ export function SettingsPanel({
   onReturnToTitle,
 }: SettingsPanelProps) {
   const activeVolumePointerIdRef = useRef<number | null>(null)
+  const progressSaveSlots = listProgressSaveSlots(saveSlots)
 
   function clampVolumeStep(step: number): SettingsRow["volumes"][VolumeChannel] {
     return Math.min(SETTINGS_VOLUME_STEPS, Math.max(1, step)) as SettingsRow["volumes"][VolumeChannel]
@@ -226,13 +228,13 @@ export function SettingsPanel({
                 </p>
               )}
             </div>
-            
+
             <div className="settings-save-slots settings-save-slots--compact">
               <p className="muted-text" style={{ margin: "0 0 8px", fontSize: 12 }}>
-                別スロットへの保存は、現在の進行を複製して書き込みます。
+                保存先は SLOT 02 / SLOT 03 のみです。
               </p>
               <div className="save-slots-grid">
-                {saveSlots.map((slot) => (
+                {progressSaveSlots.map((slot) => (
                   <div key={slot.slotId} className="save-slot-card">
                     <div className="save-slot-card__info">
                       <p className="save-slot-card__id">SLOT {String(slot.slotId).padStart(2, "0")}</p>

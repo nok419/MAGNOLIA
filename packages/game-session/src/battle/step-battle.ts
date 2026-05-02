@@ -24,7 +24,7 @@ import {
   type RuntimeModifierPatch,
   useEquippedSubWeapon,
 } from "../equipment-runtime"
-import type { InternalBattleState } from "../battle-state"
+import type { InternalBarrierState, InternalBattleState } from "../battle-state"
 import { stepBattlefieldHazards } from "../hazards"
 import {
   appendTimeRange,
@@ -42,14 +42,16 @@ import { clampToRect, normalizeVector } from "../explore-world"
 import {
   BATTLE_HEIGHT,
   BATTLE_WIDTH,
-  clamp01,
   isCircleInsideCircle,
 } from "../battle-world"
+import { clamp01 } from "../math"
 import { getActiveBattleChunk } from "./battle-render-state"
 import { resolveBattleCollisions as resolveBattleCollisionsFromSystem } from "./collision-system"
 import { finalizeBattleMission } from "./battle-result-system"
 
 type BattlePresentationRequests = ReturnType<typeof flattenPresentationRequests>
+
+const PLAYER_HIT_TRANSCRIPT_DAMAGE_MS = 1200
 
 export type BattleStepHost = {
   content: ContentBundle
@@ -79,7 +81,7 @@ export type BattleStepHost = {
       battle: InternalBattleState,
       effectRequests: RuntimeEffectRequest[],
       battlePassives: RuntimeModifierPatch,
-    ) => { presentationRequests: BattlePresentationRequests }
+    ) => { events: DomainEvent[]; presentationRequests: BattlePresentationRequests }
     updateSupportFields: (battle: InternalBattleState, dtMs: number) => void
     applyMagneticDisasterEffects: (battle: InternalBattleState, dtMs: number) => void
   }
@@ -198,6 +200,12 @@ export function stepBattleFrame(input: {
   const events: DomainEvent[] = []
   const canFireMain = !battle.barrier || battle.barrier.allowAttackDuringUse
   if (frameInput.fireMain && battle.mainCooldownMs <= 0 && canFireMain) {
+    const mainHandlerId = battle.loadout.main?.runtimeHandlerId
+    const mainEquipmentId = battle.loadout.main?.equipmentId
+    const mainEventContext = {
+      ...(mainEquipmentId ? { equipmentId: mainEquipmentId } : {}),
+      ...(mainHandlerId ? { runtimeHandlerId: mainHandlerId } : {}),
+    }
     const mainWeaponRequests = fireEquippedMainWeapon({
       bindings: battle.bindings,
       context: {
@@ -208,7 +216,7 @@ export function stepBattleFrame(input: {
       },
     })
     if (mainWeaponRequests.some((request) => request.kind === "spawnProjectile")) {
-      events.push({ type: "playerMainWeaponFired" })
+      events.push({ type: "playerMainWeaponFired", ...mainEventContext })
     }
     effectRequests.push(...mainWeaponRequests)
   }
@@ -245,24 +253,34 @@ export function stepBattleFrame(input: {
   }
   battle.previousSubPressed = frameInput.fireSub
 
-  // 長押し型の barrier は、右クリックを離した時点で終了し残時間ぶんだけ cooldown を計算します。
+  // 長押し型の barrier は、右クリックを離した時点で終了し cooldown を開始します。
+  // 残り時間が多いほど cooldown を短くし、短く使った時の取り回しを残します。
   if (battle.barrier && !frameInput.fireSub && battle.barrier.remainingMs > 0) {
-    const consumed = battle.barrier.maxMs - battle.barrier.remainingMs
-    const ratio = consumed / Math.max(1, battle.barrier.maxMs)
-    const subEquipment = host.content.equipment[battle.loadout.sub?.equipmentId ?? ""]
-    const baseCooldown = readSubCooldownMs(
-      battle.loadout.sub?.activeEffects,
-      subEquipment?.active?.cooldownMs ?? 3000,
-    )
-    battle.subCooldownMs = Math.max(500, baseCooldown * ratio)
+    applyBarrierStopCooldown({
+      battle,
+      barrier: battle.barrier,
+      activeEffects: battle.loadout.sub?.activeEffects,
+      fallbackCooldownMs:
+        host.content.equipment[battle.loadout.sub?.equipmentId ?? ""]?.active?.cooldownMs ?? 3000,
+      consumedRatio:
+        (battle.barrier.maxMs - battle.barrier.remainingMs) / Math.max(1, battle.barrier.maxMs),
+    })
     battle.barrier = undefined
     events.push({ type: "playerBarrierStopped", ...subEventContext })
   }
 
   const spawnedEffects = host.effects.applyEffectRequests(battle, effectRequests, battlePassives)
-  const hadBarrierBeforeSupportUpdate = Boolean(battle.barrier)
+  const barrierBeforeSupportUpdate = battle.barrier
   host.effects.updateSupportFields(battle, frameInput.dtMs)
-  if (hadBarrierBeforeSupportUpdate && !battle.barrier) {
+  if (barrierBeforeSupportUpdate && !battle.barrier) {
+    applyBarrierStopCooldown({
+      battle,
+      barrier: barrierBeforeSupportUpdate,
+      activeEffects: battle.loadout.sub?.activeEffects,
+      fallbackCooldownMs:
+        host.content.equipment[battle.loadout.sub?.equipmentId ?? ""]?.active?.cooldownMs ?? 3000,
+      consumedRatio: 1,
+    })
     events.push({ type: "playerBarrierStopped", ...subEventContext })
   }
   const enemyEvents = host.actors.updateEnemies(battle, frameInput.dtMs)
@@ -274,6 +292,7 @@ export function stepBattleFrame(input: {
     missionState: host.mission.buildMissionState(),
     playerPosition: battle.playerPosition,
     dtMs: frameInput.dtMs,
+    difficultyModifiers: host.difficulty.resolveDifficultyModifiers(),
   })
   battle.hazards = hazardResult.missionState.hazards
   host.effects.applyMagneticDisasterEffects(battle, frameInput.dtMs)
@@ -336,12 +355,18 @@ export function stepBattleFrame(input: {
   battle.newlyLostRange = undefined
   battle.newlyRecoveredRange = undefined
   const audioWindow = host.audio.resolveAudioWindow(battle, frameInput.dtMs)
+  let damagedAudioWindow: TimeRange | null = null
   if (audioWindow && battle.phase === "playing") {
     if (currentAudible && !receivedRestorationDamage) {
       battle.heardRanges = appendTimeRange(battle.heardRanges, audioWindow)
     } else {
-      battle.damageRanges = appendTimeRange(battle.damageRanges, audioWindow)
-      battle.newlyLostRange = audioWindow
+      // 被弾フレームだけを欠損にすると結果画面では丸めで 100% に見えます。
+      // そのため、実際に被弾した場合は短い通信ブロックとして欠損を残します。
+      damagedAudioWindow = receivedRestorationDamage
+        ? expandAudioWindowForHitDamage(audioWindow, battle.transcript)
+        : audioWindow
+      battle.damageRanges = appendTimeRange(battle.damageRanges, damagedAudioWindow)
+      battle.newlyLostRange = damagedAudioWindow
     }
     battle.restorationRate = computeRestorationRate(
       computeRecoverableArchiveHeardRanges({
@@ -356,7 +381,7 @@ export function stepBattleFrame(input: {
   if (audioWindow && battle.phase === "playing" && (!currentAudible || receivedRestorationDamage)) {
     host.fragments.maybeSpawnBattleFragment({
       battle,
-      audioWindow,
+      audioWindow: damagedAudioWindow ?? audioWindow,
       strength: receivedRestorationDamage ? 1 : clamp01(
         battle.noiseState.noiseLevel / Math.max(0.01, battle.noiseState.hearingThreshold),
       ),
@@ -408,10 +433,37 @@ export function stepBattleFrame(input: {
 
   return {
     snapshot: host.snapshot.createBattleSnapshot(),
-    events: [...events, ...enemyEvents, ...collisionEvents.events],
+    events: [...events, ...enemyEvents, ...spawnedEffects.events, ...collisionEvents.events],
     effectRequests,
     presentationRequests,
   }
+}
+
+function expandAudioWindowForHitDamage(
+  audioWindow: TimeRange,
+  transcript: { endMs: number }[],
+): TimeRange {
+  const transcriptEndMs = transcript[transcript.length - 1]?.endMs ?? audioWindow.endMs
+  const startMs = Math.max(0, Math.min(audioWindow.startMs, transcriptEndMs))
+  const endMs = Math.min(
+    transcriptEndMs,
+    Math.max(audioWindow.endMs, startMs + PLAYER_HIT_TRANSCRIPT_DAMAGE_MS),
+  )
+  return endMs > startMs ? { startMs, endMs } : audioWindow
+}
+
+function applyBarrierStopCooldown(input: {
+  battle: InternalBattleState
+  barrier: InternalBarrierState
+  activeEffects: EffectSpec[] | undefined
+  fallbackCooldownMs: number
+  consumedRatio: number
+}): void {
+  const baseCooldownMs = input.barrier.cooldownMs ?? readSubCooldownMs(
+    input.activeEffects,
+    input.fallbackCooldownMs,
+  )
+  input.battle.subCooldownMs = Math.max(0, baseCooldownMs * clamp01(input.consumedRatio))
 }
 
 function readSubCooldownMs(

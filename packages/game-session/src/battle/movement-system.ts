@@ -1,6 +1,7 @@
 import type { EnemyArchetype, MovementPattern, Vector2 } from "@magnolia/contracts"
 import { BATTLE_HEIGHT, BATTLE_WIDTH } from "../battle-world"
 import type { InternalEnemyState } from "../battle-state"
+import { clamp01 } from "../math"
 
 type EnemyMovementInput = {
   enemy: InternalEnemyState
@@ -224,10 +225,6 @@ function moveHoldAndFade(
 
 function readNumber(value: number | string | boolean | undefined, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
 }
 
 function lerpPoint(start: Vector2, end: Vector2, t: number): Vector2 {

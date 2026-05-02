@@ -1,10 +1,15 @@
 import { useEffect, useRef } from "react"
-import type { MutableRefObject } from "react"
+import type { Dispatch, MutableRefObject, SetStateAction } from "react"
 import type { DomainEvent, PresentationRequest } from "@magnolia/contracts"
-import type { MagnoliaGameSession } from "@magnolia/game-session"
+import {
+  selectEquipmentHint,
+  type MagnoliaGameSession,
+} from "@magnolia/game-session"
+import type { MagnoliaAppState } from "@/app/app-state"
 import { readExplorePresentationState } from "@/app/explore-presentation"
 import { readTargetFrameIntervalMs } from "@/app/frame-loop/frame-timing"
-import type { MagnoliaAppState } from "@/app/use-magnolia-app"
+import { dispatchAndSync } from "@/app/session-command-runner"
+import { writeSeenEquipmentToStorage } from "@/app/storage/seen-equipment-store"
 import type { useMagnoliaInput } from "@/app/use-magnolia-input"
 import { audioEvents } from "@/audio"
 
@@ -28,7 +33,7 @@ export function useMagnoliaFrameLoop({
   stateRef,
   lastFrameAtRef,
   frameHandleRef,
-  tryOpenMap,
+  setState,
   syncFromSession,
 }: {
   input: MagnoliaInput
@@ -36,7 +41,7 @@ export function useMagnoliaFrameLoop({
   stateRef: MutableRefObject<MagnoliaAppState>
   lastFrameAtRef: MutableRefObject<number | null>
   frameHandleRef: MutableRefObject<number | null>
-  tryOpenMap: (session: MagnoliaGameSession) => boolean
+  setState: Dispatch<SetStateAction<MagnoliaAppState>>
   syncFromSession: SyncFromSession
 }) {
   const explorationMoveAudioPlayingRef = useRef(false)
@@ -119,7 +124,7 @@ export function useMagnoliaFrameLoop({
         stopExplorationMoveAudio(MOVEMENT_AUDIO_INTERRUPT_FADE_MS)
         // 開閉に同じキーを使うため、画面を閉じる瞬間に押下状態を消費して再オープンを防ぎます。
         input.syncButtonEdges(settings)
-        void session.dispatch({ type: "closePanel" }).then(() => syncFromSession(session))
+        void dispatchAndSync(session, { type: "closePanel" }, { syncFromSession, setState })
         return
       }
 
@@ -134,9 +139,10 @@ export function useMagnoliaFrameLoop({
           dtMs,
           input,
           session,
+          appState,
           settings,
           explorePresentation,
-          tryOpenMap,
+          setState,
           startExplorationMoveAudio,
           stopExplorationMoveAudio,
           syncFromSession,
@@ -186,9 +192,10 @@ function runExploreFrame({
   dtMs,
   input,
   session,
+  appState,
   settings,
   explorePresentation,
-  tryOpenMap,
+  setState,
   startExplorationMoveAudio,
   stopExplorationMoveAudio,
   syncFromSession,
@@ -196,9 +203,10 @@ function runExploreFrame({
   dtMs: number
   input: MagnoliaInput
   session: MagnoliaGameSession
+  appState: MagnoliaAppState
   settings: ReturnType<MagnoliaGameSession["getSettings"]>
   explorePresentation: ReturnType<typeof readExplorePresentationState>
-  tryOpenMap: (session: MagnoliaGameSession) => boolean
+  setState: Dispatch<SetStateAction<MagnoliaAppState>>
   startExplorationMoveAudio: () => void
   stopExplorationMoveAudio: (fadeMs?: number) => void
   syncFromSession: SyncFromSession
@@ -213,15 +221,10 @@ function runExploreFrame({
   }
 
   if (mapPressed && !inputsLocked) {
-    if (!tryOpenMap(session)) {
-      stopExplorationMoveAudio(MOVEMENT_AUDIO_INTERRUPT_FADE_MS)
-      input.syncButtonEdges(settings)
-      return
-    }
     stopExplorationMoveAudio(MOVEMENT_AUDIO_INTERRUPT_FADE_MS)
     // M 押下をここで消費しないと、map 画面へ入った直後に閉じ判定へ流れます。
     input.syncButtonEdges(settings)
-    void session.dispatch({ type: "openMap" }).then(() => syncFromSession(session))
+    void dispatchAndSync(session, { type: "openMap" }, { syncFromSession, setState })
     return
   }
 
@@ -229,7 +232,14 @@ function runExploreFrame({
     stopExplorationMoveAudio(MOVEMENT_AUDIO_INTERRUPT_FADE_MS)
     // E 押下を消費し、equipment 画面へ入った直後の即時 close を防ぎます。
     input.syncButtonEdges(settings)
-    void session.dispatch({ type: "openEquipment" }).then(() => syncFromSession(session))
+    const equipmentGuideTargetId = readFirstEquipmentGuideTarget(appState)
+    void dispatchAndSync(session, { type: "openEquipment" }, {
+      syncFromSession,
+      setState,
+      beforeSync: equipmentGuideTargetId
+        ? () => startEquipmentGuide(setState, equipmentGuideTargetId)
+        : undefined,
+    })
     return
   }
 
@@ -261,4 +271,32 @@ function runExploreFrame({
       : input.isScanPressed(settings) || input.isSecondaryMouseJustPressed(),
   })
   syncFromSession(session, result.presentationRequests, result.events)
+}
+
+function readFirstEquipmentGuideTarget(appState: MagnoliaAppState): string | null {
+  // E 起点のガイドは、現在見えている探索中の誘導と同じ条件だけを使います。
+  // ここで対象を読むことで、画面同期時に確認済みにしても今回のガイド先は失われません。
+  return selectEquipmentHint({
+    content: appState.content,
+    profile: appState.profile,
+    seenEquipmentIds: appState.seenEquipmentIds,
+  }).equipmentGuideTargetId
+}
+
+function startEquipmentGuide(
+  setState: Dispatch<SetStateAction<MagnoliaAppState>>,
+  equipmentGuideTargetId: string,
+): void {
+  setState((current) => {
+    const profileId = current.profile?.profile.profileId
+    const seenEquipmentIds = current.seenEquipmentIds.includes(equipmentGuideTargetId)
+      ? current.seenEquipmentIds
+      : [...current.seenEquipmentIds, equipmentGuideTargetId]
+    writeSeenEquipmentToStorage(profileId, seenEquipmentIds)
+    return {
+      ...current,
+      seenEquipmentIds,
+      equipmentGuideTargetId,
+    }
+  })
 }

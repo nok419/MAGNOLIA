@@ -3,11 +3,11 @@
   "slot": "main",
   "name": "キャリア",
   "iconId": "icon_eq_main_carrier",
-  "summary": "前方へ走る信号柱と、軌道上の周期爆発で削る主兵装。",
-  "description": "信号柱を一本だけ射出する。弾体は画面上端まで直進し、軌道上に一定間隔で爆発範囲を配置する。近接攻撃は持たない。",
+  "summary": "直進弾と軌道上の爆発で攻撃する。",
+  "description": "単発の弾が前方へ進み、一定間隔で爆発範囲を残す。",
   "flavorText": "",
   "active": {
-    "cooldownMs": 300,
+    "cooldownMs": 900,
     "stock": 1,
     "inputAction": "fireMain"
   },
@@ -30,10 +30,10 @@
       "upgradeSummary": "単発の信号柱と周期爆発を使える。",
       "effectOverrides": {
         "damage": 36,
-        "cadenceMs": 360,
+        "cadenceMs": 900,
         "lifetimeMs": 1800,
-        "explosionRadius": 30,
-        "trailExplosionIntervalMs": 190
+        "explosionRadius": 24,
+        "trailExplosionIntervalMs": 240
       }
     },
     {
@@ -42,10 +42,10 @@
       "upgradeSummary": "爆発半径が広がり、軌道上の爆発頻度が上がる。",
       "effectOverrides": {
         "damage": 42,
-        "cadenceMs": 330,
+        "cadenceMs": 825,
         "lifetimeMs": 1850,
-        "explosionRadius": 40,
-        "trailExplosionIntervalMs": 170
+        "explosionRadius": 32,
+        "trailExplosionIntervalMs": 215
       }
     },
     {
@@ -54,10 +54,10 @@
       "upgradeSummary": "爆発半径がさらに広がり、射撃間隔が短くなる。",
       "effectOverrides": {
         "damage": 48,
-        "cadenceMs": 300,
+        "cadenceMs": 750,
         "lifetimeMs": 1900,
-        "explosionRadius": 50,
-        "trailExplosionIntervalMs": 150
+        "explosionRadius": 40,
+        "trailExplosionIntervalMs": 190
       }
     }
   ]

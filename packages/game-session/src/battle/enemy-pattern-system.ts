@@ -20,6 +20,9 @@ type EnemyPatternHandlerInput = {
   pattern: BulletPattern
   projectile: ProjectileSpec
   noiseDamageMultiplier: number
+  projectileSpeedMultiplier: number
+  burstBonus: number
+  spreadMultiplier: number
   nextInstanceId(prefix: string): string
   hitboxPresets: Record<string, ContentHitboxPreset>
 }
@@ -46,6 +49,9 @@ export function fireEnemyPatterns(input: {
 }): void {
   const cadenceMultiplier = input.difficultyModifiers.enemyCadenceMultiplier ?? 1
   const noiseDamageMultiplier = input.difficultyModifiers.enemyNoiseDamageMultiplier ?? 1
+  const projectileSpeedMultiplier = input.difficultyModifiers.enemyProjectileSpeedMultiplier ?? 1
+  const burstBonus = Math.max(0, Math.floor(input.difficultyModifiers.enemyPatternBurstBonus ?? 0))
+  const spreadMultiplier = input.difficultyModifiers.enemyPatternSpreadMultiplier ?? 1
 
   for (const patternId of input.enemyDefinition.bulletPatternIds) {
     const pattern = input.bulletPatterns[patternId]
@@ -66,6 +72,9 @@ export function fireEnemyPatterns(input: {
         pattern,
         projectile,
         noiseDamageMultiplier,
+        projectileSpeedMultiplier,
+        burstBonus,
+        spreadMultiplier,
         nextInstanceId: input.nextInstanceId,
         hitboxPresets: input.hitboxPresets,
       }),
@@ -84,16 +93,18 @@ function fireGoldenStream(input: EnemyPatternHandlerInput): InternalProjectileSt
   })
   const angle = baseRotationRad + fireCount * GOLDEN_ANGLE_RAD
   input.enemy.patternLastFiredAtMs[countKey] = fireCount + 1
-  return [
-    createEnemyProjectile(input, {
-      x: Math.cos(angle),
-      y: Math.sin(angle),
-    }),
-  ]
+  const projectileCount = 1 + input.burstBonus
+  return Array.from({ length: projectileCount }, (_, index) => {
+    const shotAngle = angle + (index * GOLDEN_ANGLE_RAD) / projectileCount
+    return createEnemyProjectile(input, {
+      x: Math.cos(shotAngle),
+      y: Math.sin(shotAngle),
+    })
+  })
 }
 
 function fireRadial(input: EnemyPatternHandlerInput): InternalProjectileState[] {
-  const burstCount = Math.max(1, input.pattern.burstCount)
+  const burstCount = resolveDifficultyBurstCount(input)
   const baseRotationRad = readEnemyPatternBaseRotation({
     battleElapsedMs: input.battle.elapsedMs,
     enemy: input.enemy,
@@ -109,8 +120,8 @@ function fireRadial(input: EnemyPatternHandlerInput): InternalProjectileState[] 
 }
 
 function fireSpread(input: EnemyPatternHandlerInput): InternalProjectileState[] {
-  const burstCount = Math.max(1, input.pattern.burstCount)
-  const spreadDeg = Number(input.pattern.params.spreadDeg ?? 0)
+  const burstCount = resolveDifficultyBurstCount(input)
+  const spreadDeg = Number(input.pattern.params.spreadDeg ?? 0) * input.spreadMultiplier
   const baseDirection = resolveEnemyPatternBaseDirection({
     battleElapsedMs: input.battle.elapsedMs,
     enemy: input.enemy,
@@ -121,6 +132,11 @@ function fireSpread(input: EnemyPatternHandlerInput): InternalProjectileState[] 
       ((burstCount === 1 ? 0 : (index / (burstCount - 1)) * spreadDeg - spreadDeg / 2) * Math.PI) / 180
     return createEnemyProjectile(input, rotateVector(baseDirection, offset))
   })
+}
+
+function resolveDifficultyBurstCount(input: EnemyPatternHandlerInput): number {
+  // terminal では authored pattern を差し替えず、既存 pattern の弾数だけを増やします。
+  return Math.max(1, input.pattern.burstCount + input.burstBonus)
 }
 
 function createEnemyProjectile(input: EnemyPatternHandlerInput, direction: { x: number; y: number }): InternalProjectileState {
@@ -135,8 +151,8 @@ function createEnemyProjectile(input: EnemyPatternHandlerInput, direction: { x: 
     side: "enemy",
     position: { ...input.enemy.position },
     velocity: {
-      x: direction.x * input.projectile.speed,
-      y: direction.y * input.projectile.speed,
+      x: direction.x * input.projectile.speed * input.projectileSpeedMultiplier,
+      y: direction.y * input.projectile.speed * input.projectileSpeedMultiplier,
     },
     radius: resolveHitRadius(hitbox),
     remainingMs: input.projectile.lifetimeMs,

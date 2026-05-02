@@ -2,12 +2,13 @@ import type { BattleRenderState, EnemyRenderState } from "@magnolia/game-session
 import {
   PHI,
   TAU,
-  hashString,
+  hashRenderString,
   resolveBattleRenderer,
 } from "@/render/battle/battle-renderer-utils"
 import type { CanvasPaletteRole } from "@/render/shared/canvas-palette"
 import { hex, resolveCanvasPaletteRole, rgba } from "@/render/shared/canvas-palette"
 import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
+import { clamp01 } from "@/render/shared/render-math"
 
 type EnemyRendererInput = {
   enemy: EnemyRenderState
@@ -67,7 +68,7 @@ function drawCircleEnemy(
   const motion = readEnemyMotionProfile(enemy.visual.motionProfile)
   const glowIntensity = clamp01(0.3 + hpRatio * 0.5) * (0.6 + presetGlow * 0.6)
 
-  const seed = hashString(enemy.enemyInstanceId)
+  const seed = hashRenderString(enemy.enemyInstanceId)
   const iconSize = 3 + (presetGlow - 0.5) * 1.4
   const bodyPath = readEnemyCirclePath(enemy, baseRole, r, renderOptions)
   const glyphPath = readEnemyDiamondPath(enemy, baseRole, iconSize, renderOptions)
@@ -160,7 +161,7 @@ function drawCircleBossEnemy(
   const motion = readEnemyMotionProfile(enemy.visual.motionProfile)
   const glowIntensity = clamp01(0.36 + hpRatio * 0.54) * (0.6 + presetGlow * 0.6)
 
-  const seed = hashString(enemy.enemyInstanceId)
+  const seed = hashRenderString(enemy.enemyInstanceId)
   const iconSize = 3.2 + presetGlow * 1.2
   const bodyPath = readEnemyCirclePath(enemy, baseRole, r, renderOptions)
   const glyphPath = readEnemyDiamondPath(enemy, baseRole, iconSize, renderOptions)
@@ -248,10 +249,6 @@ function drawCircleBossEnemy(
   }
 
   ctx.restore()
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
 }
 
 function readEnemyCirclePath(

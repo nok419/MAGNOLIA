@@ -3,14 +3,14 @@
   "areaId": "area_broadcast_facility",
   "missionId": "mission_evacuation",
   "category": "broadcast",
-  "title": "避難勧告",
-  "sender": "CIVIL-DEFENSE",
-  "recipient": "CITYWIDE",
+  "title": "観測所2U 緊急警報",
+  "sender": "観測所2U",
+  "recipient": "エリアB1",
   "sentAt": "2326-05-14T07:42:00Z",
   "subjectTags": [
     "evacuation",
-    "panic",
-    "district-4"
+    "area-b1",
+    "unknown-disaster"
   ],
   "rewardEquipmentIds": [],
   "unlockConditionId": "cond_mission_good_morning_cleared",

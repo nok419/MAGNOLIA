@@ -235,8 +235,8 @@
 
 .title-screen__logo--glitch-r {
   animation: mg-text-glow 4s ease-in-out infinite;
-  text-shadow: 5px 0 0 rgba(255, 0, 80, 0.8);
-  color: rgba(255, 100, 140, 0.8);
+  text-shadow: 5px 0 0 color-mix(in srgb, var(--color-threat-noise) 80%, transparent);
+  color: color-mix(in srgb, var(--color-threat-noise) 80%, transparent);
   clip-path: inset(
     var(--title-glitch-r-top)
     var(--title-glitch-r-right)

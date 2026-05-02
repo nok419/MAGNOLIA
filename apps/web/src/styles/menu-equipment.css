@@ -125,6 +125,21 @@
   color: var(--mg-text);
   letter-spacing: 0.15em;
 }
+.menu-tab--archive {
+  color: color-mix(in srgb, var(--mg-warm) 68%, var(--mg-text-muted));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mg-warm) 10%, transparent), transparent 72%);
+  border-inline: 1px solid color-mix(in srgb, var(--mg-warm) 16%, transparent);
+}
+.menu-tab--archive::before {
+  background: linear-gradient(0deg, color-mix(in srgb, var(--mg-warm) 24%, transparent) 0%, transparent 100%);
+  opacity: 0.45;
+}
+.menu-tab--archive:hover {
+  color: var(--mg-warm);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mg-warm) 16%, transparent), transparent 76%);
+}
 .menu-tab--active {
   color: var(--mg-accent);
   border-bottom-color: var(--mg-accent);
@@ -133,6 +148,13 @@
 }
 .menu-tab--active::before {
   opacity: 1;
+}
+.menu-tab--archive.menu-tab--active {
+  color: var(--mg-warm);
+  border-bottom-color: var(--mg-warm);
+  text-shadow: 0 0 12px var(--mg-glow-warm);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mg-warm) 18%, transparent), transparent 74%);
 }
 .menu-tab--back {
   color: var(--mg-text-muted);
@@ -407,7 +429,7 @@
   letter-spacing: 0.18em;
   line-height: 1;
   padding: 3px 6px;
-  color: #0b1424;
+  color: var(--color-void-panel-solid);
   background: var(--mg-warm);
   border-radius: 2px;
   animation: mg-new-badge-pulse 1.8s ease-in-out infinite;
@@ -415,6 +437,26 @@
 
 .equip-cat--has-new {
   color: var(--mg-text);
+}
+
+@keyframes equipment-guide-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--mg-warm) 55%, transparent),
+      0 0 10px color-mix(in srgb, var(--mg-warm) 24%, transparent);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px var(--mg-warm),
+      0 0 18px color-mix(in srgb, var(--mg-warm) 42%, transparent);
+  }
+}
+
+.equip-cat--guide {
+  color: var(--mg-warm);
+  border-left-color: var(--mg-warm);
+  background: color-mix(in srgb, var(--mg-warm) 9%, transparent);
+  animation: equipment-guide-pulse 1.35s ease-in-out infinite;
 }
 
 /* 装備リストの各アイテムに付く NEW バッジ。右上に絶対配置し、
@@ -433,7 +475,7 @@
   letter-spacing: 0.18em;
   line-height: 1;
   padding: 3px 6px;
-  color: #0b1424;
+  color: var(--color-void-panel-solid);
   background: var(--mg-warm);
   border-radius: 2px;
   animation: mg-new-badge-pulse 1.8s ease-in-out infinite;
@@ -442,6 +484,24 @@
 
 .list-card--new {
   border-color: rgba(240, 198, 116, 0.45);
+}
+
+.equip-list--plain > .list-card--guide {
+  border-color: var(--mg-warm) !important;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--mg-warm) 14%, transparent),
+      transparent 78%
+    ),
+    color-mix(in srgb, var(--color-void-depth) 78%, transparent);
+  animation: equipment-guide-pulse 1.35s ease-in-out infinite;
+}
+
+.equip-list--plain > .list-card--guide::before {
+  background: var(--mg-warm);
+  opacity: 1;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mg-warm) 54%, transparent);
 }
 
 @keyframes mg-pulse-glow {
@@ -514,6 +574,26 @@
   background: linear-gradient(180deg, transparent, var(--mg-accent) 24%, var(--mg-accent) 76%, transparent);
   box-shadow: 0 0 10px var(--mg-glow-blue);
   pointer-events: none;
+}
+
+.equip-list--plain > .list-card--selected.list-card--guide {
+  border-color: var(--mg-warm) !important;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--mg-warm) 16%, transparent),
+      transparent 78%
+    ),
+    color-mix(in srgb, var(--color-void-depth) 72%, transparent);
+  box-shadow:
+    0 18px 36px color-mix(in srgb, var(--color-void-depth) 52%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--mg-warm) 54%, transparent),
+    0 0 32px color-mix(in srgb, var(--mg-warm) 22%, transparent);
+}
+
+.equip-list--plain > .list-card--selected.list-card--guide::after {
+  background: linear-gradient(180deg, transparent, var(--mg-warm) 24%, var(--mg-warm) 76%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mg-warm) 54%, transparent);
 }
 
 .equip-list--plain > .list-card--unowned {
@@ -965,6 +1045,33 @@
     inset 0 0 0 1px color-mix(in srgb, var(--color-signal-readable) 42%, transparent);
 }
 
+.equip-detail__equip-action--guide.action-button {
+  border-color: var(--mg-warm);
+  color: var(--mg-warm);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--mg-warm) 18%, transparent),
+      transparent
+    ),
+    color-mix(in srgb, var(--color-void-depth) 58%, transparent);
+  animation: equipment-guide-pulse 1.35s ease-in-out infinite;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--mg-warm) 48%, transparent);
+}
+
+.equip-detail__equip-action--guide.action-button::before,
+.equip-detail__equip-action--guide.action-button::after {
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      var(--mg-warm) 24%,
+      var(--color-signal-readable) 50%,
+      var(--mg-warm) 76%,
+      transparent
+    );
+}
+
 /* ロック中・最大レベル時のインライン通知 */
 .equip-detail__locked-note,
 .equip-detail__max-note {
@@ -1038,11 +1145,11 @@
   background: linear-gradient(
     180deg,
     transparent,
-    rgba(255, 112, 108, 0.7) 30%,
-    rgba(255, 112, 108, 0.7) 70%,
+    color-mix(in srgb, var(--color-threat-shortage) 70%, transparent) 30%,
+    color-mix(in srgb, var(--color-threat-shortage) 70%, transparent) 70%,
     transparent
   );
-  box-shadow: 0 0 8px rgba(255, 112, 108, 0.35);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-threat-shortage) 35%, transparent);
 }
 
 /* ヘッダ: eyebrow + level track */
@@ -1157,8 +1264,8 @@
   text-shadow: 0 0 6px var(--mg-glow-blue);
 }
 .procurement__value--short .procurement__num {
-  color: #ff908a;
-  text-shadow: 0 0 6px rgba(255, 112, 108, 0.35);
+  color: var(--color-threat-shortage);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--color-threat-shortage) 35%, transparent);
 }
 
 /* 進捗バー */
@@ -1176,8 +1283,8 @@
   transition: width 360ms cubic-bezier(0.22, 0.8, 0.28, 1), background 260ms;
 }
 .procurement--short .procurement__bar-fill {
-  background: linear-gradient(90deg, rgba(200, 88, 88, 0.6), #ff908a);
-  box-shadow: 0 0 8px rgba(255, 112, 108, 0.4);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-threat-danger) 60%, transparent), var(--color-threat-shortage));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-threat-shortage) 40%, transparent);
 }
 .procurement__bar-cap {
   position: absolute;
@@ -1199,7 +1306,7 @@
   color: var(--mg-text-dim);
 }
 .procurement__shortage-note strong {
-  color: #ff908a;
+  color: var(--color-threat-shortage);
   font-weight: 500;
 }
 
@@ -1226,8 +1333,8 @@
     color var(--dur-fast);
 }
 .procurement__cta--ready {
-  color: #041326;
-  background: linear-gradient(180deg, #9edbff 0%, var(--mg-accent) 100%);
+  color: var(--color-signal-contrast);
+  background: linear-gradient(180deg, var(--color-signal-highlight) 0%, var(--mg-accent) 100%);
   border-color: var(--mg-accent);
   box-shadow:
     0 10px 24px rgba(93, 164, 209, 0.35),
@@ -1252,7 +1359,7 @@
 .procurement__cta--locked {
   color: var(--mg-text-muted);
   background: rgba(50, 14, 14, 0.18);
-  border-color: rgba(255, 112, 108, 0.22);
+  border-color: color-mix(in srgb, var(--color-threat-shortage) 22%, transparent);
   cursor: not-allowed;
   opacity: 0.85;
 }

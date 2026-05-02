@@ -4,197 +4,89 @@
     "transmissionId": "tx_where_are_you",
     "lineId": "line_001",
     "startMs": 0,
-    "endMs": 3000,
-    "speakerLabel": "カナ",
-    "text": "ユウキ、お母さんです。"
+    "endMs": 4200,
+    "speakerLabel": "第7居住区域",
+    "text": "第7居住区域です\n住民の私信をお届けします"
   },
   {
     "chunkId": "chunk_way_001b",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_001",
-    "startMs": 3000,
-    "endMs": 5000,
-    "speakerLabel": "カナ",
-    "text": "……聞こえてるかな。"
+    "startMs": 5000,
+    "endMs": 8200,
+    "speakerLabel": "ナオ",
+    "text": "ミオ、避難所に着いたら受付で祖母の名前を先に伝えてください。"
   },
   {
     "chunkId": "chunk_way_001c",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_001",
-    "startMs": 5000,
-    "endMs": 7000,
-    "speakerLabel": "カナ",
-    "text": "20-Aから送ってます。"
-  },
-  {
-    "chunkId": "chunk_way_002a",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_002",
-    "startMs": 7000,
-    "endMs": 10500,
-    "speakerLabel": "カナ",
-    "text": "昨日の配給で毛布が来たの。"
+    "startMs": 9000,
+    "endMs": 12200,
+    "speakerLabel": "ユリ",
+    "text": "母さん、ユリです。無事だから心配しないで"
   },
   {
     "chunkId": "chunk_way_002b",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_002",
-    "startMs": 10500,
-    "endMs": 12500,
-    "speakerLabel": "カナ",
-    "text": "そっちにも届いてるといいんだけど。"
-  },
-  {
-    "chunkId": "chunk_way_002c",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_002",
-    "startMs": 12500,
-    "endMs": 15000,
-    "speakerLabel": "カナ",
-    "text": "……夜、冷えるでしょう。"
-  },
-  {
-    "chunkId": "chunk_way_003a",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_003",
-    "startMs": 15000,
-    "endMs": 19000,
-    "speakerLabel": "カナ",
-    "text": "返事はなくても構わないから。"
+    "startMs": 13200,
+    "endMs": 16400,
+    "speakerLabel": "サキ",
+    "text": "アキラ、観測所2Fにいるよ"
   },
   {
     "chunkId": "chunk_way_003b",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_003",
-    "startMs": 19000,
-    "endMs": 24000,
-    "speakerLabel": "カナ",
-    "text": "元気でいてくれたら、それでいいから。"
-  },
-  {
-    "chunkId": "chunk_way_004a",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_004",
-    "startMs": 26000,
-    "endMs": 29500,
-    "speakerLabel": "タクミ",
-    "text": "あー……ソウタ、タクミ。"
+    "startMs": 17400,
+    "endMs": 20600,
+    "speakerLabel": "ハナ",
+    "text": "ユウ、私は第3集会室にいます。落ち着いたらここへ来てください。"
   },
   {
     "chunkId": "chunk_way_004b",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_004",
-    "startMs": 29500,
-    "endMs": 33000,
-    "speakerLabel": "タクミ",
-    "text": "生きてるか。"
+    "startMs": 21600,
+    "endMs": 25000,
+    "speakerLabel": "リオ",
+    "text": "りおです。おばあちゃん、無事？"
   },
   {
     "chunkId": "chunk_way_005a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_005",
-    "startMs": 33000,
-    "endMs": 37500,
-    "speakerLabel": "タクミ",
-    "text": "こっちは飯も出てるし、普通。"
-  },
-  {
-    "chunkId": "chunk_way_005b",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_005",
-    "startMs": 37500,
-    "endMs": 42000,
-    "speakerLabel": "タクミ",
-    "text": "お前もちゃんと食えよ。列長いけどサボんな。"
-  },
-  {
-    "chunkId": "chunk_way_006a",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_006",
-    "startMs": 42000,
-    "endMs": 46500,
-    "speakerLabel": "タクミ",
-    "text": "……なんか、あれだ。"
-  },
-  {
-    "chunkId": "chunk_way_006b",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_006",
-    "startMs": 46500,
-    "endMs": 52000,
-    "speakerLabel": "タクミ",
-    "text": "あの漫画の続き、まだ読んでねえからな。帰ったら貸せよ。"
+    "startMs": 26000,
+    "endMs": 29200,
+    "speakerLabel": "ミナ",
+    "text": "私はミナ。居住区域03のアヤを知りませんか"
   },
   {
     "chunkId": "chunk_way_007a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_007",
-    "startMs": 54000,
-    "endMs": 58500,
-    "speakerLabel": "ミサキ",
-    "text": "ハルカ、ミサキです。"
-  },
-  {
-    "chunkId": "chunk_way_007b",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_007",
-    "startMs": 58500,
-    "endMs": 62000,
-    "speakerLabel": "ミサキ",
-    "text": "20-Aの中継所、やっと順番が回ってきた。"
+    "startMs": 30400,
+    "endMs": 33600,
+    "speakerLabel": "シン",
+    "text": "アカリ、南通路には向かわないで。ここは助からない"
   },
   {
     "chunkId": "chunk_way_008a",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_008",
-    "startMs": 62000,
-    "endMs": 67500,
-    "speakerLabel": "ミサキ",
-    "text": "こっちにはサトウさんとコバヤシくんがいるよ。"
-  },
-  {
-    "chunkId": "chunk_way_008b",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_008",
-    "startMs": 67500,
-    "endMs": 72000,
-    "speakerLabel": "ミサキ",
-    "text": "サトウさん、相変わらず声が大きくてすぐわかった。"
-  },
-  {
-    "chunkId": "chunk_way_009a",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_009",
-    "startMs": 72000,
-    "endMs": 76000,
-    "speakerLabel": "ミサキ",
-    "text": "そっちの区画、通信まだ不安定だって聞いた。"
+    "startMs": 34800,
+    "endMs": 38200,
+    "speakerLabel": "ルイ",
+    "text": "カナ、妹をよろしくね"
   },
   {
     "chunkId": "chunk_way_009b",
     "transmissionId": "tx_where_are_you",
     "lineId": "line_009",
-    "startMs": 76000,
-    "endMs": 80000,
-    "speakerLabel": "ミサキ",
-    "text": "届いてないかもしれないけど、送るだけ送る。"
-  },
-  {
-    "chunkId": "chunk_way_010a",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_010",
-    "startMs": 80000,
-    "endMs": 83000,
-    "speakerLabel": "ミサキ",
-    "text": "……また会おうね。"
-  },
-  {
-    "chunkId": "chunk_way_010b",
-    "transmissionId": "tx_where_are_you",
-    "lineId": "line_010",
-    "startMs": 83000,
-    "endMs": 85000,
-    "speakerLabel": "ミサキ",
-    "text": "絶対。"
+    "startMs": 39600,
+    "endMs": 43000,
+    "speakerLabel": "不明",
+    "text": "これを受け取った人へ\n\n第7居住区域の避難者名簿を外部へ送ってください"
   }
 ]

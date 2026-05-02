@@ -30,6 +30,7 @@ type MenuScreenProps = {
   saveSlots: SaveSlotRow[]
   initialTab?: MenuTab
   unseenEquipmentIds: string[]
+  equipmentGuideTargetId?: string | null
   onMarkEquipmentSeen: (equipmentIds: string[]) => void
   onEquip: (equipmentId: string, slot: string, subsystemIndex?: 0 | 1) => void
   onUnequip: (equipmentId: string, slot: string, subsystemIndex?: 0 | 1) => void
@@ -62,6 +63,7 @@ export function MenuScreen({
   saveSlots,
   initialTab,
   unseenEquipmentIds,
+  equipmentGuideTargetId,
   onMarkEquipmentSeen,
   onEquip,
   onUnequip,
@@ -111,6 +113,26 @@ export function MenuScreen({
   useEffect(() => {
     setActiveTab(defaultTab)
   }, [defaultTab])
+
+  useEffect(() => {
+    if (activeTab !== "equipment" || !equipmentViewModel || !equipmentGuideTargetId) {
+      return
+    }
+    const guidedEquipment = equipmentViewModel.catalog.items.find(
+      (item) => item.equipmentId === equipmentGuideTargetId,
+    )
+    const guidedCategory = guidedEquipment
+      ? readGuideCategoryForSlot(guidedEquipment.slot)
+      : null
+    if (!guidedCategory) {
+      return
+    }
+
+    // E 起点の初回ガイドでは、選択状態そのものを目的の経路へ寄せます。
+    // 手動で探させず、os カテゴリ、MAGNOLIA、装備ボタンが同時に視界へ入るようにします。
+    setSelectedCategory(guidedCategory)
+    setSelectedEquipmentId(equipmentGuideTargetId)
+  }, [activeTab, equipmentGuideTargetId, equipmentViewModel])
 
   const handleSelectTab = useCallback((tab: MenuTab) => {
     if (tab !== activeTab) {
@@ -162,14 +184,21 @@ export function MenuScreen({
       </div>
 
       {/* tab bar */}
-      <nav className="menu-tabs">
+      <nav className="menu-tabs" role="tablist" aria-label="menu sections">
         {availableTabModels.map((tabModel) => {
           const tab = tabModel.tab
+          const tabClassName = [
+            "menu-tab",
+            `menu-tab--${tab}`,
+            activeTab === tab ? "menu-tab--active" : "",
+          ].filter(Boolean).join(" ")
           return (
             <button
               key={tab}
               type="button"
-              className={`menu-tab ${activeTab === tab ? "menu-tab--active" : ""}`}
+              role="tab"
+              aria-selected={activeTab === tab}
+              className={tabClassName}
               onClick={() => handleSelectTab(tab)}
             >
               {tab}
@@ -199,6 +228,7 @@ export function MenuScreen({
             shipVariant={settings.shipVariant}
             onSelectShipVariant={onSetShipVariant}
             unseenEquipmentIds={unseenEquipmentIds}
+            equipmentGuideTargetId={equipmentGuideTargetId ?? null}
             onMarkEquipmentSeen={onMarkEquipmentSeen}
           />
         ) : activeTab === "archive" && archiveViewModel ? (
@@ -231,4 +261,16 @@ export function MenuScreen({
       )}
     </main>
   )
+}
+
+function readGuideCategoryForSlot(
+  slot: EquipmentPanelViewModel["catalog"]["items"][number]["slot"],
+): EquipmentCategoryKey | null {
+  if (slot === "main" || slot === "sub" || slot === "os") {
+    return slot
+  }
+  if (slot === "subsystem") {
+    return "subsystem1"
+  }
+  return null
 }

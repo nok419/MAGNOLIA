@@ -4,23 +4,18 @@ import {
   useState,
 } from "react"
 import type {
-  ArchiveSnapshot,
   ContentBundle,
   DomainEvent,
   PresentationRequest,
-  ProfileAggregate,
   RootSnapshot,
-  SettingsRow,
 } from "@magnolia/contracts"
 import {
   selectEquipmentHint,
-  type BattleRenderState,
-  type ExploreRenderState,
   type MagnoliaGameSession,
-  type WorldMapViewModel,
 } from "@magnolia/game-session"
 import { createMagnoliaClient } from "@/app/magnolia-client"
-import type { IdleAutoSaveViewModel, SaveSlotSummary, SlotSelectMode } from "@/app/app-types"
+import type { IdleAutoSaveViewModel, SaveSlotSummary } from "@/app/app-types"
+import type { MagnoliaAppState } from "@/app/app-state"
 import {
   readExplorePresentationState,
 } from "@/app/explore-presentation"
@@ -32,7 +27,6 @@ import { useMagnoliaFrameLoop } from "@/app/frame-loop/use-magnolia-frame-loop"
 import {
   createAudioEventAdapterState,
 } from "@/app/audio-event-adapter"
-import type { ExploreItemPopup } from "@/app/popups/item-popups"
 import {
   selectBattlePresentationEvents,
   selectExplorePresentationEvents,
@@ -40,35 +34,16 @@ import {
 } from "@/app/presentation/presentation-selectors"
 import {
   createEmptyPresentationState,
-  type WebPresentationState,
 } from "@/app/presentation/presentation-state"
 import { useIdleAutoSave } from "@/app/idle-auto-save"
 import { createMagnoliaActions } from "@/app/magnolia-actions"
 import { usePresentationTimers } from "@/app/presentation-timers"
+import { isTitleSaveSlotEmpty } from "@/app/save-slot-selectors"
 import {
   syncMagnoliaAppStateFromSession,
   type ExploreInteractionContext,
 } from "@/app/session-sync"
 import { useMagnoliaInput } from "@/app/use-magnolia-input"
-
-export type MagnoliaAppState = {
-  ready: boolean
-  errorMessage?: string
-  snapshot: RootSnapshot | null
-  content: ContentBundle | null
-  profile: ProfileAggregate | null
-  settings: SettingsRow | null
-  exploreSnapshot: RootSnapshot["explore"] | null
-  exploreRenderState: ExploreRenderState | null
-  worldMapViewModel: WorldMapViewModel | null
-  battleRenderState: BattleRenderState | null
-  presentation: WebPresentationState
-  archiveSnapshot: ArchiveSnapshot | null
-  slotSelectMode: SlotSelectMode | null
-  itemPopups: ExploreItemPopup[]
-  equipmentModalNodeId: string | null
-  seenEquipmentIds: string[]
-}
 
 export function useMagnoliaApp() {
   const input = useMagnoliaInput()
@@ -88,6 +63,7 @@ export function useMagnoliaApp() {
     itemPopups: [],
     equipmentModalNodeId: null,
     seenEquipmentIds: [],
+    equipmentGuideTargetId: null,
   })
   const [idleAutoSave, setIdleAutoSave] = useState<IdleAutoSaveViewModel | null>(null)
   const sessionRef = useRef<MagnoliaGameSession | null>(null)
@@ -100,17 +76,7 @@ export function useMagnoliaApp() {
     stateRef.current = state
   }, [state])
 
-  // MGN-REF-003: composition root から移動先の主要条件を追えるように残します。
-  // syncMagnoliaAppStateFromSession は session.drainPresentationRequests() を処理します。
-  // useIdleAutoSave は IDLE_AUTO_SAVE_WARNING_AFTER_MS = 50_000 と
-  // IDLE_AUTO_SAVE_COUNTDOWN_MS = 10_000 を基準にし、snapshot.screen === "title" と
-  // current.slotSelectMode では停止します。
-  // countdown 中は input.getLastActivityAt() > countdown.startedAt で取り消し、
-  // selectIdleAutoSaveSlot(snapshot.saveSlots.slots) の結果へ
-  // await session.dispatch({ type: "saveToSlot", slotId: countdown.targetSlotId }) してから
-  // await session.dispatch({ type: "returnToTitle" }) します。
-  // 保存先選択は slots.find((slot) => isTitleSaveSlotEmpty(slot)) を優先し、
-  // readSlotUpdatedAtMs(left.updatedAt) - readSlotUpdatedAtMs(right.updatedAt) で古い slot を選びます。
+  // State composition はここに残し、同期、timer、command 判断は各 app module に寄せます。
   useIdleAutoSave({
     input,
     sessionRef,
@@ -162,7 +128,7 @@ export function useMagnoliaApp() {
     }
   }, [])
 
-  const { tryOpenMap, ...actions } = createMagnoliaActions({
+  const actions = createMagnoliaActions({
     sessionRef,
     stateRef,
     setState,
@@ -175,7 +141,7 @@ export function useMagnoliaApp() {
     stateRef,
     lastFrameAtRef,
     frameHandleRef,
-    tryOpenMap,
+    setState,
     syncFromSession,
   })
 
@@ -193,7 +159,7 @@ export function useMagnoliaApp() {
     seenEquipmentIds: state.seenEquipmentIds,
   })
   const { unseenEquipmentIds } = equipmentHint
-  const shouldShowEquipmentHint = equipmentHint.shouldShowRewardHint
+  const shouldShowEquipmentTutorialIcon = equipmentHint.shouldShowEquipmentTutorialIcon
 
   return {
     ready: state.ready,
@@ -217,7 +183,8 @@ export function useMagnoliaApp() {
     itemPopups: state.itemPopups,
     equipmentModalNodeId: state.equipmentModalNodeId,
     unseenEquipmentIds,
-    shouldShowEquipmentHint,
+    shouldShowEquipmentTutorialIcon,
+    equipmentGuideTargetId: state.equipmentGuideTargetId,
     idleAutoSave,
     saveSlots: buildSaveSlotSummaries(state.snapshot, state.content),
     setExploreMoveTarget: input.setExploreMoveTarget,
@@ -267,9 +234,4 @@ function buildSaveSlotSummaries(
       isEmpty,
     }
   })
-}
-
-function isTitleSaveSlotEmpty(slot: RootSnapshot["saveSlots"]["slots"][number]): boolean {
-  // タイトルでは、作成直後でプレイ時間がないデータを続きから遊べるデータとして扱いません。
-  return !slot.profileId || slot.playTimeMs <= 0
 }

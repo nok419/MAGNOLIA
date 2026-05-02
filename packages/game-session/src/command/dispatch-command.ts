@@ -4,6 +4,7 @@ type CommandOf<Type extends GameCommand["type"]> = Extract<GameCommand, { type: 
 
 export type GameCommandHandlers = {
   startNewGameAtSlot: (command: CommandOf<"startNewGameAtSlot">) => Promise<void>
+  startDebugMode: (command: CommandOf<"startDebugMode">) => Promise<void>
   resumeSaveSlot: (command: CommandOf<"resumeSaveSlot">) => Promise<void>
   openArchive: (command: CommandOf<"openArchive">) => void
   openEquipment: (command: CommandOf<"openEquipment">) => void
@@ -32,6 +33,9 @@ export async function dispatchGameCommand(
   switch (command.type) {
     case "startNewGameAtSlot":
       await handlers.startNewGameAtSlot(command)
+      return
+    case "startDebugMode":
+      await handlers.startDebugMode(command)
       return
     case "resumeSaveSlot":
       await handlers.resumeSaveSlot(command)

@@ -557,7 +557,7 @@
   height: calc(100vh - 48px);
   min-height: 420px;
   border: 1px solid rgba(93, 164, 209, 0.18);
-  background: #040810;
+  background: var(--color-void-base);
   box-shadow:
     0 0 0 1px rgba(5, 12, 24, 0.8) inset,
     0 18px 42px rgba(0, 0, 0, 0.34),

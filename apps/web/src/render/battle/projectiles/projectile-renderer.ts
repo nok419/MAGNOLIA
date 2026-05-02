@@ -5,7 +5,7 @@ import {
   TAU,
   clamp01,
   easeInOutCubic,
-  hashString,
+  hashRenderString,
   normalizeCanvasVector,
   resolveBattleRenderer,
 } from "@/render/battle/battle-renderer-utils"
@@ -36,7 +36,7 @@ const BATTLE_PLAYER_PROJECTILE_RENDERERS: Record<
   pulse: (ctx, input) => {
     // bodyKind は本体形状の正本です。radiusScale はサイズ調整だけに使います。
     if (input.projectile.visual.bodyKind === "carrierBlast") {
-      drawCarrierBlast(ctx, input.projectile, input.timeMs)
+      drawCarrierBlast(ctx, input.projectile)
       return
     }
     drawDefaultPlayerProjectile(ctx, input.projectile)
@@ -119,7 +119,7 @@ function drawInversePhaseProjectileAura(
 ) {
   const role = readProjectileRole(p, "playerSignal")
   const { x, y } = p.position
-  const seed = hashString(p.projectileInstanceId)
+  const seed = hashRenderString(p.projectileInstanceId)
   const glitch = Math.sin(t * 0.018 + seed) * 1.4
 
   ctx.save()
@@ -184,12 +184,13 @@ function drawCarrierProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRende
   ctx.restore()
 }
 
-function drawCarrierBlast(ctx: CanvasRenderingContext2D, p: ProjectileRenderState, t: number) {
+function drawCarrierBlast(ctx: CanvasRenderingContext2D, p: ProjectileRenderState) {
   const role = readProjectileRole(p, "playerSignal")
   const glow = readGlowIntensity(p.visual, 0.5)
   const radiusScale = p.visual.radiusScale ?? 1
   const { x, y } = p.position
-  const pulse = 0.84 + Math.sin(t * 0.02) * 0.08
+  const outerRadius = p.radius * 0.84 * radiusScale
+  const innerRadius = p.radius * 0.52 * radiusScale
 
   ctx.save()
   ctx.shadowColor = rgba(role, 0.6 + glow * 0.3)
@@ -197,13 +198,13 @@ function drawCarrierBlast(ctx: CanvasRenderingContext2D, p: ProjectileRenderStat
   ctx.strokeStyle = rgba("signalReadable", 0.82)
   ctx.lineWidth = 1.6
   ctx.beginPath()
-  ctx.arc(x, y, p.radius * pulse * radiusScale, 0, TAU)
+  ctx.arc(x, y, outerRadius, 0, TAU)
   ctx.stroke()
 
   ctx.strokeStyle = rgba(role, 0.4 + glow * 0.2)
   ctx.lineWidth = 0.9
   ctx.beginPath()
-  ctx.arc(x, y, p.radius * 0.62 * pulse * radiusScale, 0, TAU)
+  ctx.arc(x, y, innerRadius, 0, TAU)
   ctx.stroke()
   ctx.restore()
 }
@@ -528,7 +529,7 @@ function drawNoiseOrbProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRend
   const auraScale = readAuraScale(p.visual.auraKind, 1)
   const { x, y } = p.position
   const r = p.radius * (p.visual.radiusScale ?? 1)
-  const seed = hashString(p.projectileInstanceId)
+  const seed = hashRenderString(p.projectileInstanceId)
   const dir = seed % 2 === 0 ? 1 : -1
 
   const breathe = 0.88 + 0.12 * Math.sin(t * 0.004 + seed)
@@ -613,7 +614,7 @@ function drawGeoDiamondProjectile(
   const auraScale = readAuraScale(p.visual.auraKind, 1)
   const { x, y } = p.position
   const r = p.radius * (p.visual.radiusScale ?? 1)
-  const seed = hashString(p.projectileInstanceId)
+  const seed = hashRenderString(p.projectileInstanceId)
   const rot = t * 0.003 * (seed % 2 === 0 ? 1 : -1) + seed * 0.01
   const s = r * 0.8
   const sw = s * PHI_INV
@@ -674,7 +675,7 @@ function drawEnemyLanceProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRe
   const auraScale = readAuraScale(p.visual.auraKind, 1)
   const { x, y } = p.position
   const r = p.radius * (p.visual.radiusScale ?? 1)
-  const seed = hashString(p.projectileInstanceId)
+  const seed = hashRenderString(p.projectileInstanceId)
   const direction = normalizeCanvasVector(p.velocity.x, p.velocity.y)
   const angle = Math.atan2(direction.y, direction.x) + Math.PI / 2
   const pulse = 0.86 + 0.14 * Math.sin(t * 0.006 + seed)
@@ -724,7 +725,7 @@ function drawBossCoreProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRend
   const auraScale = readAuraScale(p.visual.auraKind, 1.05)
   const { x, y } = p.position
   const r = p.radius * (p.visual.radiusScale ?? 1.15)
-  const seed = hashString(p.projectileInstanceId)
+  const seed = hashRenderString(p.projectileInstanceId)
   const rot = t * 0.0018 * (seed % 2 === 0 ? 1 : -1) + seed * 0.04
   const pulse = 0.86 + 0.14 * Math.sin(t * 0.005 + seed)
   const breathe = 0.94 + 0.06 * Math.sin(t * 0.003 + seed)
@@ -789,7 +790,7 @@ function drawSignalShardProjectile(
   const auraScale = readAuraScale(p.visual.auraKind, 1)
   const { x, y } = p.position
   const r = p.radius * (p.visual.radiusScale ?? 1)
-  const seed = hashString(p.projectileInstanceId)
+  const seed = hashRenderString(p.projectileInstanceId)
   const dir = seed % 2 === 0 ? 1 : -1
   const rot = t * 0.0022 * dir + seed * 0.08
   const pulse = 0.82 + 0.18 * Math.sin(t * 0.008 + seed)

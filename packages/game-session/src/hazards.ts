@@ -3,6 +3,7 @@ import type {
   BattlefieldHazardArea,
   BattlefieldHazardSpec,
   BattlefieldHazardState,
+  DifficultyModifiers,
   MissionMaster,
   MissionState,
   Vector2,
@@ -15,6 +16,7 @@ export function stepBattlefieldHazards(input: {
   missionState: MissionState
   playerPosition: Vector2
   dtMs: number
+  difficultyModifiers?: DifficultyModifiers
 }): {
   missionState: MissionState
   playerNoiseDamage: number
@@ -25,8 +27,12 @@ export function stepBattlefieldHazards(input: {
     input.missionState.hazards.map((hazard) => [hazard.hazardId, hazard]),
   )
   let playerNoiseDamage = 0
+  const hazardSpecs = resolveBattlefieldHazardSpecsForDifficulty({
+    mission: input.mission,
+    difficultyModifiers: input.difficultyModifiers,
+  })
 
-  const hazards = input.mission.hazards.flatMap((spec) => {
+  const hazards = hazardSpecs.flatMap((spec) => {
     const previousState = previousStateById.get(spec.hazardId)
     const nextState = resolveHazardStateForFrame({
       spec,
@@ -87,6 +93,50 @@ export function stepBattlefieldHazards(input: {
     },
     playerNoiseDamage,
   }
+}
+
+export function resolveBattlefieldHazardSpecsForDifficulty(input: {
+  mission: MissionMaster
+  difficultyModifiers?: DifficultyModifiers
+}): BattlefieldHazardSpec[] {
+  const frequencyMultiplier =
+    input.difficultyModifiers?.magneticDisasterFrequencyMultiplier ?? 1
+  const magneticHazards = input.mission.hazards.filter(
+    (hazard) => hazard.kind === "magneticDisaster",
+  )
+  if (frequencyMultiplier <= 1 || magneticHazards.length === 0) {
+    return input.mission.hazards
+  }
+
+  const targetCount = Math.max(
+    magneticHazards.length,
+    Math.ceil(magneticHazards.length * frequencyMultiplier),
+  )
+  const additionalCount = targetCount - magneticHazards.length
+  const generatedHazards = [...magneticHazards]
+
+  for (let index = 0; index < additionalCount; index += 1) {
+    const source = magneticHazards[index % magneticHazards.length]
+    const spawnAtMs = chooseAdditionalHazardSpawnAtMs({
+      mission: input.mission,
+      scheduledHazards: generatedHazards,
+      source,
+    })
+    // 追加 hazard は authored ID を壊さず、difficulty 由来だと分かる安定 ID にします。
+    generatedHazards.push({
+      ...source,
+      hazardId: `${source.hazardId}__terminal_${index + 1}`,
+      spawnAtMs,
+    })
+  }
+
+  const generatedById = new Map(
+    generatedHazards.map((hazard) => [hazard.hazardId, hazard]),
+  )
+  return [
+    ...input.mission.hazards.filter((hazard) => hazard.kind !== "magneticDisaster"),
+    ...Array.from(generatedById.values()).sort((a, b) => a.spawnAtMs - b.spawnAtMs),
+  ]
 }
 
 export function buildBattleHazardViewModels(input: {
@@ -167,6 +217,33 @@ function resolveHazardStateForFrame(input: {
     visualPresetId: input.spec.visualPresetId,
     lastAppliedAtMs: input.previousState?.lastAppliedAtMs,
   }
+}
+
+function chooseAdditionalHazardSpawnAtMs(input: {
+  mission: MissionMaster
+  scheduledHazards: BattlefieldHazardSpec[]
+  source: BattlefieldHazardSpec
+}): number {
+  const totalDurationMs =
+    input.source.telegraphMs + input.source.activeMs + input.source.fadeOutMs
+  const latestSpawnAtMs = Math.max(0, input.mission.durationMs - totalDurationMs)
+  const scheduledTimes = input.scheduledHazards
+    .map((hazard) => Math.max(0, Math.min(latestSpawnAtMs, hazard.spawnAtMs)))
+    .sort((a, b) => a - b)
+  let bestStartMs = 0
+  let bestEndMs = latestSpawnAtMs
+
+  for (let index = 0; index <= scheduledTimes.length; index += 1) {
+    const startMs = index === 0 ? 0 : scheduledTimes[index - 1]
+    const endMs = index === scheduledTimes.length ? latestSpawnAtMs : scheduledTimes[index]
+    if (endMs - startMs > bestEndMs - bestStartMs) {
+      bestStartMs = startMs
+      bestEndMs = endMs
+    }
+  }
+
+  // 既存 hazard の間で最も空いている時間帯へ追加し、特定 mission だけに偏らないようにします。
+  return Math.round((bestStartMs + bestEndMs) / 2)
 }
 
 function readHazardEnemyDamagePerSecond(spec: BattlefieldHazardSpec): number {

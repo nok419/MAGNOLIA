@@ -106,15 +106,21 @@ test("content validator rejects map nodes with visibility broader than their are
 
 test("content validator rejects prototype references from active missions", () => {
   const fixture = copyGameplayFixture("active-prototype-reference-")
+  const classificationFile = path.join(fixture, "content-classification.json")
+  const classification = JSON.parse(readFileSync(classificationFile, "utf8"))
+  classification.active.enemies = classification.active.enemies.filter((enemyId) => enemyId !== "b1")
+  classification.prototype.enemies.push("b1")
+  writeFileSync(classificationFile, `${JSON.stringify(classification, null, 2)}\n`)
+
   const file = path.join(fixture, "missions", "mission_good_morning.json")
   const mission = JSON.parse(readFileSync(file, "utf8"))
-  mission.waves[0].entries[0].enemyId = "a1"
+  mission.waves[0].entries[0].enemyId = "b1"
   writeFileSync(file, `${JSON.stringify(mission, null, 2)}\n`)
 
   const result = runValidator(fixture)
 
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /Active mission 'mission_good_morning' references non-active enemy 'a1'/)
+  assert.match(result.stderr, /Active mission 'mission_good_morning' references non-active enemy 'b1'/)
 })
 
 test("content validator enforces battle spawn point side and margin", () => {
@@ -270,7 +276,7 @@ test("content validator accepts transcript chunk split migration map", () => {
     kind: "transcriptChunk",
     transmissionId: "tx_good_morning",
     fromChunkId: "legacy_chunk_gm_boot",
-    toChunkIds: ["chunk_gm_001a", "chunk_gm_001b"],
+    toChunkIds: ["chunk_gm_001a", "chunk_gm_002a"],
     reason: "test split migration",
   })
   writeFileSync(migrationFile, `${JSON.stringify(migrationMap, null, 2)}\n`)

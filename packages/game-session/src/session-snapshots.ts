@@ -105,7 +105,9 @@ export function createExploreSnapshotForProfile(input: {
         playerPosition: profile.playerPosition,
         mapLogic,
         featureAccess: input.featureAccess,
+        transmissions: input.content.transmissions,
         transmissionProgress: transmissionProgressById,
+        clearedMissionIds: profile.clearedMissionIds,
       }),
       compassTargetAreaId: input.featureAccess.compassEnabled
         ? computeCompassTargetAreaId({

@@ -260,9 +260,19 @@ export type SubtitleRenderState = {
   audible: boolean
   protectedSpans: TranscriptSpan[]
   damagedSpans: TranscriptSpan[]
+  waveInterference?: SubtitleWaveInterferenceState
   noiseLevel: number
   hearingThreshold: number
   progress: number
+}
+
+export type SubtitleWaveInterferenceState = {
+  expectedEnemyCount: number
+  destroyedEnemyCount: number
+  missRate: number
+  effectiveMissRate: number
+  recoveryRatio: number
+  mode: "readableGlitch" | "recovering" | "heavy"
 }
 
 export type HazardRenderState = {
@@ -287,6 +297,10 @@ export type BattleResultViewModel = {
   restorationRate: number
   selfRepairPointsEarned: number
   newHeardRangeMs: number
+  demoClearProgress: {
+    clearedMissionCount: number
+    totalMissionCount: number
+  }
   grantedEquipment: BattleResultEquipmentViewModel[]
   transcriptPreview: TranscriptViewChunk[]
 }

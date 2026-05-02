@@ -6,7 +6,7 @@ import type {
 } from "@magnolia/contracts"
 import { detonatePlayerProjectile } from "../battle-effects"
 import type { InternalBattleState, InternalEnemyState, InternalProjectileState } from "../battle-state"
-import { clamp01 } from "../battle-world"
+import { clamp01 } from "../math"
 import { runSubsystemHooks } from "../equipment-runtime"
 import { createBattleHitPresentation, createBattleNoiseSourceClearPresentation } from "../presentation"
 import { isWithinRadius } from "../explore-world"
@@ -169,6 +169,7 @@ export function resolveBattleCollisions(input: {
     if ((definition?.dropSelfRepairPoints ?? 0) > 0) {
       input.spawnSelfRepairPickup(enemy.position, definition?.dropSelfRepairPoints ?? 0)
     }
+    recordWaveEnemyDestroyed(battle, enemy)
     const enemyDestroyedHookResult = runSubsystemHooks({
       bindings: battle.bindings,
       context: {
@@ -203,6 +204,20 @@ export function resolveBattleCollisions(input: {
     presentationRequests,
     effectRequests,
   }
+}
+
+function recordWaveEnemyDestroyed(
+  battle: InternalBattleState,
+  enemy: InternalEnemyState,
+): void {
+  if (!enemy.waveId) {
+    return
+  }
+  const wave = battle.wavePerformance?.[enemy.waveId]
+  if (!wave) {
+    return
+  }
+  wave.destroyedSpawnIds.add(enemy.spawnId)
 }
 
 function applyAreaProjectileEffects(input: {

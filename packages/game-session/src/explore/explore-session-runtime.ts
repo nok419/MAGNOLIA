@@ -11,14 +11,14 @@ import type {
   WorldMapLogic,
   WorldMapNodeId,
 } from "@magnolia/contracts"
-import { clamp01 } from "../battle-world"
+import { clamp01 } from "../math"
 import { isTransmissionSignalIdentified } from "../progression"
 import type { ExploreNodeRenderState, ExploreRenderState } from "../runtime-types"
 import { toRecord } from "../record-utils"
 
-export const DEFAULT_EXPLORE_VISION_RADIUS = 150
+export const DEFAULT_EXPLORE_VISION_RADIUS = 132
 export const EXPLORE_SCAN_COOLDOWN_MS = 2400
-export const DEFAULT_EXPLORE_SCAN_RADIUS = 860
+export const DEFAULT_EXPLORE_SCAN_RADIUS = 1080
 export const MIN_EXPLORE_NODE_INTERACTION_RADIUS = 44
 
 const EXPLORE_SCAN_DURATION_MS = 1250
@@ -322,7 +322,10 @@ function computeExploreScanHintStrength(distance: number, elapsedMs: number, sca
   }
 
   const responseStrength = 0.24 + clamp01((reachedRadius - distance) / EXPLORE_SCAN_RESPONSE_WIDTH) * 0.76
-  return Math.pow(distanceStrength, 1.25) * responseStrength
+  // confidence 加算は遠距離ほど小さくしますが、UI 反応まで消すと外周の探索手掛かりが失われます。
+  // scan 波面が届いた対象は、外周でも種別色の反応が残る下限を持たせます。
+  const visualDistanceStrength = 0.08 + Math.pow(distanceStrength, 1.1) * 0.92
+  return visualDistanceStrength * responseStrength
 }
 
 function easeOutCubic(value: number): number {

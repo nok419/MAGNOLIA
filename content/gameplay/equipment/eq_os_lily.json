@@ -3,8 +3,8 @@
   "slot": "os",
   "name": "LILY",
   "iconId": "icon_eq_os_lily",
-  "summary": "破損OSの復旧先として用意されたOS枠。",
-  "description": "LILYのOS枠。現時点ではMAGNOLIAと同じ探索UI、マップ表示、スキャン補助を持つ仮定義として扱う。",
+  "summary": "破損OSの復旧先。",
+  "description": "MAGNOLIAと同じ探索UIとスキャン補助を持つ。",
   "flavorText": "",
   "passiveEffectIds": [
     "eff_os_lily"

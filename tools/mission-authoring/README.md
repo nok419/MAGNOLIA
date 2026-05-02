@@ -20,9 +20,10 @@ node tools/mission-authoring/mission-authoring.mjs list bullet-patterns
 node tools/mission-authoring/mission-authoring.mjs wave add \
   --gameplay-dir /tmp/gameplay \
   --mission mission_good_morning \
+  --wave-id draft_wave \
   --at-ms 56000 \
   --intent-tag draft-wave \
-  --entries-json '[{"enemyId":"enemy_scout","spawnPointId":"spawn_top_center","seed":200}]'
+  --entries-json '[{"spawnId":"draft_wave_spawn_01","enemyId":"enemy_scout","spawnPointId":"spawn_top_center","seed":200}]'
 ```
 
 ## 編集
@@ -31,6 +32,10 @@ node tools/mission-authoring/mission-authoring.mjs wave add \
 - `enemy-spawn add|update|delete`
 - `hazard add|update|delete`
 - `beat add|update|delete`
+
+`wave update|delete` は `--wave-id` を指定します。`enemy-spawn add|update|delete` は `--wave-id` と `--spawn-id` を指定します。`--index`、`--wave-index`、`--entry-index` は誤編集を避けるため実行せず、移行先の option を示すエラーで停止します。
+
+`waveId` と `spawnId` は content validator が重複を検出します。通常の update は ID rename を扱いません。IDを変える場合は、削除と追加を分けて差分を確認します。
 
 `hazard` と `beat` は `--json` に追加または更新する object を渡します。削除は `--hazard-id` または `--beat-id` を指定します。
 

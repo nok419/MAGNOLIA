@@ -4,6 +4,7 @@ import type { DisplayOptions } from "@/app/display-options"
 import { hex, rgba } from "@/render/shared/canvas-palette"
 import { drawArtificialGrid, drawSignalPulse } from "@/render/shared/effects"
 import { worldToCanvasPoint } from "@/render/shared/coordinates"
+import { seededUnit } from "@/render/shared/render-math"
 import type { WorldMapViewModel } from "@/view-models/map-view-model"
 
 export type MapHitTarget =
@@ -36,7 +37,12 @@ export function drawMapCanvas(input: {
   drawMapGrid(ctx, input.focusBounds, width, height, padding, input.displayOptions)
 
   for (const area of input.viewModel.areas) {
-    const point = toCanvasPoint(input.focusBounds, width, height, padding, area.position.x, area.position.y)
+    const point = worldToCanvasPoint({
+      bounds: input.focusBounds,
+      size: { width, height },
+      padding,
+      worldPosition: area.position,
+    })
     const isSelected = area.areaId === input.selectedAreaId
     drawAreaPoint(ctx, point.x, point.y, isSelected)
     hitTargets.push({
@@ -49,7 +55,12 @@ export function drawMapCanvas(input: {
   }
 
   for (const node of input.viewModel.collectibles) {
-    const point = toCanvasPoint(input.focusBounds, width, height, padding, node.position.x, node.position.y)
+    const point = worldToCanvasPoint({
+      bounds: input.focusBounds,
+      size: { width, height },
+      padding,
+      worldPosition: node.position,
+    })
     drawCollectibleMarker(ctx, {
       x: point.x,
       y: point.y,
@@ -62,7 +73,12 @@ export function drawMapCanvas(input: {
   }
 
   for (const node of input.viewModel.transmissions) {
-    const point = toCanvasPoint(input.focusBounds, width, height, padding, node.position.x, node.position.y)
+    const point = worldToCanvasPoint({
+      bounds: input.focusBounds,
+      size: { width, height },
+      padding,
+      worldPosition: node.position,
+    })
     const isSelected = node.transmissionId === input.selectedTransmissionId
     drawTransmissionMarker(ctx, {
       x: point.x,
@@ -84,14 +100,12 @@ export function drawMapCanvas(input: {
     })
   }
 
-  const playerPoint = toCanvasPoint(
-    input.focusBounds,
-    width,
-    height,
+  const playerPoint = worldToCanvasPoint({
+    bounds: input.focusBounds,
+    size: { width, height },
     padding,
-    input.viewModel.player.position.x,
-    input.viewModel.player.position.y,
-  )
+    worldPosition: input.viewModel.player.position,
+  })
   const playerAngle =
     Math.atan2(input.viewModel.player.facing.y, input.viewModel.player.facing.x) + Math.PI / 2
   const visionRadiusPx =
@@ -192,15 +206,18 @@ function drawMapFog(
       }
       const worldX = worldBounds.x + x * cellWidth
       const worldY = worldBounds.y + y * cellHeight
-      const topLeft = toCanvasPoint(focusBounds, width, height, padding, worldX, worldY)
-      const bottomRight = toCanvasPoint(
-        focusBounds,
-        width,
-        height,
+      const topLeft = worldToCanvasPoint({
+        bounds: focusBounds,
+        size: { width, height },
         padding,
-        worldX + cellWidth,
-        worldY + cellHeight,
-      )
+        worldPosition: { x: worldX, y: worldY },
+      })
+      const bottomRight = worldToCanvasPoint({
+        bounds: focusBounds,
+        size: { width, height },
+        padding,
+        worldPosition: { x: worldX + cellWidth, y: worldY + cellHeight },
+      })
       ctx.fillStyle = rgba("voidBase", 0.78)
       ctx.fillRect(
         topLeft.x,
@@ -242,8 +259,18 @@ function drawMapGrid(
   const endY = focusBounds.y + focusBounds.height
 
   for (let x = startX; x <= endX; x += step) {
-    const from = toCanvasPoint(focusBounds, width, height, padding, x, startY)
-    const to = toCanvasPoint(focusBounds, width, height, padding, x, endY)
+    const from = worldToCanvasPoint({
+      bounds: focusBounds,
+      size: { width, height },
+      padding,
+      worldPosition: { x, y: startY },
+    })
+    const to = worldToCanvasPoint({
+      bounds: focusBounds,
+      size: { width, height },
+      padding,
+      worldPosition: { x, y: endY },
+    })
     ctx.beginPath()
     ctx.moveTo(from.x, from.y)
     ctx.lineTo(to.x, to.y)
@@ -251,8 +278,18 @@ function drawMapGrid(
   }
 
   for (let y = startY; y <= endY; y += step) {
-    const from = toCanvasPoint(focusBounds, width, height, padding, startX, y)
-    const to = toCanvasPoint(focusBounds, width, height, padding, endX, y)
+    const from = worldToCanvasPoint({
+      bounds: focusBounds,
+      size: { width, height },
+      padding,
+      worldPosition: { x: startX, y },
+    })
+    const to = worldToCanvasPoint({
+      bounds: focusBounds,
+      size: { width, height },
+      padding,
+      worldPosition: { x: endX, y },
+    })
     ctx.beginPath()
     ctx.moveTo(from.x, from.y)
     ctx.lineTo(to.x, to.y)
@@ -307,25 +344,4 @@ function drawPlayerPoint(
   ctx.fill()
   ctx.stroke()
   ctx.restore()
-}
-
-function toCanvasPoint(
-  bounds: WorldMapViewModel["focusBounds"],
-  width: number,
-  height: number,
-  padding: number,
-  wx: number,
-  wy: number,
-) {
-  return worldToCanvasPoint({
-    bounds,
-    size: { width, height },
-    padding,
-    worldPosition: { x: wx, y: wy },
-  })
-}
-
-function seededUnit(seed: number): number {
-  const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453
-  return value - Math.floor(value)
 }

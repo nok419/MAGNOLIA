@@ -154,6 +154,9 @@ function playDomainAudio(event: DomainEvent): void {
     case "playerMainWeaponFired":
       audioEvents.playerShot()
       break
+    case "playerMainMeleeUsed":
+      audioEvents.playerMelee()
+      break
     case "playerProjectileHit":
       audioEvents.enemyHit()
       break
@@ -164,7 +167,7 @@ function playDomainAudio(event: DomainEvent): void {
       audioEvents.enemyDestroyed()
       break
     case "playerSubWeaponUsed":
-      // サブ装備の汎用イベントから、専用音源がある静音波だけを分けます。
+      // サブ装備の汎用イベントから、専用音源があるミュートチャンバーだけを分けます。
       if (event.runtimeHandlerId === "sub.field.silent_wave") {
         audioEvents.silentWave()
       } else {

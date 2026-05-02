@@ -22,7 +22,7 @@ import {
 import {
   readSeenEquipmentFromStorage,
 } from "@/app/storage/seen-equipment-store"
-import type { MagnoliaAppState } from "@/app/use-magnolia-app"
+import type { MagnoliaAppState } from "@/app/app-state"
 import type { useMagnoliaInput } from "@/app/use-magnolia-input"
 
 export type ExploreInteractionContext = {
@@ -67,11 +67,17 @@ export function syncMagnoliaAppStateFromSession({
   const content = session.getContentBundle()
   const profile = session.getProfileAggregate()
   const settings = session.getSettings()
-  const exploreSnapshot = session.getExploreSnapshot()
-  const exploreRenderState = session.getExploreRenderState()
-  const worldMapViewModel = session.getWorldMapViewModel()
-  const battleRenderState = session.getBattleRenderState()
-  const archiveSnapshot = session.getArchiveSnapshot()
+  const screen = snapshot.screen
+  // 探索 frame は高頻度で同期されます。現在の画面で使わない ViewModel は作らず、
+  // session 側の重い selector 実行を必要な画面に限定します。
+  const exploreSnapshot = screen === "explore" ? snapshot.explore ?? session.getExploreSnapshot() : null
+  const exploreRenderState = screen === "explore" ? session.getExploreRenderState() : null
+  const worldMapViewModel = screen === "map" ? session.getWorldMapViewModel() : null
+  const battleRenderState = screen === "battle" ? session.getBattleRenderState() : null
+  const archiveSnapshot =
+    screen === "archive" || screen === "equipment" || screen === "settings"
+      ? session.getArchiveSnapshot()
+      : null
   const parsedPopups = buildCollectiblePopups(domainEvents, content)
   const now = Date.now()
 
@@ -96,6 +102,10 @@ export function syncMagnoliaAppStateFromSession({
         previousProfileId === nextProfileId
           ? current.seenEquipmentIds
           : readSeenEquipmentFromStorage(nextProfileId)
+      const equipmentGuideTargetId =
+        screen === "equipment" && previousProfileId === nextProfileId
+          ? current.equipmentGuideTargetId
+          : null
 
       return {
         ...current,
@@ -118,6 +128,7 @@ export function syncMagnoliaAppStateFromSession({
         }),
         archiveSnapshot,
         seenEquipmentIds,
+        equipmentGuideTargetId,
         itemPopups: [
           ...current.itemPopups.filter((popup) => popup.expiresAt > Date.now()),
           ...parsedPopups.popups,

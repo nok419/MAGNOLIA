@@ -16,13 +16,14 @@ import type {
 import type { MagnoliaGameSession } from "@magnolia/game-session"
 import { audioEvents } from "@/audio"
 import type { SlotSelectMode } from "@/app/app-types"
+import type { MagnoliaAppState } from "@/app/app-state"
 import { dismissOverlayPresentation } from "@/app/presentation/overlay-queue"
 import {
-  createExplorePopup,
-  pushExplorePopup,
-} from "@/app/popups/item-popups"
+  isProgressSaveSlotId,
+  selectSettingsQuickSaveSlot,
+} from "@/app/save-slot-selectors"
+import { dispatchAndSync } from "@/app/session-command-runner"
 import { writeSeenEquipmentToStorage } from "@/app/storage/seen-equipment-store"
-import type { MagnoliaAppState } from "@/app/use-magnolia-app"
 import type { ExploreInteractionContext } from "@/app/session-sync"
 
 export type CommandTarget =
@@ -32,7 +33,7 @@ export type CommandTarget =
   | "settings"
   | "closePanel"
   | "returnToTitle"
-  | "saveCurrentSlot"
+  | "saveProgressSlot"
 
 type CreateMagnoliaActionsParams = {
   sessionRef: RefObject<MagnoliaGameSession | null>
@@ -52,29 +53,18 @@ export function createMagnoliaActions({
   setState,
   syncFromSession,
 }: CreateMagnoliaActionsParams) {
-  function showLockedMapPopup() {
-    setState((current) => ({
-      ...current,
-      itemPopups: pushExplorePopup(
-        current.itemPopups,
-        createExplorePopup("locked", "os magnolia が必要です。"),
-      ),
-    }))
-  }
-
-  function tryOpenMap(session: MagnoliaGameSession): boolean {
-    const canOpenMap = session.getExploreSnapshot()?.featureAccess.canOpenMap ?? false
-    if (canOpenMap) {
-      return true
-    }
-
-    // 探索中の失敗理由は短い popup で返し、操作の流れ自体は止めません。
-    showLockedMapPopup()
-    return false
-  }
+  const runSessionCommand = (
+    session: MagnoliaGameSession,
+    command: Parameters<typeof dispatchAndSync>[1],
+    options: Partial<Parameters<typeof dispatchAndSync>[2]> = {},
+  ) =>
+    dispatchAndSync(session, command, {
+      ...options,
+      setState,
+      syncFromSession,
+    })
 
   return {
-    tryOpenMap,
     markEquipmentSeen(equipmentIds: string[]) {
       if (equipmentIds.length === 0) {
         return
@@ -114,24 +104,53 @@ export function createMagnoliaActions({
           : audioEvents.loadGameSelected()
       await waitForTitleConfirmCue
 
-      if (mode === "newGame") {
-        await session.dispatch({
-          type: "startNewGameAtSlot",
-          slotId,
-          difficulty: session.getSettings().difficulty,
-        })
-      } else {
-        await session.dispatch({
-          type: "resumeSaveSlot",
-          slotId,
-        })
+      await runSessionCommand(
+        session,
+        mode === "newGame"
+          ? {
+              type: "startNewGameAtSlot",
+              slotId,
+              difficulty: session.getSettings().difficulty,
+            }
+          : {
+              type: "resumeSaveSlot",
+              slotId,
+            },
+        {
+          beforeSync: () => {
+            setState((current) => ({
+              ...current,
+              slotSelectMode: null,
+            }))
+          },
+        },
+      )
+    },
+    async startDebugMode() {
+      const session = sessionRef.current
+      if (!session) {
+        return
       }
 
-      setState((current) => ({
-        ...current,
-        slotSelectMode: null,
-      }))
-      syncFromSession(session)
+      // debug mode は slot を上書きしない検証用 profile として開始します。
+      const waitForTitleConfirmCue = audioEvents.newGameSelected()
+      await waitForTitleConfirmCue
+
+      await runSessionCommand(
+        session,
+        {
+          type: "startDebugMode",
+          difficulty: session.getSettings().difficulty,
+        },
+        {
+          beforeSync: () => {
+            setState((current) => ({
+              ...current,
+              slotSelectMode: null,
+            }))
+          },
+        },
+      )
     },
     async runCommand(target: CommandTarget) {
       const session = sessionRef.current
@@ -141,62 +160,61 @@ export function createMagnoliaActions({
 
       switch (target) {
         case "map":
-          if (!tryOpenMap(session)) {
-            return
-          }
-          await session.dispatch({ type: "openMap" })
+          await runSessionCommand(session, { type: "openMap" })
           break
         case "archive":
-          await session.dispatch({ type: "openArchive" })
+          await runSessionCommand(session, { type: "openArchive" })
           break
         case "equipment":
-          await session.dispatch({ type: "openEquipment" })
+          await runSessionCommand(session, { type: "openEquipment" })
           break
         case "settings":
-          await session.dispatch({ type: "openSettings" })
+          await runSessionCommand(session, { type: "openSettings" })
           break
         case "closePanel":
-          await session.dispatch({ type: "closePanel" })
+          await runSessionCommand(session, { type: "closePanel" })
           break
         case "returnToTitle":
-          await session.dispatch({ type: "returnToTitle" })
+          await runSessionCommand(session, { type: "returnToTitle" })
           break
-        case "saveCurrentSlot":
-          await session.dispatch({ type: "saveToCurrentSlot" })
+        case "saveProgressSlot":
+          await runSessionCommand(session, {
+            type: "saveToSlot",
+            // settings の quick save は SLOT 1 を空表示に保つため、保存用 slot へ書き込みます。
+            slotId: selectSettingsQuickSaveSlot(
+              stateRef.current.snapshot?.saveSlots.slots ?? session.getSnapshot().saveSlots.slots,
+              stateRef.current.profile?.profile.slotId,
+            ),
+          })
           break
       }
-
-      syncFromSession(session)
     },
     async startMission(missionId: string) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "startMission",
         missionId,
       })
-      syncFromSession(session)
     },
     async warpToArea(areaId: AreaId) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "warpToArea",
         areaId,
       })
-      syncFromSession(session)
     },
     async returnToExplore() {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({ type: "returnToExplore" })
-      syncFromSession(session)
+      await runSessionCommand(session, { type: "returnToExplore" })
     },
     dismissEquipmentModal() {
       setState((current) => ({
@@ -218,97 +236,118 @@ export function createMagnoliaActions({
         return
       }
       session.selectArchive(areaId, transmissionId)
-      await session.dispatch({ type: "openArchive" })
-      syncFromSession(session)
+      await runSessionCommand(session, { type: "openArchive" })
     },
     async equipPrimary(slot: "main" | "sub" | "os", equipmentId: EquipmentId) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "equipItem",
         slot,
         equipmentId,
+      }, {
+        afterDispatch: () => {
+          if (!session.getLastCommandErrorReason()) {
+            clearEquipmentGuideIfTarget(setState, equipmentId)
+          }
+        },
       })
-      syncFromSession(session)
     },
     async equipSubsystem(subsystemIndex: 0 | 1, equipmentId: EquipmentId) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "equipItem",
         slot: "subsystem",
         subsystemIndex,
         equipmentId,
+      }, {
+        afterDispatch: () => {
+          if (!session.getLastCommandErrorReason()) {
+            clearEquipmentGuideIfTarget(setState, equipmentId)
+          }
+        },
       })
-      syncFromSession(session)
     },
     async unequipPrimary(slot: "main" | "sub" | "os", equipmentId: EquipmentId) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "unequipItem",
         slot,
         equipmentId,
       })
-      syncFromSession(session)
     },
     async unequipSubsystem(subsystemIndex: 0 | 1, equipmentId: EquipmentId) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "unequipItem",
         slot: "subsystem",
         subsystemIndex,
         equipmentId,
       })
-      syncFromSession(session)
     },
     async purchaseEquipment(equipmentId: EquipmentId) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
-        type: "purchaseEquipment",
-        equipmentId,
-      })
-      if (!session.getLastCommandErrorReason()) {
-        audioEvents.equipmentArchiveDetailDecision()
-      }
-      syncFromSession(session)
+      await runSessionCommand(
+        session,
+        {
+          type: "purchaseEquipment",
+          equipmentId,
+        },
+        {
+          afterDispatch: () => {
+            if (!session.getLastCommandErrorReason()) {
+              audioEvents.equipmentArchiveDetailDecision()
+            }
+          },
+        },
+      )
     },
     async upgradeEquipment(equipmentId: EquipmentId) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
-        type: "upgradeEquipment",
-        equipmentId,
-      })
-      if (!session.getLastCommandErrorReason()) {
-        audioEvents.equipmentUpgrade()
-      }
-      syncFromSession(session)
+      await runSessionCommand(
+        session,
+        {
+          type: "upgradeEquipment",
+          equipmentId,
+        },
+        {
+          afterDispatch: () => {
+            if (!session.getLastCommandErrorReason()) {
+              audioEvents.equipmentUpgrade()
+            }
+          },
+        },
+      )
     },
     async saveToSlot(slotId: SaveSlotId) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      if (!stateRef.current.snapshot || !isProgressSaveSlotId(slotId)) {
+        return
+      }
+      await runSessionCommand(session, {
         type: "saveToSlot",
         slotId,
       })
-      syncFromSession(session)
     },
     async setVolume(
       channel: keyof SettingsRow["volumes"],
@@ -318,56 +357,55 @@ export function createMagnoliaActions({
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "changeSetting",
         path: `volumes.${channel}`,
         value: nextValue,
       })
-      syncFromSession(session)
     },
     async setDifficulty(nextValue: SettingsRow["difficulty"]) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "changeSetting",
         path: "difficulty",
         value: nextValue,
       })
-      syncFromSession(session)
     },
     async toggleSwitch(path: "reduceFlashing" | "lowFrameRateMode", nextValue: boolean) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "changeSetting",
         path,
         value: nextValue,
       })
-      syncFromSession(session)
     },
     async interactExploreNode(nodeId: WorldMapNodeId, context?: ExploreInteractionContext) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({ type: "interactExploreNode", nodeId })
-      syncFromSession(session, [], [], context)
+      await runSessionCommand(
+        session,
+        { type: "interactExploreNode", nodeId },
+        { exploreInteractionContext: context },
+      )
     },
     async setShipVariant(nextValue: SettingsRow["shipVariant"]) {
       const session = sessionRef.current
       if (!session) {
         return
       }
-      await session.dispatch({
+      await runSessionCommand(session, {
         type: "changeSetting",
         path: "shipVariant",
         value: nextValue,
       })
-      syncFromSession(session)
     },
     dismissActiveOverlayPresentation() {
       setState((current) => ({
@@ -376,4 +414,19 @@ export function createMagnoliaActions({
       }))
     },
   }
+}
+
+function clearEquipmentGuideIfTarget(
+  setState: Dispatch<SetStateAction<MagnoliaAppState>>,
+  equipmentId: EquipmentId,
+): void {
+  setState((current) => {
+    if (current.equipmentGuideTargetId !== equipmentId) {
+      return current
+    }
+    return {
+      ...current,
+      equipmentGuideTargetId: null,
+    }
+  })
 }

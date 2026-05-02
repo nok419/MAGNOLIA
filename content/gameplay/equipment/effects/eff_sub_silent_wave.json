@@ -11,7 +11,7 @@
     "mainCadenceMultiplier": 1.5,
     "blocksEnemyBullets": true,
     "blocksMagneticDisaster": true,
-    "cooldownMs": 12000,
+    "cooldownMs": 6000,
     "driftsWithScroll": true
   }
 }

@@ -78,6 +78,31 @@ function readEquipmentListState(eq: EquipmentCatalogItemViewModel): {
   }
 }
 
+function readGuideCategoryForSlot(
+  slot: EquipmentCatalogItemViewModel["slot"],
+): EquipmentCategoryKey | null {
+  if (slot === "main" || slot === "sub" || slot === "os") {
+    return slot
+  }
+  if (slot === "subsystem") {
+    return "subsystem1"
+  }
+  return null
+}
+
+function readEquipActionClassName(input: {
+  ready: boolean
+  guided: boolean
+}): string | undefined {
+  if (!input.ready) {
+    return undefined
+  }
+  return [
+    "equip-detail__equip-action",
+    input.guided ? "equip-detail__equip-action--guide" : "",
+  ].filter(Boolean).join(" ")
+}
+
 function ProcurementPanel({
   mode,
   cost,
@@ -204,6 +229,7 @@ export function EquipmentPanel({
   shipVariant,
   onSelectShipVariant,
   unseenEquipmentIds,
+  equipmentGuideTargetId,
   onMarkEquipmentSeen,
 }: {
   viewModel: EquipmentPanelViewModel
@@ -218,6 +244,7 @@ export function EquipmentPanel({
   shipVariant: ShipVariant
   onSelectShipVariant: (variant: ShipVariant) => void
   unseenEquipmentIds: string[]
+  equipmentGuideTargetId: string | null
   onMarkEquipmentSeen: (equipmentIds: string[]) => void
 }) {
   const catalog = viewModel.catalog
@@ -225,6 +252,12 @@ export function EquipmentPanel({
   const selectedSlot = readEquipmentCategorySlot(selectedCategory)
   const selectedSubsystemIndex = readEquipmentCategorySubsystemIndex(selectedCategory)
   const filteredItems = catalog.items.filter((eq) => eq.slot === selectedSlot)
+  const guidedEquipment = equipmentGuideTargetId
+    ? catalog.items.find((eq) => eq.equipmentId === equipmentGuideTargetId)
+    : undefined
+  const guidedCategory = guidedEquipment
+    ? readGuideCategoryForSlot(guidedEquipment.slot)
+    : null
 
   // カテゴリ毎の未確認装備を数え、タブ上の NEW バッジ表示に使う。
   // 既所持かつ seen 未登録のものだけが対象。
@@ -255,6 +288,7 @@ export function EquipmentPanel({
   const selected = selectedEquipmentId
     ? catalog.items.find((item) => item.equipmentId === selectedEquipmentId)
     : undefined
+  const isSelectedGuideTarget = selected?.equipmentId === equipmentGuideTargetId
   const isSelectedOwned = Boolean(selected?.owned)
   const isSelectedMasked = Boolean(selected?.masked)
   const currentLevel = selected?.currentLevel ?? 0
@@ -284,11 +318,12 @@ export function EquipmentPanel({
           const isActive = cat.key === selectedCategory
           const unseenCount = unseenCountBySlot.get(readEquipmentCategorySlot(cat.key)) ?? 0
           const hasUnseen = unseenCount > 0 && !isActive
+          const isGuided = cat.key === guidedCategory
           return (
             <button
               key={cat.key}
               type="button"
-              className={`equip-cat ${isActive ? "equip-cat--active" : ""}${hasUnseen ? " equip-cat--has-new" : ""}`}
+              className={`equip-cat ${isActive ? "equip-cat--active" : ""}${hasUnseen ? " equip-cat--has-new" : ""}${isGuided ? " equip-cat--guide" : ""}`}
               onClick={() => handleSelectCategory(cat.key)}
             >
               <span className="equip-cat__label">
@@ -311,6 +346,7 @@ export function EquipmentPanel({
         selectedEquipmentId={selectedEquipmentId}
         onSelectEquipment={handleSelectEquipment}
         unseenEquipmentIds={unseenSet}
+        equipmentGuideTargetId={equipmentGuideTargetId}
         selectedSubsystemIndex={selectedSubsystemIndex}
       />
 
@@ -429,16 +465,19 @@ export function EquipmentPanel({
                           return null
                         }
                         const alreadyEquippedAtTarget = target.equipped
-                        return (
-                          <div className="button-row" key={target.subsystemIndex ?? target.label}>
-                            <ActionButton
-                              tone={alreadyEquippedAtTarget ? "ghost" : "primary"}
-                              className={!alreadyEquippedAtTarget && target.canEquip ? "equip-detail__equip-action" : undefined}
-                              disabled={!target.canEquip}
-                              onClick={() =>
-                                onEquip(selected.equipmentId, target.slot, target.subsystemIndex)
-                              }
-                            >
+	                        return (
+	                          <div className="button-row" key={target.subsystemIndex ?? target.label}>
+	                            <ActionButton
+	                              tone={alreadyEquippedAtTarget ? "ghost" : "primary"}
+	                              className={readEquipActionClassName({
+	                                ready: !alreadyEquippedAtTarget && target.canEquip,
+	                                guided: Boolean(isSelectedGuideTarget && !alreadyEquippedAtTarget && target.canEquip),
+	                              })}
+	                              disabled={!target.canEquip}
+	                              onClick={() =>
+	                                onEquip(selected.equipmentId, target.slot, target.subsystemIndex)
+	                              }
+	                            >
                               {alreadyEquippedAtTarget
                                 ? `${target.label} 装備中`
                                 : target.canEquip
@@ -464,7 +503,10 @@ export function EquipmentPanel({
                         <div className="button-row" key={target.label}>
                           <ActionButton
                             tone={target.equipped ? "ghost" : "primary"}
-                            className={!target.equipped && target.canEquip ? "equip-detail__equip-action" : undefined}
+                            className={readEquipActionClassName({
+                              ready: !target.equipped && target.canEquip,
+                              guided: Boolean(isSelectedGuideTarget && !target.equipped && target.canEquip),
+                            })}
                             disabled={!target.canEquip}
                             onClick={() => onEquip(selected.equipmentId, target.slot)}
                           >
@@ -555,6 +597,7 @@ function EquipmentArcList({
   selectedEquipmentId,
   onSelectEquipment,
   unseenEquipmentIds,
+  equipmentGuideTargetId,
   selectedSubsystemIndex,
 }: {
   items: EquipmentCatalogItemViewModel[]
@@ -562,6 +605,7 @@ function EquipmentArcList({
   selectedEquipmentId: string | null
   onSelectEquipment: (id: string | null) => void
   unseenEquipmentIds: Set<string>
+  equipmentGuideTargetId: string | null
   selectedSubsystemIndex?: 0 | 1
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -592,6 +636,7 @@ function EquipmentArcList({
         const isEq = equippedLabel !== null
         const isSel = eq.equipmentId === selectedEquipmentId
         const isNew = unseenEquipmentIds.has(eq.equipmentId)
+        const isGuided = eq.equipmentId === equipmentGuideTargetId
         // 一覧の状態表示は ViewModel の所持・強化可否だけで決める。
         // 表示層で profile や cost を再計算しないため、detail と判定がずれない。
         const listState = readEquipmentListState(eq)
@@ -600,7 +645,7 @@ function EquipmentArcList({
           <button
             key={eq.equipmentId}
             type="button"
-            className={`list-card ${listState.cardClassName}${isSel ? " list-card--selected" : ""}${isNew ? " list-card--new" : ""}`}
+            className={`list-card ${listState.cardClassName}${isSel ? " list-card--selected" : ""}${isNew ? " list-card--new" : ""}${isGuided ? " list-card--guide" : ""}`}
             onClick={() => onSelectEquipment(eq.equipmentId)}
           >
             {isNew ? (

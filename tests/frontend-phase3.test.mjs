@@ -95,6 +95,15 @@ test("canvas cache and low frame rate mode are wired into battle and markers", (
   assert.match(titleSource, /drawArtificialGrid/)
 })
 
+test("carrier blast renderer uses stable ring radii", () => {
+  const projectileSource = readProjectFile("apps/web/src/render/battle/projectiles/projectile-renderer.ts")
+  const carrierBlastSource = projectileSource.match(/function drawCarrierBlast[\s\S]*?\n}/)?.[0] ?? ""
+
+  assert.match(carrierBlastSource, /const outerRadius = p\.radius \* 0\.84 \* radiusScale/)
+  assert.match(carrierBlastSource, /const innerRadius = p\.radius \* 0\.52 \* radiusScale/)
+  assert.doesNotMatch(carrierBlastSource, /Math\.sin/)
+})
+
 test("direct color baseline and exception policy are current", () => {
   const baseline = JSON.parse(readProjectFile("tools/style-audit/direct-color-baseline.json"))
   const paletteDoc = readProjectFile("docs/11_design_package/02_palette.md")

@@ -4,10 +4,10 @@
   "name": "ノイズキャンセラー",
   "iconId": "icon_eq_sub_noise_canceller",
   "summary": "押している間だけ敵弾を消す円形バリアを張る。",
-  "description": "押している間だけ円形バリアを展開し、接触した敵弾を消す。展開中も攻撃可能だが移動速度が低下する。",
+  "description": "展開中もmain攻撃できるが、移動速度は下がる。",
   "flavorText": "",
   "active": {
-    "cooldownMs": 3000,
+    "cooldownMs": 1000,
     "stock": 1,
     "inputAction": "fireSub"
   },
@@ -26,31 +26,31 @@
     {
       "level": 1,
       "selfRepairPointCost": 0,
-      "upgradeSummary": "敵弾を消すバリアを最大1.2秒展開できる。",
+      "upgradeSummary": "最大1.4秒展開でき、終了後1.0秒で再使用できる。",
       "effectOverrides": {
         "radius": 48,
-        "maxDurationMs": 1200,
-        "cooldownMs": 3000
+        "maxDurationMs": 1400,
+        "cooldownMs": 1000
       }
     },
     {
       "level": 2,
       "selfRepairPointCost": 100,
-      "upgradeSummary": "最大持続時間が1.4秒に増える。",
+      "upgradeSummary": "最大1.6秒展開でき、終了後0.85秒で再使用できる。",
       "effectOverrides": {
         "radius": 48,
-        "maxDurationMs": 1400,
-        "cooldownMs": 3000
+        "maxDurationMs": 1600,
+        "cooldownMs": 850
       }
     },
     {
       "level": 3,
       "selfRepairPointCost": 180,
-      "upgradeSummary": "リキャスト時間が半分になる。",
+      "upgradeSummary": "最大1.6秒展開でき、終了後0.7秒で再使用できる。",
       "effectOverrides": {
         "radius": 48,
-        "maxDurationMs": 1400,
-        "cooldownMs": 1500
+        "maxDurationMs": 1600,
+        "cooldownMs": 700
       }
     }
   ]

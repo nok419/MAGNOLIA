@@ -22,15 +22,6 @@ import { drawRestrictedBoundary, type BoundaryReleaseSequence } from "@/render/e
 import { drawNavCueLayer, resolveCollectibleNavKind, type NavCueTarget } from "@/render/explore/nav-cue"
 import { drawScanCooldownMeter, type ScanCooldownMeterState } from "@/render/explore/scan-cooldown-meter"
 
-function toCanvasPoint(bounds: Rect, width: number, height: number, padding: number, wx: number, wy: number) {
-  return worldToCanvasPoint({
-    bounds,
-    size: { width, height },
-    padding,
-    worldPosition: { x: wx, y: wy },
-  })
-}
-
 function isPointVisible(
   point: { x: number; y: number },
   width: number,
@@ -145,7 +136,12 @@ export function drawExploreScene(
   // ここはデザイン変更が入りやすい描画レイヤです。
   // ノードの見た目はこの層で差し替え、可視/不可視の判定は session selector を正本にします。
   for (const node of input.renderState.visibleWarps) {
-    const point = toCanvasPoint(input.viewport, input.width, input.height, input.padding, node.x, node.y)
+    const point = worldToCanvasPoint({
+      bounds: input.viewport,
+      size: { width: input.width, height: input.height },
+      padding: input.padding,
+      worldPosition: { x: node.x, y: node.y },
+    })
     if (!isPointVisible(point, input.width, input.height, input.padding, 20)) {
       continue
     }
@@ -189,6 +185,7 @@ export function drawExploreScene(
     playerPoint: input.playerPoint,
     viewport: input.viewport,
     width: input.width,
+    height: input.height,
     padding: input.padding,
     elapsedMs: input.renderState.elapsedMs,
     pulses: input.renderState.scanPulses,
@@ -206,7 +203,12 @@ export function drawExploreScene(
   })
 
   for (const node of input.renderState.visibleCollectibles) {
-    const point = toCanvasPoint(input.viewport, input.width, input.height, input.padding, node.x, node.y)
+    const point = worldToCanvasPoint({
+      bounds: input.viewport,
+      size: { width: input.width, height: input.height },
+      padding: input.padding,
+      worldPosition: { x: node.x, y: node.y },
+    })
     if (!isPointVisible(point, input.width, input.height, input.padding, 24)) {
       continue
     }
@@ -232,7 +234,12 @@ export function drawExploreScene(
   }
 
   for (const node of input.renderState.visibleTransmissions) {
-    const point = toCanvasPoint(input.viewport, input.width, input.height, input.padding, node.x, node.y)
+    const point = worldToCanvasPoint({
+      bounds: input.viewport,
+      size: { width: input.width, height: input.height },
+      padding: input.padding,
+      worldPosition: { x: node.x, y: node.y },
+    })
     if (!isPointVisible(point, input.width, input.height, input.padding, 24)) {
       continue
     }

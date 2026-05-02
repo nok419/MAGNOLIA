@@ -3,8 +3,8 @@
   "slot": "os",
   "name": "MAGNOLIA",
   "iconId": "icon_eq_os_magnolia",
-  "summary": "探索UIと全体マップを解放し、スキャン性能を伸ばす基本OS。",
-  "description": "MAGNOLIAの基本UI。ミニマップ・強度計・情報パネルの表示、装備・アーカイブへのアクセス、エリア外部の観測を有効にする。強化すると探索スキャンと視界、探索時の移動性能が少し伸びる。",
+  "summary": "探索UIとマップを使える基本OS。",
+  "description": "強化するとスキャン範囲、視界、探索時の移動性能が上がる。",
   "flavorText": "",
   "passiveEffectIds": [
     "eff_os_magnolia"

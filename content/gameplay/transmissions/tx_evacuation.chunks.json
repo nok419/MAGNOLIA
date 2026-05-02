@@ -4,170 +4,170 @@
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_01",
     "startMs": 0,
-    "endMs": 1400,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "緊急警報。"
+    "endMs": 2600,
+    "speakerLabel": "観測所2U",
+    "text": "観測所2Uより緊急警報"
   },
   {
     "chunkId": "tx_evacuation_01b",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_01",
-    "startMs": 1400,
-    "endMs": 2800,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "第4居住区パノラマドームにて大規模な磁気崩壊が観測されました。"
+    "startMs": 3000,
+    "endMs": 5200,
+    "speakerLabel": "観測所2U",
+    "text": "対象："
   },
   {
     "chunkId": "tx_evacuation_01c",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_01",
-    "startMs": 2800,
-    "endMs": 4000,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "全市民は直ちに地下シェルターへ避難してください。"
+    "startMs": 5200,
+    "endMs": 8200,
+    "speakerLabel": "観測所2U",
+    "text": "居住区域 : 2,3,7,8,11"
   },
   {
     "chunkId": "tx_evacuation_02a",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_02",
-    "startMs": 4500,
-    "endMs": 6000,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "繰り返します……市民の皆さんは直ちに避難を……。"
+    "startMs": 8200,
+    "endMs": 10800,
+    "speakerLabel": "観測所2U",
+    "text": "観測所 : 1U, 2D,2F"
   },
   {
     "chunkId": "tx_evacuation_02b",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_02",
-    "startMs": 6000,
-    "endMs": 7200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "救援部隊の到着は……絶望的……"
+    "startMs": 10800,
+    "endMs": 13200,
+    "speakerLabel": "観測所2U",
+    "text": "研究所: 3, 5"
   },
   {
     "chunkId": "tx_evacuation_02c",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_02",
-    "startMs": 7200,
-    "endMs": 8500,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "自力で……"
+    "startMs": 13600,
+    "endMs": 17200,
+    "speakerLabel": "観測所2U",
+    "text": "エリアB1全域で異常な災害が進行しています"
   },
   {
     "chunkId": "tx_evacuation_03a",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_03",
-    "startMs": 9000,
-    "endMs": 11200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "繰り返します。第4居住区の方は、最寄りの地下通路へ。"
+    "startMs": 17600,
+    "endMs": 21800,
+    "speakerLabel": "観測所2U",
+    "text": "地下の避難経路を利用してエリアA1, C1への退避を開始してください"
   },
   {
     "chunkId": "tx_evacuation_03b",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_03",
-    "startMs": 11800,
-    "endMs": 14200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "A-3、A-4ゲートは閉鎖。北側の誘導灯に従ってください。"
+    "startMs": 22200,
+    "endMs": 25200,
+    "speakerLabel": "観測所2U",
+    "text": "当エリアへの移動は制限されています."
   },
   {
     "chunkId": "tx_evacuation_04a",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_04",
-    "startMs": 15000,
-    "endMs": 17500,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "……ただいま、管制塔との同期が失われています。"
+    "startMs": 25600,
+    "endMs": 28600,
+    "speakerLabel": "観測所2U",
+    "text": "救助部隊は編成されません"
   },
   {
     "chunkId": "tx_evacuation_04b",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_04",
-    "startMs": 18500,
-    "endMs": 21000,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "放送を受信している端末は、この案内を保存してください。"
+    "startMs": 29000,
+    "endMs": 32000,
+    "speakerLabel": "観測所2U",
+    "text": "管制塔B1は喪失しました."
   },
   {
     "chunkId": "tx_evacuation_05a",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_05",
-    "startMs": 22500,
-    "endMs": 25200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "避難経路、更新……更新に失敗。前回の経路を参照……"
+    "startMs": 32400,
+    "endMs": 35800,
+    "speakerLabel": "観測所2U",
+    "text": "当観測所に指揮権限が委譲されています"
   },
   {
     "chunkId": "tx_evacuation_05b",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_05",
-    "startMs": 26500,
-    "endMs": 29200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "繰り返し……第4……パノラマ……地下……"
+    "startMs": 36200,
+    "endMs": 40400,
+    "speakerLabel": "観測所2U",
+    "text": "地下の避難経路を利用してエリアA1,C1への退避を開始してください"
   },
   {
     "chunkId": "tx_evacuation_06a",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_06",
-    "startMs": 30500,
-    "endMs": 33200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "救護班へ。残留者の声が複数、南側連絡橋から……"
+    "startMs": 40800,
+    "endMs": 43600,
+    "speakerLabel": "観測所2U",
+    "text": "当エリアは破棄されます."
   },
   {
     "chunkId": "tx_evacuation_06b",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_06",
-    "startMs": 34500,
-    "endMs": 37200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "応答なし。応答なし。誘導灯を見失った方は、壁沿いに……"
+    "startMs": 44000,
+    "endMs": 47200,
+    "speakerLabel": "観測所2U",
+    "text": "エリア内に残留しないでください"
   },
   {
     "chunkId": "tx_evacuation_07a",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_07",
-    "startMs": 38800,
-    "endMs": 41500,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "磁気濃度、規定値を超過。保護膜のない端末は沈黙します。"
+    "startMs": 47600,
+    "endMs": 50600,
+    "speakerLabel": "観測所2U",
+    "text": "異常な磁気嵐, 空間歪曲,"
   },
   {
     "chunkId": "tx_evacuation_07b",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_07",
-    "startMs": 43000,
-    "endMs": 45500,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "聞こえる方は、短い返答だけで構いません。位置を……"
+    "startMs": 51000,
+    "endMs": 54000,
+    "speakerLabel": "観測所2U",
+    "text": "その他未知の災害"
   },
   {
     "chunkId": "tx_evacuation_08a",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_08",
-    "startMs": 46800,
-    "endMs": 49200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "██、第4……まだ人が……くり返……"
+    "startMs": 54400,
+    "endMs": 58800,
+    "speakerLabel": "観測所2U",
+    "text": "地下の避難経路を利用してエリアA1,C1への退避を開始してください"
   },
   {
     "chunkId": "tx_evacuation_08b",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_08",
-    "startMs": 50800,
-    "endMs": 53200,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "自力で……北側へ……灯りが残っている間に……"
+    "startMs": 59200,
+    "endMs": 62600,
+    "speakerLabel": "観測所2U",
+    "text": "不明なエネルギー源の発生が確認されています"
   },
   {
     "chunkId": "tx_evacuation_09a",
     "transmissionId": "tx_evacuation",
     "lineId": "evacuation_line_09",
-    "startMs": 54200,
-    "endMs": 55700,
-    "speakerLabel": "CIVIL-DEFENSE",
-    "text": "どうか、声を失わないで。"
+    "startMs": 74000,
+    "endMs": 86000,
+    "speakerLabel": "観測所2U",
+    "text": "観測情報を提供します"
   }
 ]

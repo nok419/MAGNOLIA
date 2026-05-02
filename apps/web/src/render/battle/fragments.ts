@@ -1,5 +1,5 @@
 import type { BattleRenderState } from "@magnolia/game-session"
-import { clamp01, easeOutCubic, hashString } from "@/render/battle/battle-renderer-utils"
+import { clamp01, easeOutCubic, hashRenderString } from "@/render/battle/battle-renderer-utils"
 import { rgba } from "@/render/shared/canvas-palette"
 import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
 
@@ -41,7 +41,7 @@ export function drawBattleFragment(
   ctx.stroke()
 
   ctx.translate(drawX, drawY)
-  ctx.rotate((hashString(fragment.fragmentId) % 360) * (Math.PI / 180))
+  ctx.rotate((hashRenderString(fragment.fragmentId) % 360) * (Math.PI / 180))
   ctx.shadowColor = rgba("playerSignal", 0.74)
   ctx.shadowBlur = 16 * pulse
 
@@ -65,7 +65,7 @@ export function drawBattleFragment(
   ctx.lineTo(size * 0.24, -size * 0.54)
   ctx.stroke()
 
-  ctx.rotate(-((hashString(fragment.fragmentId) % 360) * (Math.PI / 180)))
+  ctx.rotate(-((hashRenderString(fragment.fragmentId) % 360) * (Math.PI / 180)))
   ctx.globalAlpha = 0.72 * fade
   ctx.fillStyle = rgba("signalReadable", 0.82)
   ctx.font = "10px monospace"

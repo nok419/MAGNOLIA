@@ -1,14 +1,17 @@
 import type { CSSProperties, ReactNode } from "react"
 import { useId } from "react"
 
-export type InteractionPromptTone = "warm" | "cyan" | "green" | "red"
-export type InteractionPromptPlacement = "right-up" | "left-up" | "right-down" | "left-down"
-export type InteractionPromptAnchorPlacement =
+export type TutorialIconTone = "warm" | "cyan" | "green" | "red"
+export type TutorialIconPlacement = "right-up" | "left-up" | "right-down" | "left-down"
+export type TutorialIconAnchorPlacement =
   | "top-right"
   | "top-left"
   | "bottom-right"
   | "bottom-left"
   | "inline-end"
+export type InteractionPromptTone = TutorialIconTone
+export type InteractionPromptPlacement = TutorialIconPlacement
+export type InteractionPromptAnchorPlacement = TutorialIconAnchorPlacement
 
 type PromptColorOverrides = {
   accentColor?: string
@@ -20,7 +23,7 @@ const CALLOUT_WIDTH = 220
 const CALLOUT_HEIGHT = 120
 
 const CALLOUT_GEOMETRY: Record<
-  InteractionPromptPlacement,
+  TutorialIconPlacement,
   {
     anchor: { x: number; y: number }
     elbow: { x: number; y: number }
@@ -59,7 +62,12 @@ const CALLOUT_GEOMETRY: Record<
   },
 }
 
-export function InteractionPromptCallout({
+type TutorialIconAnchor = {
+  x: number | string
+  y: number | string
+}
+
+export function TutorialIconCallout({
   anchor,
   keyLabel,
   label,
@@ -70,12 +78,12 @@ export function InteractionPromptCallout({
   color,
   motion = "pulse",
 }: {
-  anchor: { x: number; y: number }
+  anchor: TutorialIconAnchor
   keyLabel: PromptKeyLabel
   label: string
   ariaLabel: string
-  placement?: InteractionPromptPlacement
-  tone?: InteractionPromptTone
+  placement?: TutorialIconPlacement
+  tone?: TutorialIconTone
   visible?: boolean
   color?: PromptColorOverrides
   motion?: "pulse" | "static"
@@ -88,8 +96,8 @@ export function InteractionPromptCallout({
 
   const style: CSSProperties = {
     ...buildPromptColorStyle(color),
-    left: `${anchor.x}px`,
-    top: `${anchor.y}px`,
+    left: formatTutorialIconAnchorOffset(anchor.x),
+    top: formatTutorialIconAnchorOffset(anchor.y),
     ["--interaction-prompt-transform" as keyof CSSProperties]:
       `translate(${-geometry.anchor.x}px, ${-geometry.anchor.y}px)`,
   }
@@ -159,7 +167,11 @@ export function InteractionPromptCallout({
   )
 }
 
-export function InteractionPromptAnchor({
+export function InteractionPromptCallout(props: Parameters<typeof TutorialIconCallout>[0]) {
+  return <TutorialIconCallout {...props} />
+}
+
+export function TutorialIconAnchor({
   children,
   show,
   keyLabel,
@@ -175,8 +187,8 @@ export function InteractionPromptAnchor({
   keyLabel: PromptKeyLabel
   label: string
   ariaLabel: string
-  placement?: InteractionPromptAnchorPlacement
-  tone?: InteractionPromptTone
+  placement?: TutorialIconAnchorPlacement
+  tone?: TutorialIconTone
   color?: PromptColorOverrides
   block?: boolean
 }) {
@@ -199,6 +211,10 @@ export function InteractionPromptAnchor({
       ) : null}
     </span>
   )
+}
+
+export function InteractionPromptAnchor(props: Parameters<typeof TutorialIconAnchor>[0]) {
+  return <TutorialIconAnchor {...props} />
 }
 
 function PromptFace({
@@ -237,6 +253,10 @@ type PromptKeyLabel = string | readonly string[]
 function readPromptKeyLabels(keyLabel: PromptKeyLabel): readonly string[] {
   // 同時に複数の入力を案内する場合も、単一の長いキーではなく同じキー表示を並べます。
   return typeof keyLabel === "string" ? [keyLabel] : keyLabel
+}
+
+function formatTutorialIconAnchorOffset(value: number | string): string {
+  return typeof value === "number" ? `${value}px` : value
 }
 
 function buildPromptColorStyle(color?: PromptColorOverrides): CSSProperties | undefined {

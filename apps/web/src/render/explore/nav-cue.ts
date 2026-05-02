@@ -48,11 +48,6 @@ export function drawNavCueLayer(
     drawNavCueRimArc(ctx, input.playerPoint, input.visionPx, t, input.timeMs)
   }
 
-  // [Future B] 共鳴パルス挿入ポイント:
-  //   drawNavCueResonancePulse(ctx, input.playerPoint, input.visionPx, input.targets, input.timeMs)
-  //   探索円から外側へ拡散する淡い環。ターゲットに触れた瞬間だけ一瞬明滅させる等の演出を想定。
-  //   rim arc と同時描画する際は、パルスを先 (背面) に描いて arc が前に立つ順序にする。
-
   ctx.restore()
 }
 

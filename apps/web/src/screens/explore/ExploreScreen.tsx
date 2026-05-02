@@ -18,11 +18,12 @@ import type {
 import type { DisplayOptions } from "@/app/display-options"
 import { ExploreCanvas, type ExploreOverlayFrame } from "@/render/explore/ExploreCanvas"
 import {
-  InteractionPromptCallout,
-  type InteractionPromptPlacement,
+  TutorialIconCallout,
+  type TutorialIconPlacement,
 } from "@/components/InteractionPrompt"
 import { MiniMap } from "@/components/MiniMap"
 import { isCanvasPointVisible, worldToCanvasPoint } from "@/render/shared/coordinates"
+import { clamp01, seededUnit } from "@/render/shared/render-math"
 import { buildMiniMapViewModel } from "@/view-models/map-view-model"
 
 type ExploreScreenProps = {
@@ -32,7 +33,7 @@ type ExploreScreenProps = {
   exploreEvents?: TimedPresentationRequest<ExploreChannelPresentationRequest>[]
   itemPopups?: Array<{ id: string; title: string; detail: string }>
   shipVariant: ShipVariant
-  showEquipmentHint?: boolean
+  showEquipmentTutorialIcon?: boolean
   onInteractNode?: (nodeId: WorldMapNodeId, context: ExploreInteractionContext) => void
   onSetMoveTarget?: (worldPosition: { x: number; y: number } | null) => void
   onConsumePrimaryClick?: () => void
@@ -51,9 +52,7 @@ type ExploreClickRipple = {
   y: number
 }
 
-// signal パネルは非言語 User Interface（UI）を志向します。
-// 波形は将来 Background Music（BGM）の実波形へ差し替えやすいよう、
-// 距離スケールと波形プロファイルを分けます。
+// signal パネルの波形は決定的に生成し、距離による強度は別の値として合成します。
 const WAVEFORM_BAR_COUNT = 136
 const STRENGTH_SEGMENT_COUNT = 18
 const WAVEFORM_FRAME_MS = 72
@@ -65,6 +64,7 @@ const EQUIPMENT_ICON_CAPTURE_RADIUS_PX = 52
 const RESOURCE_ICON_CAPTURE_RADIUS_PX = 46
 const NAV_CUE_CAPTURE_RADIUS_PX = 42
 const NEARBY_ICON_INTERACT_RADIUS_PX = 72
+const FIRST_MISSION_TUTORIAL_NODE_ID = "node_tx_good_morning"
 
 export function ExploreScreen({
   snapshot,
@@ -73,7 +73,7 @@ export function ExploreScreen({
   exploreEvents = [],
   itemPopups = [],
   shipVariant,
-  showEquipmentHint = false,
+  showEquipmentTutorialIcon = false,
   onInteractNode,
   onSetMoveTarget,
   onConsumePrimaryClick,
@@ -140,8 +140,6 @@ export function ExploreScreen({
     return () => window.clearInterval(timerId)
   }, [canShowStrengthMeter, presentation.hidesHud])
 
-  // Background Music（BGM）同期前の仮プロファイルです。低速の包絡線と短いピークを分け、
-  // 実波形へ差し替える際も User Interface（UI）側の距離スケールを変えずに済むようにします。
   const waveformBars = useMemo(() => {
     return Array.from({ length: WAVEFORM_BAR_COUNT }, (_, i) =>
       buildSignalWaveformAmplitude(i, waveformFrame),
@@ -160,8 +158,12 @@ export function ExploreScreen({
   const canShowPrompts = presentation.kind === "none"
   const shouldShowScanHint = canShowPrompts && overlayFrame !== null && renderState.shouldShowScanHint
   const shipPromptPlacement = overlayFrame
-    ? resolveInteractionPromptPlacement(overlayFrame.playerPoint, overlayFrame.width)
+    ? resolveTutorialIconPlacement(overlayFrame.playerPoint, overlayFrame.width)
     : "right-up"
+  const firstMissionTutorialIconTarget =
+    canShowPrompts && overlayFrame
+      ? readFirstMissionTutorialIconTarget(renderState, overlayFrame)
+      : null
 
   const handleCanvasPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
@@ -393,7 +395,7 @@ export function ExploreScreen({
       </section>
 
       {shouldShowScanHint ? (
-        <InteractionPromptCallout
+        <TutorialIconCallout
           anchor={overlayFrame.playerPoint}
           placement={shipPromptPlacement}
           keyLabel={["Space", "click 2"]}
@@ -404,8 +406,8 @@ export function ExploreScreen({
         />
       ) : null}
 
-      {showEquipmentHint && canShowPrompts && overlayFrame ? (
-        <InteractionPromptCallout
+      {showEquipmentTutorialIcon && canShowPrompts && overlayFrame ? (
+        <TutorialIconCallout
           anchor={overlayFrame.playerPoint}
           placement={shipPromptPlacement}
           keyLabel="E"
@@ -413,6 +415,21 @@ export function ExploreScreen({
           tone="warm"
           motion="static"
           ariaLabel="press E to open equipment"
+        />
+      ) : null}
+
+      {firstMissionTutorialIconTarget && overlayFrame ? (
+        <TutorialIconCallout
+          anchor={firstMissionTutorialIconTarget.screenAnchor}
+          placement={resolveTutorialIconPlacement(
+            firstMissionTutorialIconTarget.screenAnchor,
+            overlayFrame.width,
+          )}
+          keyLabel={["Enter", "click"]}
+          label="connect"
+          tone="cyan"
+          motion="static"
+          ariaLabel="Enter または click で mission 01 を開始します"
         />
       ) : null}
 
@@ -637,13 +654,13 @@ function overlayPointToWorld(
   }
 }
 
-function resolveInteractionPromptPlacement(
+function resolveTutorialIconPlacement(
   anchor: { x: number; y: number },
   width: number,
-): InteractionPromptPlacement {
+): TutorialIconPlacement {
   const horizontal = anchor.x > width - 260 ? "left" : "right"
   const vertical = anchor.y < 130 ? "down" : "up"
-  return `${horizontal}-${vertical}` as InteractionPromptPlacement
+  return `${horizontal}-${vertical}` as TutorialIconPlacement
 }
 
 function isOverlayPointVisible(
@@ -701,6 +718,44 @@ function readOverlayInteractionCaptureRadius(
   return EQUIPMENT_ICON_CAPTURE_RADIUS_PX
 }
 
+function readFirstMissionTutorialIconTarget(
+  renderState: ExploreRenderState,
+  overlayFrame: ExploreOverlayFrame,
+): ExploreClickTarget | null {
+  const target = renderState.interactionTargets.find(
+    (entry) => entry.nodeId === FIRST_MISSION_TUTORIAL_NODE_ID && entry.visible,
+  )
+  if (!target) {
+    return null
+  }
+  const distanceToPlayer = worldDistance(renderState.playerPosition, target.worldPosition)
+  if (distanceToPlayer > renderState.visionRadius) {
+    return null
+  }
+  const anchor = worldToOverlayPoint(overlayFrame, target.worldPosition.x, target.worldPosition.y)
+  if (!isOverlayPointVisible(anchor, overlayFrame)) {
+    return null
+  }
+
+  const visibleTransmission = renderState.visibleTransmissions.find(
+    (node) => node.nodeId === FIRST_MISSION_TUTORIAL_NODE_ID,
+  )
+  // mission01 のチュートリアルアイコンは、視界内にある間だけ開始方法を示します。
+  // クリア済み mission は探索目標ではないため、完了状態では再表示しません。
+  if (visibleTransmission?.state === "complete") {
+    return null
+  }
+  return buildExploreClickTarget({
+    nodeId: target.nodeId,
+    point: anchor,
+    radius: readOverlayInteractionCaptureRadius(target),
+    clickable: target.clickable,
+    distanceToPlayer,
+    worldPosition: target.worldPosition,
+    clickPoint: overlayFrame.playerPoint,
+  })
+}
+
 function EquipSlotRow({ label, value }: { label: string; value: string }) {
   const isEmpty = value === "—"
   return (
@@ -738,22 +793,13 @@ function buildSignalWaveformAmplitude(index: number, frame: number): number {
   return clamp01(Math.max(0.028, carrier * drop * breathe))
 }
 
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
-
 function smoothWaveNoise(x: number, salt: number): number {
   const left = Math.floor(x)
   const ratio = x - left
   const eased = ratio * ratio * (3 - 2 * ratio)
-  const a = seededWaveNoise(left * 97 + salt)
-  const b = seededWaveNoise((left + 1) * 97 + salt)
+  const a = seededUnit(left * 97 + salt)
+  const b = seededUnit((left + 1) * 97 + salt)
 
   // value noise として補間し、通信波形らしい不規則さを残しつつちらつきを抑えます。
   return a + (b - a) * eased
-}
-
-function seededWaveNoise(seed: number): number {
-  const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453
-  return value - Math.floor(value)
 }

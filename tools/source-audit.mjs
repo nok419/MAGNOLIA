@@ -8,8 +8,19 @@ const rootDir = process.cwd()
 const battleRenderDir = path.join(rootDir, "apps", "web", "src", "render", "battle")
 const webSourceDir = path.join(rootDir, "apps", "web", "src")
 const webEntryPoint = path.join(webSourceDir, "main.tsx")
+const useMagnoliaAppPath = path.join(webSourceDir, "app", "use-magnolia-app.ts")
+const useMagnoliaAppAllowedImporters = new Set([
+  "apps/web/src/app/App.tsx",
+])
 const allowedAdapterPattern = /migration-adapter/
 const sourceExtensions = [".ts", ".tsx", ".css", ".json"]
+const planningCommentExtensions = new Set([".ts", ".tsx", ".css", ".mjs"])
+const planningCommentRoots = [
+  "apps/web/src/",
+  "packages/game-session/src/",
+  "tools/mission-authoring/",
+]
+const stalePlanningCommentPattern = /\b(?:TODO|FIXME|Future|MGN-[A-Z0-9-]+)\b/
 const packageEntryPoints = new Map([
   ["@magnolia/contracts", "packages/contracts/src/index.ts"],
   ["@magnolia/game-session", "packages/game-session/src/index.ts"],
@@ -34,6 +45,8 @@ for (const filePath of collectSourceFiles(battleRenderDir, [".ts", ".tsx"])) {
 }
 
 auditWebSourceReachability()
+auditUseMagnoliaAppImportDirection()
+auditStalePlanningComments()
 
 if (issues.length > 0) {
   console.error("source audit failed")
@@ -75,6 +88,54 @@ function auditWebSourceReachability() {
       ].join("\n"),
     )
   }
+}
+
+function auditUseMagnoliaAppImportDirection() {
+  const candidateFiles = collectVisibleSourceFiles(webSourceDir, [".ts", ".tsx"])
+  for (const filePath of candidateFiles) {
+    if (filePath === useMagnoliaAppPath) {
+      continue
+    }
+    const relativePath = toProjectPath(filePath)
+    const source = fs.readFileSync(filePath, "utf8")
+    for (const specifier of collectModuleImportSpecifiers(source)) {
+      const resolved = resolveImportSpecifier(filePath, specifier)
+      if (resolved !== useMagnoliaAppPath) {
+        continue
+      }
+      if (!useMagnoliaAppAllowedImporters.has(relativePath)) {
+        issues.push(
+          `${relativePath}: use-magnolia-app.ts is the composition root hook and must not be imported by lower app modules.`,
+        )
+      }
+    }
+  }
+}
+
+function auditStalePlanningComments() {
+  for (const projectPath of collectGitVisibleFiles()) {
+    if (!planningCommentRoots.some((root) => projectPath.startsWith(root))) {
+      continue
+    }
+    if (!planningCommentExtensions.has(path.extname(projectPath))) {
+      continue
+    }
+    const source = fs.readFileSync(path.join(rootDir, projectPath), "utf8")
+    const lines = source.split(/\r?\n/)
+    lines.forEach((line, index) => {
+      if (!isCommentLine(line) || !stalePlanningCommentPattern.test(line)) {
+        return
+      }
+      issues.push(
+        `${projectPath}:${index + 1}: move TODO/FIXME/Future/MGN planning notes to docs/latest_Review or an issue.`,
+      )
+    })
+  }
+}
+
+function isCommentLine(line) {
+  const trimmed = line.trim()
+  return trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*")
 }
 
 function collectReachableFiles(entryPoint, candidateSet) {

@@ -2,6 +2,7 @@ import type {
   ContentBundle,
   EffectSpec,
   EquipmentSlot,
+  MissionId,
   MissionResult,
   TimeRange,
   TranscriptChunk,
@@ -22,13 +23,18 @@ import type {
   HazardRenderState,
   ProjectileRenderState,
   SubtitleRenderState,
+  SubtitleWaveInterferenceState,
   SupportFieldRenderState,
 } from "../runtime-types"
-import { clamp01, resolveHitRadius } from "../battle-world"
+import { resolveHitRadius } from "../battle-world"
+import { clamp01 } from "../math"
+
+const DEMO_MISSION_TOTAL_COUNT = 3
 
 export function buildBattleRenderState(input: {
   battle: InternalBattleState
   content: ContentBundle
+  clearedMissionIds?: readonly MissionId[]
   equippedMainId?: string
   equippedSubId?: string
 }): BattleRenderState {
@@ -170,6 +176,7 @@ export function buildBattleRenderState(input: {
             result: input.battle.activeResult,
             transcriptView: resultTranscriptPreview,
             content: input.content,
+            clearedMissionIds: input.clearedMissionIds ?? [],
           })
         : undefined,
     transmissionAudio: {
@@ -238,6 +245,10 @@ function getActiveSubtitle(battle: InternalBattleState): SubtitleRenderState | u
     battle.transcript,
     battle.damageRanges,
   ).filter((span) => span.chunkId === activeChunk.chunkId)
+  const progress = clamp01(
+    (battle.audioPlaybackMs - activeChunk.startMs) /
+    Math.max(1, activeChunk.endMs - activeChunk.startMs),
+  )
   return {
     transmissionId: battle.transmission.transmissionId,
     chunkId: activeChunk.chunkId,
@@ -246,12 +257,98 @@ function getActiveSubtitle(battle: InternalBattleState): SubtitleRenderState | u
     audible,
     protectedSpans,
     damagedSpans,
+    waveInterference: buildWaveInterferenceForSubtitle(battle, activeChunk, progress),
     noiseLevel: battle.noiseState.noiseLevel,
     hearingThreshold: battle.noiseState.hearingThreshold,
-    progress:
-      (battle.audioPlaybackMs - activeChunk.startMs) /
-      Math.max(1, activeChunk.endMs - activeChunk.startMs),
+    progress,
   }
+}
+
+function buildWaveInterferenceForSubtitle(
+  battle: InternalBattleState,
+  activeChunk: TranscriptChunk,
+  progress: number,
+): SubtitleWaveInterferenceState | undefined {
+  const activeChunkIndex = battle.transcript.findIndex(
+    (chunk) => chunk.chunkId === activeChunk.chunkId,
+  )
+  if (activeChunkIndex <= 0) {
+    return undefined
+  }
+
+  const previousChunk = battle.transcript[activeChunkIndex - 1]
+  const previousTextStartMs = battle.mission.audioStartDelayMs + previousChunk.startMs
+  const currentTextStartMs = battle.mission.audioStartDelayMs + activeChunk.startMs
+  // 直前の本文表示から現在の本文表示までに出た wave を、次の本文を乱す対象にします。
+  // 被弾欠損とは別の一時表示なので、damageRanges や復元率には混ぜません。
+  const precedingWaves = battle.mission.waves.filter(
+    (wave) => wave.atMs >= previousTextStartMs && wave.atMs < currentTextStartMs,
+  )
+  if (precedingWaves.length === 0) {
+    return undefined
+  }
+
+  const summary = precedingWaves.reduce(
+    (total, wave) => {
+      const performance = battle.wavePerformance?.[wave.waveId]
+      total.expectedEnemyCount += performance?.expectedEnemyCount ?? wave.entries.length
+      total.destroyedEnemyCount += performance?.destroyedSpawnIds.size ?? 0
+      return total
+    },
+    { expectedEnemyCount: 0, destroyedEnemyCount: 0 },
+  )
+  if (summary.expectedEnemyCount <= 0) {
+    return undefined
+  }
+
+  const missRate = clamp01(
+    1 - summary.destroyedEnemyCount / Math.max(1, summary.expectedEnemyCount),
+  )
+  if (missRate <= 0.001) {
+    return undefined
+  }
+
+  const mode = readWaveInterferenceMode(missRate)
+  const recoveryRatio = readWaveInterferenceRecoveryRatio(mode, progress)
+  const recoveryStrength =
+    mode === "readableGlitch" ? 0.86 : mode === "recovering" ? 0.58 : 0.12
+  const effectiveMissRate = clamp01(missRate * (1 - recoveryRatio * recoveryStrength))
+  if (effectiveMissRate <= 0.015) {
+    return undefined
+  }
+
+  return {
+    ...summary,
+    missRate,
+    effectiveMissRate,
+    recoveryRatio,
+    mode,
+  }
+}
+
+function readWaveInterferenceMode(
+  missRate: number,
+): SubtitleWaveInterferenceState["mode"] {
+  if (missRate <= 0.25) {
+    return "readableGlitch"
+  }
+  if (missRate <= 0.55) {
+    return "recovering"
+  }
+  return "heavy"
+}
+
+function readWaveInterferenceRecoveryRatio(
+  mode: SubtitleWaveInterferenceState["mode"],
+  progress: number,
+): number {
+  if (mode === "readableGlitch") {
+    return clamp01((progress - 0.12) / 0.54)
+  }
+  if (mode === "recovering") {
+    return clamp01((progress - 0.18) / 0.72)
+  }
+  return clamp01((progress - 0.62) / 1.2)
 }
 
 function resolvePlayerHitRadius(content: ContentBundle): number {
@@ -302,12 +399,17 @@ function buildBattleResultViewModel(input: {
   result: MissionResult
   transcriptView: TranscriptViewChunk[]
   content: ContentBundle
+  clearedMissionIds: readonly MissionId[]
 }): BattleResultViewModel {
   return {
     analysisRate: input.result.analysisRate,
     restorationRate: input.result.restorationRate,
     selfRepairPointsEarned: input.result.selfRepairPointsEarned,
     newHeardRangeMs: input.result.newHeardRangeMs,
+    demoClearProgress: {
+      clearedMissionCount: new Set(input.clearedMissionIds).size,
+      totalMissionCount: DEMO_MISSION_TOTAL_COUNT,
+    },
     transcriptPreview: selectBattleResultTranscriptPreview(input.transcriptView),
     grantedEquipment: input.result.grantedEquipmentIds.flatMap((equipmentId) => {
       const equipment = input.content.equipment[equipmentId]

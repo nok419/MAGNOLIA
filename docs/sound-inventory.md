@@ -46,7 +46,7 @@ P0 は、入力・戦闘・バリア・通信遮断の判断に直結する最�
 | 28 | P2 | `apps/web/public/sound/mission/mission-fail.wav` | `/sound/mission/mission-fail.wav` | ミッション失敗/中断 | `mission.fail` | no |
 | 29 | P2 | `apps/web/public/sound/equipment/equipment-switch.wav` | `/sound/equipment/equipment-switch.wav` | 装備切替 | `equipmentEquipped` -> `equipment.switch` | no |
 | 30 | P2 | `apps/web/public/sound/equipment/equipment-use.wav` | `/sound/equipment/equipment-use.wav` | サブ装備使用の汎用音 | `playerSubWeaponUsed` -> `equipment.use` | no |
-| 31 | P2 | `apps/web/public/sound/equipment/static_waves.wav` | `/sound/equipment/static_waves.wav` | 静音波展開 | `playerSubWeaponUsed(runtimeHandlerId=sub.field.silent_wave)` -> `equipment.silentWave` | no |
+| 31 | P2 | `apps/web/public/sound/equipment/static_waves.wav` | `/sound/equipment/static_waves.wav` | ミュートチャンバー展開 | `playerSubWeaponUsed(runtimeHandlerId=sub.field.silent_wave)` -> `equipment.silentWave` | no |
 | 32 | P2 | `apps/web/public/sound/voice/radio-blip.wav` | `/sound/voice/radio-blip.wav` | 無線の短いブリップ | `missionEntered` -> `voice.radioBlip` | no |
 | 33 | P3 | `apps/web/public/sound/barrier/barrier-loop.wav` | `/sound/barrier/barrier-loop.wav` | バリア稼働中の薄いループ | `barrier.up/down` 間の `barrier.loop` | yes |
 | 34 | P3 | `apps/web/public/sound/barrier/barrier-break.wav` | `/sound/barrier/barrier-break.wav` | 将来のバリア破壊 | `barrier.break` | no |
@@ -79,7 +79,7 @@ P0 は、入力・戦闘・バリア・通信遮断の判断に直結する最�
 | `damaged_1.wav` | `player-hit.wav` | 被弾音の基本音 |
 | `damaged_2.wav` | `player-hit-heavy.wav` | 被弾音の別音色 |
 | `barrier.wav` | `noise_camceler.wav` | ノイズキャンセラーのバリア展開。現行は `equipment/` 内の専用音源を使う |
-| `static_waves.wav` | `static_waves.wav` | 静音波展開専用 |
+| `static_waves.wav` | `static_waves.wav` | ミュートチャンバー展開専用 |
 | `equipment_archive_category_select.wav` | `equipment-archive-category-select.wav` | 装備/アーカイブの分類選択 |
 | `equipment_archive_detail_select.wav` | `equipment-archive-detail-select.wav` | 装備/アーカイブの詳細選択 |
 | `equipment_archive_detail_decision.wav` | `equipment-switch.wav` | 装備詳細での確定操作 |

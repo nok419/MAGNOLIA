@@ -18,6 +18,7 @@ export type InternalEnemyState = {
   enemyInstanceId: string
   enemyId: string
   spawnId: string
+  waveId?: string
   patternSeed: string
   movementPatternId?: string
   spawnPosition: Vector2
@@ -32,6 +33,13 @@ export type InternalEnemyState = {
   burnUntilMs: number
   radius: number
   overrides?: Record<string, number | string | boolean>
+}
+
+export type InternalWavePerformanceState = {
+  waveId: string
+  atMs: number
+  expectedEnemyCount: number
+  destroyedSpawnIds: Set<string>
 }
 
 export type InternalProjectileState = {
@@ -86,6 +94,7 @@ export type InternalBarrierState = {
   radius: number
   remainingMs: number
   maxMs: number
+  cooldownMs?: number
   moveSpeedMultiplier: number
   allowAttackDuringUse: boolean
   blocksEnemyBullets: boolean
@@ -146,6 +155,7 @@ export type InternalBattleState = {
   selfRepairPointsEarned: number
   cleared: boolean
   spawnedWaveIds: Set<string>
+  wavePerformance: Record<string, InternalWavePerformanceState>
   firedBeatIds: Set<string>
   playerPosition: Vector2
   mainCooldownMs: number

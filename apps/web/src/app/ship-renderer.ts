@@ -137,8 +137,8 @@ export function computeHullMetrics(scale: number): HullMetrics {
  */
 export function drawShip(ctx: CanvasRenderingContext2D, params: ShipDrawParams): void {
   const m = computeHullMetrics(params.scale)
-  const reveal = clamp01(params.reveal ?? 1)
-  const revealFill = clamp01(params.revealFill ?? reveal)
+  const reveal = clampVisualRatio(params.reveal ?? 1)
+  const revealFill = clampVisualRatio(params.revealFill ?? reveal)
   const rotation = params.rotation ?? 0
   const lineWidth = params.lineWidth ?? 1.5
   const timeMs = params.timeMs ?? 0
@@ -164,7 +164,7 @@ export function drawShip(ctx: CanvasRenderingContext2D, params: ShipDrawParams):
       fill: params.fill,
       lineWidth,
       timeMs,
-      strength: clamp01(params.artDetailStrength ?? 1),
+      strength: clampVisualRatio(params.artDetailStrength ?? 1),
       glow: params.glow ?? null,
     })
   } else {
@@ -302,7 +302,7 @@ function drawShipSolidCore(
   m: HullMetrics,
   core: NonNullable<ShipDrawParams["core"]>,
 ): void {
-  const pulse = clamp01(core.pulse ?? 1)
+  const pulse = clampVisualRatio(core.pulse ?? 1)
   const radius = core.radius ?? 2
   const coreY = -m.bodyH * 0.12
   ctx.save()
@@ -562,7 +562,7 @@ function drawShipArtCore(
   core: NonNullable<ShipDrawParams["core"]>,
   timeMs: number,
 ): void {
-  const pulse = clamp01(core.pulse ?? 1)
+  const pulse = clampVisualRatio(core.pulse ?? 1)
   const baseR = (core.radius ?? 2) * 1.45
   const cx = 0
   const cy = -m.bodyH * 0.12
@@ -641,7 +641,7 @@ function drawShipExhaust(
   ctx.restore()
 }
 
-function clamp01(v: number): number {
+function clampVisualRatio(v: number): number {
   if (!Number.isFinite(v)) return 1
   if (v < 0) return 0
   if (v > 1) return 1

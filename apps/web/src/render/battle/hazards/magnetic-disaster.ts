@@ -1,5 +1,5 @@
 import type { HazardRenderState } from "@magnolia/game-session"
-import { TAU, easeOutCubic, hashString, seededRandom } from "@/render/battle/battle-renderer-utils"
+import { TAU, easeOutCubic, hashRenderString, seededRandom } from "@/render/battle/battle-renderer-utils"
 import type { CanvasPaletteRole } from "@/render/shared/canvas-palette"
 import { gradientStop, resolveCanvasPaletteRole, rgba } from "@/render/shared/canvas-palette"
 import { drawThreatNoiseField } from "@/render/shared/effects/threat-noise-field"
@@ -200,7 +200,7 @@ export function drawHazard(
     /* ── 3. 乱流グローバンド (速度・位置を不揃いに) ── */
     ctx.globalAlpha = 1
     for (let band = 0; band < 6; band += 1) {
-      const bandSeed = hashString(`${hazard.position.x}:${hazard.position.y}:${band}`)
+      const bandSeed = hashRenderString(`${hazard.position.x}:${hazard.position.y}:${band}`)
       const bandSpeed = 0.0018 + seededRandom(bandSeed) * 0.0024
       const bandProgress =
         ((t * bandSpeed) + band * 0.17 + seededRandom(bandSeed + 5) * 0.3) % 1
@@ -389,7 +389,7 @@ function drawMagneticStormNoise(
   // 粒状ノイズは矩形の一様塗りを避けるため、座標 seed で位置を固定しつつ明滅だけ動かす。
   const particleCount = Math.max(18, Math.floor(Math.max(44, Math.floor((width * height) / 900)) * frameRateScale))
   for (let i = 0; i < particleCount; i += 1) {
-    const seed = hashString(`${Math.round(x)}:${Math.round(y)}:${i}`)
+    const seed = hashRenderString(`${Math.round(x)}:${Math.round(y)}:${i}`)
     const drift = (timeMs * (0.00005 + seededRandom(seed + 3) * 0.00008) + seededRandom(seed + 7)) % 1
     const baseX = x + ((seededRandom(seed + 11) + drift * 0.12) % 1) * width
     const baseY =
@@ -416,7 +416,7 @@ function drawMagneticStormNoise(
   ctx.lineWidth = 0.8
   const streamlineCount = lowFrameRateMode ? 8 : 18
   for (let i = 0; i < streamlineCount; i += 1) {
-    const seed = hashString(`storm:${Math.round(x)}:${Math.round(y)}:${i}`)
+    const seed = hashRenderString(`storm:${Math.round(x)}:${Math.round(y)}:${i}`)
     const progress = (timeMs * (0.00018 + seededRandom(seed + 1) * 0.00018) + seededRandom(seed + 2)) % 1
     const sx = x + progress * width
     const sy = y + (seededRandom(seed + 3) * 0.9 + 0.05) * height

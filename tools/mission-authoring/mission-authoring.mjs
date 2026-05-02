@@ -146,35 +146,42 @@ function listContent(args) {
 function editWave(args) {
   const [action] = args._
   const { mission, file } = loadMissionForEdit(args)
+  mission.waves = mission.waves ?? []
+  rejectDeprecatedOption(args, "index", "--wave-id <waveId>")
 
   if (action === "add") {
     const wave = readJsonOption(args, "json") ?? {
+      waveId: readRequired(args, "waveId"),
       atMs: readInteger(args, "atMs"),
       intentTag: readRequired(args, "intentTag"),
       entries: readJsonOption(args, "entriesJson") ?? [],
     }
+    applyRequiredIdOption(wave, args, "waveId", "wave add")
+    assertMissingId(mission.waves, "waveId", wave.waveId)
     mission.waves = [...(mission.waves ?? []), wave].sort(compareAtMs)
     writeJson(file, mission)
-    return { missionId: mission.missionId, added: "wave", wave }
+    return { missionId: mission.missionId, added: "wave", waveId: wave.waveId, wave }
   }
 
-  const index = readInteger(args, "index")
-  assertArrayIndex(mission.waves, index, "wave")
+  const waveId = readRequired(args, "waveId")
+  const index = mission.waves.findIndex((wave) => wave.waveId === waveId)
+  assertFound(index, `wave '${waveId}'`)
   if (action === "update") {
     const patch = readPatch(args, ["atMs", "intentTag", "entriesJson"])
+    rejectIdRename(patch, "waveId", waveId, "wave update")
     if (patch.entriesJson !== undefined) {
       patch.entries = patch.entriesJson
       delete patch.entriesJson
     }
-    mission.waves[index] = { ...mission.waves[index], ...patch }
+    mission.waves[index] = { ...mission.waves[index], ...patch, waveId }
     mission.waves.sort(compareAtMs)
     writeJson(file, mission)
-    return { missionId: mission.missionId, updated: "wave", index }
+    return { missionId: mission.missionId, updated: "wave", waveId }
   }
   if (action === "delete") {
     const [removed] = mission.waves.splice(index, 1)
     writeJson(file, mission)
-    return { missionId: mission.missionId, deleted: "wave", index, removed }
+    return { missionId: mission.missionId, deleted: "wave", waveId, removed }
   }
 
   throw new Error("wave action must be add, update, or delete")
@@ -183,41 +190,50 @@ function editWave(args) {
 function editEnemySpawn(args) {
   const [action] = args._
   const { mission, file } = loadMissionForEdit(args)
-  const waveIndex = readInteger(args, "waveIndex")
-  assertArrayIndex(mission.waves, waveIndex, "wave")
+  rejectDeprecatedOption(args, "waveIndex", "--wave-id <waveId>")
+  rejectDeprecatedOption(args, "entryIndex", "--spawn-id <spawnId>")
+  const waveId = readRequired(args, "waveId")
+  const waveIndex = (mission.waves ?? []).findIndex((candidate) => candidate.waveId === waveId)
+  assertFound(waveIndex, `wave '${waveId}'`)
   const wave = mission.waves[waveIndex]
   wave.entries = wave.entries ?? []
 
   if (action === "add") {
     const entry = readJsonOption(args, "json") ?? {
+      spawnId: readRequired(args, "spawnId"),
       enemyId: readRequired(args, "enemyId"),
       spawnPointId: readRequired(args, "spawnPointId"),
       seed: readInteger(args, "seed"),
     }
+    applyRequiredIdOption(entry, args, "spawnId", "enemy-spawn add")
+    assertMissingMissionSpawnId(mission, entry.spawnId)
     const overrides = readJsonOption(args, "overridesJson")
     if (overrides !== undefined) {
       entry.overrides = overrides
     }
     wave.entries.push(entry)
     writeJson(file, mission)
-    return { missionId: mission.missionId, added: "enemy-spawn", waveIndex, entry }
+    return { missionId: mission.missionId, added: "enemy-spawn", waveId, spawnId: entry.spawnId, entry }
   }
 
-  const entryIndex = readInteger(args, "entryIndex")
-  assertArrayIndex(wave.entries, entryIndex, "enemy spawn")
+  const spawnId = readRequired(args, "spawnId")
+  const entryIndex = wave.entries.findIndex((entry) => entry.spawnId === spawnId)
+  assertFound(entryIndex, `enemy spawn '${spawnId}' in wave '${waveId}'`)
   if (action === "update") {
-    wave.entries[entryIndex] = { ...wave.entries[entryIndex], ...readPatch(args, ["enemyId", "spawnPointId", "seed", "overridesJson"]) }
+    const patch = readPatch(args, ["enemyId", "spawnPointId", "seed", "overridesJson"])
+    rejectIdRename(patch, "spawnId", spawnId, "enemy-spawn update")
+    wave.entries[entryIndex] = { ...wave.entries[entryIndex], ...patch, spawnId }
     if (wave.entries[entryIndex].overridesJson !== undefined) {
       wave.entries[entryIndex].overrides = wave.entries[entryIndex].overridesJson
       delete wave.entries[entryIndex].overridesJson
     }
     writeJson(file, mission)
-    return { missionId: mission.missionId, updated: "enemy-spawn", waveIndex, entryIndex }
+    return { missionId: mission.missionId, updated: "enemy-spawn", waveId, spawnId }
   }
   if (action === "delete") {
     const [removed] = wave.entries.splice(entryIndex, 1)
     writeJson(file, mission)
-    return { missionId: mission.missionId, deleted: "enemy-spawn", waveIndex, entryIndex, removed }
+    return { missionId: mission.missionId, deleted: "enemy-spawn", waveId, spawnId, removed }
   }
 
   throw new Error("enemy-spawn action must be add, update, or delete")
@@ -420,12 +436,6 @@ function coerceScalar(value) {
   return value
 }
 
-function assertArrayIndex(array, index, label) {
-  if (!Array.isArray(array) || index < 0 || index >= array.length) {
-    throw new Error(`No ${label} at index ${index}`)
-  }
-}
-
 function assertFound(index, label) {
   if (index === -1) {
     throw new Error(`Could not find ${label}`)
@@ -436,6 +446,46 @@ function assertMissingId(array, idKey, id) {
   if (array.some((item) => item[idKey] === id)) {
     throw new Error(`${idKey} '${id}' already exists`)
   }
+}
+
+function assertMissingMissionSpawnId(mission, spawnId) {
+  for (const wave of mission.waves ?? []) {
+    if ((wave.entries ?? []).some((entry) => entry.spawnId === spawnId)) {
+      throw new Error(`spawnId '${spawnId}' already exists`)
+    }
+  }
+}
+
+function applyRequiredIdOption(item, args, idKey, label) {
+  const optionValue = args[idKey]
+  if (item[idKey] === undefined && optionValue !== undefined) {
+    item[idKey] = optionValue
+  }
+  if (item[idKey] === undefined || item[idKey] === true) {
+    throw new Error(`${label} requires --${toKebabCase(idKey)} or --json with ${idKey}`)
+  }
+  if (typeof item[idKey] !== "string" || item[idKey].trim() === "") {
+    throw new Error(`${label} requires ${idKey} to be a non-empty string`)
+  }
+  if (optionValue !== undefined && optionValue !== true && item[idKey] !== optionValue) {
+    throw new Error(`${label} received conflicting ${idKey} values`)
+  }
+}
+
+function rejectDeprecatedOption(args, key, replacement) {
+  if (args[key] !== undefined) {
+    throw new Error(`--${toKebabCase(key)} is deprecated. Use ${replacement}.`)
+  }
+}
+
+function rejectIdRename(patch, idKey, expectedId, label) {
+  if (patch[idKey] === undefined) {
+    return
+  }
+  if (patch[idKey] !== expectedId) {
+    throw new Error(`${label} does not rename ${idKey}. Delete and add a new object instead.`)
+  }
+  delete patch[idKey]
 }
 
 function compareAtMs(left, right) {
@@ -457,10 +507,10 @@ function toKebabCase(value) {
 function usage() {
   return `Usage:
   node tools/mission-authoring/mission-authoring.mjs list <missions|transmissions|chunks|enemies|bullet-patterns>
-  node tools/mission-authoring/mission-authoring.mjs wave add --mission mission_good_morning --at-ms 56000 --intent-tag test --entries-json '[]'
-  node tools/mission-authoring/mission-authoring.mjs wave update --mission mission_good_morning --index 0 --at-ms 9000
-  node tools/mission-authoring/mission-authoring.mjs wave delete --mission mission_good_morning --index 0
-  node tools/mission-authoring/mission-authoring.mjs enemy-spawn add --mission mission_good_morning --wave-index 0 --enemy-id enemy_scout --spawn-point-id spawn_top_center --seed 200
+  node tools/mission-authoring/mission-authoring.mjs wave add --mission mission_good_morning --wave-id wave_test --at-ms 56000 --intent-tag test --entries-json '[]'
+  node tools/mission-authoring/mission-authoring.mjs wave update --mission mission_good_morning --wave-id gm_wave_01 --at-ms 9000
+  node tools/mission-authoring/mission-authoring.mjs wave delete --mission mission_good_morning --wave-id gm_wave_01
+  node tools/mission-authoring/mission-authoring.mjs enemy-spawn add --mission mission_good_morning --wave-id gm_wave_01 --spawn-id gm_wave_01_spawn_new --enemy-id enemy_scout --spawn-point-id spawn_top_center --seed 200
   node tools/mission-authoring/mission-authoring.mjs hazard add --mission mission_good_morning --json '{"hazardId":"hazard_new","kind":"magneticDisaster"}'
   node tools/mission-authoring/mission-authoring.mjs beat add --mission mission_good_morning --json '{"beatId":"beat_new","atMs":0,"durationMs":1000,"intentTag":"draft"}'
   node tools/mission-authoring/mission-authoring.mjs preview-fixture --mission mission_good_morning

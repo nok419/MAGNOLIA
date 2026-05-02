@@ -7,14 +7,14 @@
     "chunksFile": "content/gameplay/transmissions/tx_good_morning.chunks.json"
   },
   "mission": {
-    "durationMs": 60000,
+    "durationMs": 43000,
     "scrollSpeed": 120,
     "backgroundPresetId": "bg_central_tower",
     "waves": [
       {
         "waveId": "gm_wave_01",
-        "atMs": 8000,
-        "intentTag": "main-confirmation-clear-forward-noise",
+        "atMs": 5500,
+        "intentTag": "main-weapon-drill",
         "entries": [
           {
             "spawnId": "gm_wave_01_spawn_01",
@@ -26,55 +26,52 @@
       },
       {
         "waveId": "gm_wave_02",
-        "atMs": 12000,
-        "intentTag": "main-confirmation-soft-noise",
+        "atMs": 7000,
+        "intentTag": "main-weapon-drill",
         "entries": [
           {
             "spawnId": "gm_wave_02_spawn_01",
             "enemyId": "enemy_scout",
             "spawnPointId": "spawn_top_left",
-            "seed": 2,
-            "overrides": {
-              "speed": 24
-            }
+            "seed": 2
           },
           {
             "spawnId": "gm_wave_02_spawn_02",
             "enemyId": "enemy_scout",
             "spawnPointId": "spawn_top_right",
-            "seed": 3,
-            "overrides": {
-              "speed": 24
-            }
+            "seed": 3
           }
         ]
       },
       {
         "waveId": "gm_wave_03",
-        "atMs": 17000,
-        "intentTag": "melee-confirmation",
+        "atMs": 8400,
+        "intentTag": "main-weapon-drill",
         "entries": [
           {
             "spawnId": "gm_wave_03_spawn_01",
-            "enemyId": "enemy_standard",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_left",
+            "seed": 4
+          },
+          {
+            "spawnId": "gm_wave_03_spawn_02",
+            "enemyId": "enemy_scout",
             "spawnPointId": "spawn_top_center",
-            "seed": 4,
-            "overrides": {
-              "speed": 18
-            }
+            "seed": 5
           }
         ]
       },
       {
         "waveId": "gm_wave_04",
-        "atMs": 30500,
-        "intentTag": "hit-noise-confirmation-safe",
+        "atMs": 9800,
+        "intentTag": "main-weapon-drill",
         "entries": [
           {
             "spawnId": "gm_wave_04_spawn_01",
             "enemyId": "enemy_scout",
-            "spawnPointId": "spawn_top_left",
-            "seed": 5
+            "spawnPointId": "spawn_top_center",
+            "seed": 6
           },
           {
             "spawnId": "gm_wave_04_spawn_02",
@@ -86,8 +83,8 @@
       },
       {
         "waveId": "gm_wave_05",
-        "atMs": 34000,
-        "intentTag": "hit-noise-confirmation-safe",
+        "atMs": 11400,
+        "intentTag": "melee-drill",
         "entries": [
           {
             "spawnId": "gm_wave_05_spawn_01",
@@ -95,17 +92,27 @@
             "spawnPointId": "spawn_top_center",
             "seed": 8,
             "overrides": {
+              "speed": 18
+            }
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_06",
+        "atMs": 13600,
+        "intentTag": "melee-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_06_spawn_01",
+            "enemyId": "enemy_standard",
+            "spawnPointId": "spawn_top_left",
+            "seed": 9,
+            "overrides": {
               "speed": 20
             }
           },
           {
-            "spawnId": "gm_wave_05_spawn_02",
-            "enemyId": "enemy_scout",
-            "spawnPointId": "spawn_top_left",
-            "seed": 9
-          },
-          {
-            "spawnId": "gm_wave_05_spawn_03",
+            "spawnId": "gm_wave_06_spawn_02",
             "enemyId": "enemy_scout",
             "spawnPointId": "spawn_top_right",
             "seed": 10
@@ -113,48 +120,210 @@
         ]
       },
       {
-        "waveId": "gm_wave_06",
-        "atMs": 43000,
-        "intentTag": "return-to-explore-preparation",
+        "waveId": "gm_wave_07",
+        "atMs": 15500,
+        "intentTag": "melee-drill",
         "entries": [
           {
-            "spawnId": "gm_wave_06_spawn_01",
+            "spawnId": "gm_wave_07_spawn_01",
             "enemyId": "enemy_standard",
-            "spawnPointId": "spawn_side_left",
+            "spawnPointId": "spawn_top_right",
             "seed": 11,
             "overrides": {
-              "speed": 6,
-              "driftX": 38
-            }
-          },
-          {
-            "spawnId": "gm_wave_06_spawn_02",
-            "enemyId": "enemy_standard",
-            "spawnPointId": "spawn_side_right",
-            "seed": 12,
-            "overrides": {
-              "speed": 6,
-              "driftX": -38
+              "speed": 18
             }
           }
         ]
       },
       {
-        "waveId": "gm_wave_07",
-        "atMs": 51000,
-        "intentTag": "return-to-explore-preparation",
+        "waveId": "gm_wave_08",
+        "atMs": 17400,
+        "intentTag": "sub-weapon-drill",
         "entries": [
           {
-            "spawnId": "gm_wave_07_spawn_01",
-            "enemyId": "enemy_scout",
+            "spawnId": "gm_wave_08_spawn_01",
+            "enemyId": "enemy_standard",
+            "spawnPointId": "spawn_top_center",
+            "seed": 12,
+            "overrides": {
+              "speed": 22
+            }
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_09",
+        "atMs": 19500,
+        "intentTag": "sub-weapon-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_09_spawn_01",
+            "enemyId": "enemy_standard",
             "spawnPointId": "spawn_top_left",
-            "seed": 13
+            "seed": 13,
+            "overrides": {
+              "speed": 22
+            }
           },
           {
-            "spawnId": "gm_wave_07_spawn_02",
+            "spawnId": "gm_wave_09_spawn_02",
+            "enemyId": "enemy_standard",
+            "spawnPointId": "spawn_top_right",
+            "seed": 14,
+            "overrides": {
+              "speed": 22
+            }
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_10",
+        "atMs": 21600,
+        "intentTag": "sub-weapon-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_10_spawn_01",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_left",
+            "seed": 15
+          },
+          {
+            "spawnId": "gm_wave_10_spawn_02",
             "enemyId": "enemy_scout",
             "spawnPointId": "spawn_top_right",
-            "seed": 14
+            "seed": 16
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_11",
+        "atMs": 23600,
+        "intentTag": "hazard-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_11_spawn_01",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_left",
+            "seed": 17
+          },
+          {
+            "spawnId": "gm_wave_11_spawn_02",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_right",
+            "seed": 18
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_12",
+        "atMs": 27700,
+        "intentTag": "hazard-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_12_spawn_01",
+            "enemyId": "enemy_standard",
+            "spawnPointId": "spawn_top_center",
+            "seed": 19,
+            "overrides": {
+              "speed": 22
+            }
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_13",
+        "atMs": 29600,
+        "intentTag": "combined-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_13_spawn_01",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_left",
+            "seed": 20
+          },
+          {
+            "spawnId": "gm_wave_13_spawn_02",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_center",
+            "seed": 21
+          },
+          {
+            "spawnId": "gm_wave_13_spawn_03",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_right",
+            "seed": 22
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_14",
+        "atMs": 31400,
+        "intentTag": "combined-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_14_spawn_01",
+            "enemyId": "enemy_standard",
+            "spawnPointId": "spawn_top_center",
+            "seed": 23,
+            "overrides": {
+              "speed": 24
+            }
+          },
+          {
+            "spawnId": "gm_wave_14_spawn_02",
+            "enemyId": "enemy_standard",
+            "spawnPointId": "spawn_top_right",
+            "seed": 24,
+            "overrides": {
+              "speed": 22
+            }
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_15",
+        "atMs": 33000,
+        "intentTag": "combined-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_15_spawn_01",
+            "enemyId": "enemy_standard",
+            "spawnPointId": "spawn_top_left",
+            "seed": 25,
+            "overrides": {
+              "speed": 22
+            }
+          },
+          {
+            "spawnId": "gm_wave_15_spawn_02",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_center",
+            "seed": 26
+          },
+          {
+            "spawnId": "gm_wave_15_spawn_03",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_right",
+            "seed": 27
+          }
+        ]
+      },
+      {
+        "waveId": "gm_wave_16",
+        "atMs": 34600,
+        "intentTag": "combined-drill",
+        "entries": [
+          {
+            "spawnId": "gm_wave_16_spawn_01",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_left",
+            "seed": 28
+          },
+          {
+            "spawnId": "gm_wave_16_spawn_02",
+            "enemyId": "enemy_scout",
+            "spawnPointId": "spawn_top_right",
+            "seed": 29
           }
         ]
       }
@@ -163,9 +332,9 @@
       {
         "hazardId": "hazard_gm_01",
         "kind": "magneticDisaster",
-        "spawnAtMs": 37000,
-        "telegraphMs": 1200,
-        "activeMs": 2000,
+        "spawnAtMs": 23800,
+        "telegraphMs": 1300,
+        "activeMs": 2200,
         "fadeOutMs": 600,
         "tickIntervalMs": 300,
         "noiseDamage": 0.06,
@@ -173,9 +342,9 @@
         "area": {
           "shape": "rect",
           "x": -40,
-          "y": 60,
+          "y": 80,
           "width": 440,
-          "height": 80
+          "height": 90
         },
         "motion": {
           "motionKind": "static"
@@ -186,127 +355,100 @@
     ],
     "beatEvents": [
       {
-        "beatId": "gm_tutorial_silence",
+        "beatId": "gm_boot",
         "atMs": 0,
-        "durationMs": 7000,
-        "intentTag": "tutorial-no-enemy-boot",
+        "durationMs": 5400,
+        "intentTag": "boot-sequence",
         "transcriptChunkIds": [
-          "chunk_gm_001a",
-          "chunk_gm_001b",
-          "chunk_gm_001c",
-          "chunk_gm_002a",
-          "chunk_gm_002b"
+          "chunk_gm_001a"
         ]
       },
       {
-        "beatId": "gm_main_confirmation",
-        "atMs": 7000,
-        "durationMs": 10000,
-        "intentTag": "main-confirmation",
+        "beatId": "gm_main_drill",
+        "atMs": 5400,
+        "durationMs": 9600,
+        "intentTag": "main-weapon-drill",
         "transcriptChunkIds": [
-          "chunk_gm_003a",
-          "chunk_gm_003b"
+          "chunk_gm_002a"
         ],
         "relatedEnemyIds": [
           "enemy_scout"
         ]
       },
       {
-        "beatId": "gm_melee_confirmation",
-        "atMs": 17000,
-        "durationMs": 6000,
-        "intentTag": "melee-confirmation",
+        "beatId": "gm_melee_drill",
+        "atMs": 12400,
+        "durationMs": 7000,
+        "intentTag": "melee-drill",
         "transcriptChunkIds": [
-          "chunk_gm_004a",
-          "chunk_gm_004b"
+          "chunk_gm_003a"
         ],
         "relatedEnemyIds": [
           "enemy_standard"
         ]
       },
       {
-        "beatId": "gm_sub_confirmation",
-        "atMs": 23000,
-        "durationMs": 7000,
-        "intentTag": "sub-confirmation",
+        "beatId": "gm_sub_drill",
+        "atMs": 9000,
+        "durationMs": 3500,
+        "intentTag": "sub-weapon-drill",
         "transcriptChunkIds": [
-          "chunk_gm_005a",
-          "chunk_gm_005b"
+          "chunk_gm_002a"
+        ],
+        "relatedEnemyIds": [
+          "enemy_standard"
         ]
       },
       {
-        "beatId": "gm_hit_noise",
-        "atMs": 30000,
-        "durationMs": 7000,
-        "intentTag": "hit-noise-confirmation-safe",
+        "beatId": "gm_hazard_drill",
+        "atMs": 19400,
+        "durationMs": 6800,
+        "intentTag": "hazard-drill",
         "transcriptChunkIds": [
-          "chunk_gm_006a",
-          "chunk_gm_006b"
+          "chunk_gm_005a"
         ],
         "relatedEnemyIds": [
           "enemy_scout",
           "enemy_standard"
-        ],
-        "fragmentWindow": {
-          "startMs": 30000,
-          "endMs": 37000
-        }
-      },
-      {
-        "beatId": "gm_hazard",
-        "atMs": 37000,
-        "durationMs": 7000,
-        "intentTag": "hazard-confirmation",
-        "transcriptChunkIds": [
-          "chunk_gm_007a",
-          "chunk_gm_007b"
         ],
         "relatedHazardIds": [
           "hazard_gm_01"
         ]
       },
       {
-        "beatId": "gm_return_prepare",
-        "atMs": 44000,
-        "durationMs": 11000,
-        "intentTag": "return-to-explore-preparation",
+        "beatId": "gm_combined_drill",
+        "atMs": 26400,
+        "durationMs": 10800,
+        "intentTag": "combined-drill",
         "transcriptChunkIds": [
-          "chunk_gm_008a",
-          "chunk_gm_008b",
-          "chunk_gm_009a",
-          "chunk_gm_009b"
+          "chunk_gm_006a"
         ],
         "relatedEnemyIds": [
           "enemy_scout",
           "enemy_standard"
+        ]
+      },
+      {
+        "beatId": "gm_signoff",
+        "atMs": 37200,
+        "durationMs": 3600,
+        "intentTag": "signoff",
+        "transcriptChunkIds": [
+          "chunk_gm_006a"
         ]
       }
     ]
   },
   "transmission": {
     "transmissionId": "tx_good_morning",
-    "title": "グッド・モーニング",
+    "title": "起動シーケンス確認",
     "sender": "MAGNOLIA",
     "transcriptChunkIds": [
       "chunk_gm_001a",
-      "chunk_gm_001b",
-      "chunk_gm_001c",
       "chunk_gm_002a",
-      "chunk_gm_002b",
       "chunk_gm_003a",
-      "chunk_gm_003b",
-      "chunk_gm_004a",
-      "chunk_gm_004b",
       "chunk_gm_005a",
-      "chunk_gm_005b",
-      "chunk_gm_006a",
-      "chunk_gm_006b",
-      "chunk_gm_007a",
-      "chunk_gm_007b",
-      "chunk_gm_008a",
-      "chunk_gm_008b",
-      "chunk_gm_009a",
-      "chunk_gm_009b"
+      "chunk_gm_006a"
     ],
     "chunks": [
       {
@@ -314,171 +456,45 @@
         "transmissionId": "tx_good_morning",
         "lineId": "line_001",
         "startMs": 0,
-        "endMs": 2200,
+        "endMs": 6200,
         "speakerLabel": "SYSTEM",
-        "text": "再起動プロトコルを開始します。"
-      },
-      {
-        "chunkId": "chunk_gm_001b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_001",
-        "startMs": 2200,
-        "endMs": 3400,
-        "speakerLabel": "SYSTEM",
-        "text": "……起動確認、正常。"
-      },
-      {
-        "chunkId": "chunk_gm_001c",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_001",
-        "startMs": 3400,
-        "endMs": 5000,
-        "speakerLabel": "SYSTEM",
-        "text": "ようこそ、MAGNOLIA。"
+        "text": "グッド・モーニング, MAGNOLIA.\n動作確認を開始します"
       },
       {
         "chunkId": "chunk_gm_002a",
         "transmissionId": "tx_good_morning",
         "lineId": "line_002",
-        "startMs": 5000,
-        "endMs": 6500,
+        "startMs": 6600,
+        "endMs": 15000,
         "speakerLabel": "SYSTEM",
-        "text": "おはよう。"
-      },
-      {
-        "chunkId": "chunk_gm_002b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_002",
-        "startMs": 6500,
-        "endMs": 10000,
-        "speakerLabel": "SYSTEM",
-        "text": "目が覚めたなら、まずは周りを確認してみてほしい。"
+        "text": "左クリックでmain攻撃,\n右クリックでsub（バリア）を利用できます\n被弾すると通信状況が悪化します"
       },
       {
         "chunkId": "chunk_gm_003a",
         "transmissionId": "tx_good_morning",
         "lineId": "line_003",
-        "startMs": 10000,
-        "endMs": 13500,
+        "startMs": 15400,
+        "endMs": 21000,
         "speakerLabel": "SYSTEM",
-        "text": "前方にノイズ源を検出。"
-      },
-      {
-        "chunkId": "chunk_gm_003b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_003",
-        "startMs": 13500,
-        "endMs": 17000,
-        "speakerLabel": "SYSTEM",
-        "text": "排除を推奨します。攻撃は射程内で自動的に継続します。"
-      },
-      {
-        "chunkId": "chunk_gm_004a",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_004",
-        "startMs": 17000,
-        "endMs": 20000,
-        "speakerLabel": "SYSTEM",
-        "text": "近距離のノイズ源には近接攻撃も同時に発動する。"
-      },
-      {
-        "chunkId": "chunk_gm_004b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_004",
-        "startMs": 20000,
-        "endMs": 23000,
-        "speakerLabel": "SYSTEM",
-        "text": "距離を詰めてみてくれ。"
+        "text": "敵に近づくとmainは近接攻撃を発動します"
       },
       {
         "chunkId": "chunk_gm_005a",
         "transmissionId": "tx_good_morning",
         "lineId": "line_005",
-        "startMs": 23000,
-        "endMs": 26500,
+        "startMs": 21400,
+        "endMs": 28500,
         "speakerLabel": "SYSTEM",
-        "text": "防御機能を確認する。ノイズキャンセラーを展開してみてほしい。"
-      },
-      {
-        "chunkId": "chunk_gm_005b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_005",
-        "startMs": 26500,
-        "endMs": 30000,
-        "speakerLabel": "SYSTEM",
-        "text": "敵弾を無効化できる。"
+        "text": "赤色は災害警告です.\n回避するか, 防御装備を利用してください."
       },
       {
         "chunkId": "chunk_gm_006a",
         "transmissionId": "tx_good_morning",
         "lineId": "line_006",
-        "startMs": 30000,
-        "endMs": 33500,
+        "startMs": 29100,
+        "endMs": 37200,
         "speakerLabel": "SYSTEM",
-        "text": "被弾するとノイズが蓄積する。"
-      },
-      {
-        "chunkId": "chunk_gm_006b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_006",
-        "startMs": 33500,
-        "endMs": 37000,
-        "speakerLabel": "SYSTEM",
-        "text": "蓄積が閾値を超えると通信の聴取に支障が出ます。"
-      },
-      {
-        "chunkId": "chunk_gm_007a",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_007",
-        "startMs": 37000,
-        "endMs": 40500,
-        "speakerLabel": "SYSTEM",
-        "text": "警告域の赤い点滅は磁気災害の予兆です。"
-      },
-      {
-        "chunkId": "chunk_gm_007b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_007",
-        "startMs": 40500,
-        "endMs": 44000,
-        "speakerLabel": "SYSTEM",
-        "text": "範囲内ではノイズが継続的に加算されます。"
-      },
-      {
-        "chunkId": "chunk_gm_008a",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_008",
-        "startMs": 44000,
-        "endMs": 47000,
-        "speakerLabel": "SYSTEM",
-        "text": "基本機能の確認は完了です。"
-      },
-      {
-        "chunkId": "chunk_gm_008b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_008",
-        "startMs": 47000,
-        "endMs": 50000,
-        "speakerLabel": "SYSTEM",
-        "text": "未受信の通信が周辺に残存しています。探索を開始してください。"
-      },
-      {
-        "chunkId": "chunk_gm_009a",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_009",
-        "startMs": 50000,
-        "endMs": 52500,
-        "speakerLabel": "SYSTEM",
-        "text": "本プロトコルを終了します。"
-      },
-      {
-        "chunkId": "chunk_gm_009b",
-        "transmissionId": "tx_good_morning",
-        "lineId": "line_009",
-        "startMs": 52500,
-        "endMs": 55000,
-        "speakerLabel": "SYSTEM",
-        "text": "……健闘を。"
+        "text": "動作確認は以上になります.\nos: magnoliaを装備して通信の回復に向かってください.\n幸運を"
       }
     ]
   },

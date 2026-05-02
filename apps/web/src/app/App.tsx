@@ -61,6 +61,7 @@ export function App() {
           onOpenSlotSelect={app.openSlotSelect}
           onCloseSlotSelect={app.closeSlotSelect}
           onConfirmSlot={(slotId) => void app.confirmSlot(slotId)}
+          onStartDebugMode={() => void app.startDebugMode()}
           onOpenSettings={() => void app.runCommand("settings")}
         />
       )
@@ -78,7 +79,7 @@ export function App() {
           exploreEvents={app.exploreEvents}
           itemPopups={app.itemPopups}
           shipVariant={app.settings.shipVariant}
-          showEquipmentHint={app.shouldShowEquipmentHint}
+          showEquipmentTutorialIcon={app.shouldShowEquipmentTutorialIcon}
           onInteractNode={(nodeId, context) => void app.interactExploreNode(nodeId, context)}
           onSetMoveTarget={app.setExploreMoveTarget}
           onConsumePrimaryClick={app.consumePrimaryMousePress}
@@ -134,6 +135,7 @@ export function App() {
           saveSlots={app.snapshot.saveSlots.slots}
           initialTab={app.screen === "archive" ? "archive" : app.screen === "settings" ? "settings" : "equipment"}
           unseenEquipmentIds={app.unseenEquipmentIds}
+          equipmentGuideTargetId={app.equipmentGuideTargetId}
           onMarkEquipmentSeen={app.markEquipmentSeen}
           onEquip={(equipmentId: string, slot: string, subsystemIndex?: 0 | 1) => {
             if (slot === "subsystem") {
@@ -158,7 +160,7 @@ export function App() {
           onSetDifficulty={(difficulty) => void app.setDifficulty(difficulty)}
           onToggleSwitch={(path, nextValue) => void app.toggleSwitch(path, nextValue)}
           onSetShipVariant={(variant) => void app.setShipVariant(variant)}
-          onSaveCurrent={() => void app.runCommand("saveCurrentSlot")}
+          onSaveCurrent={() => void app.runCommand("saveProgressSlot")}
           onSaveToSlot={(slotId) => void app.saveToSlot(slotId)}
           onReturnToTitle={() => void app.runCommand("returnToTitle")}
           onBack={() => void app.runCommand("closePanel")}

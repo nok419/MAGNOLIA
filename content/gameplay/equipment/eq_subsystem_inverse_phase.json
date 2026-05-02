@@ -1,10 +1,10 @@
 {
   "equipmentId": "eq_subsystem_inverse_phase",
   "slot": "subsystem",
-  "name": "逆位相",
+  "name": "インジェクション",
   "iconId": "icon_eq_subsystem_inverse_phase",
   "summary": "mainショットに炎上の継続ダメージを加える。",
-  "description": "mainショットが敵に炎上状態（継続ダメージ）を付与するようになる。",
+  "description": "mainショットに継続ダメージを追加する。",
   "flavorText": "",
   "passiveEffectIds": [
     "eff_subsystem_inverse_phase"
@@ -23,7 +23,7 @@
       "selfRepairPointCost": 0,
       "upgradeSummary": "低い継続ダメージをmainショットに付与する。",
       "effectOverrides": {
-        "burnDamagePerSec": 1.4,
+        "burnDamagePerSec": 2.8,
         "burnDurationMs": 3000
       }
     },
@@ -32,7 +32,7 @@
       "selfRepairPointCost": 100,
       "upgradeSummary": "継続ダメージの火力が上がる。",
       "effectOverrides": {
-        "burnDamagePerSec": 2.6,
+        "burnDamagePerSec": 5.2,
         "burnDurationMs": 3400
       }
     },
@@ -41,7 +41,7 @@
       "selfRepairPointCost": 180,
       "upgradeSummary": "火力が少し上がり、効果持続時間も少し伸びる。",
       "effectOverrides": {
-        "burnDamagePerSec": 3.2,
+        "burnDamagePerSec": 6.4,
         "burnDurationMs": 3800
       }
     }

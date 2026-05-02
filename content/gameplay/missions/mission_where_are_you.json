@@ -1,11 +1,11 @@
 {
   "missionId": "mission_where_are_you",
   "transmissionId": "tx_where_are_you",
-  "durationMs": 90000,
+  "durationMs": 60000,
   "scrollSpeed": 150,
   "backgroundPresetId": "bg_broadcast_facility",
   "playerSpawnId": "spawn_player_center",
-  "analysisTotal": 120,
+  "analysisTotal": 140,
   "visibilityConditionId": "cond_mission_good_morning_cleared",
   "startConditionId": "cond_mission_good_morning_cleared",
   "audioStartDelayMs": 1200,
@@ -16,18 +16,18 @@
   "waves": [
     {
       "waveId": "way_wave_01",
-      "atMs": 3000,
+      "atMs": 2500,
       "intentTag": "kana-soft-search",
       "entries": [
         {
           "spawnId": "way_wave_01_spawn_01",
-          "enemyId": "enemy_scout",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_left",
           "seed": 1
         },
         {
           "spawnId": "way_wave_01_spawn_02",
-          "enemyId": "enemy_scout",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_right",
           "seed": 2
         }
@@ -35,78 +35,98 @@
     },
     {
       "waveId": "way_wave_02",
-      "atMs": 10000,
+      "atMs": 5800,
       "intentTag": "kana-soft-search",
       "entries": [
         {
           "spawnId": "way_wave_02_spawn_01",
-          "enemyId": "enemy_standard",
-          "spawnPointId": "spawn_top_center",
-          "seed": 3
+          "enemyId": "a1",
+          "spawnPointId": "spawn_side_left",
+          "seed": 3,
+          "overrides": {
+            "speed": 26,
+            "driftX": 32
+          }
         },
         {
           "spawnId": "way_wave_02_spawn_02",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_left",
+          "enemyId": "a1",
+          "spawnPointId": "spawn_top_center",
           "seed": 4
-        },
-        {
-          "spawnId": "way_wave_02_spawn_03",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_right",
-          "seed": 5
         }
       ]
     },
     {
       "waveId": "way_wave_03",
-      "atMs": 18000,
-      "intentTag": "kana-answer-not-required",
+      "atMs": 8800,
+      "intentTag": "kana-soft-search",
       "entries": [
         {
           "spawnId": "way_wave_03_spawn_01",
-          "enemyId": "enemy_scout",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_left",
+          "seed": 5
+        },
+        {
+          "spawnId": "way_wave_03_spawn_02",
+          "enemyId": "a1",
+          "spawnPointId": "spawn_top_right",
           "seed": 6
         }
       ]
     },
     {
       "waveId": "way_wave_04",
-      "atMs": 19400,
-      "intentTag": "kana-answer-not-required",
+      "atMs": 11800,
+      "intentTag": "kana-soft-search",
       "entries": [
         {
           "spawnId": "way_wave_04_spawn_01",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_right",
-          "seed": 7
-        }
-      ]
-    },
-    {
-      "waveId": "way_wave_05",
-      "atMs": 20800,
-      "intentTag": "kana-answer-not-required",
-      "entries": [
-        {
-          "spawnId": "way_wave_05_spawn_01",
-          "enemyId": "enemy_scout",
+          "enemyId": "a2",
           "spawnPointId": "spawn_top_center",
+          "seed": 7
+        },
+        {
+          "spawnId": "way_wave_04_spawn_02",
+          "enemyId": "a1",
+          "spawnPointId": "spawn_top_right",
           "seed": 8
         }
       ]
     },
     {
+      "waveId": "way_wave_05",
+      "atMs": 14800,
+      "intentTag": "kana-soft-search",
+      "entries": [
+        {
+          "spawnId": "way_wave_05_spawn_01",
+          "enemyId": "a1",
+          "spawnPointId": "spawn_side_right",
+          "seed": 9,
+          "overrides": {
+            "speed": 26,
+            "driftX": -32
+          }
+        },
+        {
+          "spawnId": "way_wave_05_spawn_02",
+          "enemyId": "a1",
+          "spawnPointId": "spawn_top_left",
+          "seed": 10
+        }
+      ]
+    },
+    {
       "waveId": "way_wave_06",
-      "atMs": 26000,
+      "atMs": 17500,
       "intentTag": "takumi-public-route",
       "entries": [
         {
           "spawnId": "way_wave_06_spawn_01",
-          "enemyId": "enemy_standard",
+          "enemyId": "a2",
           "spawnPointId": "spawn_side_left",
-          "seed": 9,
+          "seed": 11,
           "overrides": {
             "speed": 5,
             "driftX": 36
@@ -114,9 +134,9 @@
         },
         {
           "spawnId": "way_wave_06_spawn_02",
-          "enemyId": "enemy_standard",
+          "enemyId": "a2",
           "spawnPointId": "spawn_side_right",
-          "seed": 10,
+          "seed": 12,
           "overrides": {
             "speed": 5,
             "driftX": -36
@@ -126,33 +146,27 @@
     },
     {
       "waveId": "way_wave_07",
-      "atMs": 34000,
+      "atMs": 21500,
       "intentTag": "takumi-public-route",
       "entries": [
         {
           "spawnId": "way_wave_07_spawn_01",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_left",
-          "seed": 11
+          "enemyId": "a2",
+          "spawnPointId": "spawn_top_center",
+          "seed": 13
         },
         {
           "spawnId": "way_wave_07_spawn_02",
-          "enemyId": "enemy_scout",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_right",
-          "seed": 12
-        },
-        {
-          "spawnId": "way_wave_07_spawn_03",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_center",
-          "seed": 13
+          "seed": 14
         }
       ]
     },
     {
       "waveId": "way_wave_08",
-      "atMs": 42000,
-      "intentTag": "takumi-public-route-collapse",
+      "atMs": 25000,
+      "intentTag": "takumi-public-route",
       "entries": [
         {
           "spawnId": "way_wave_08_spawn_01",
@@ -164,132 +178,160 @@
     },
     {
       "waveId": "way_wave_09",
-      "atMs": 52000,
-      "intentTag": "misaki-fragment-pressure",
+      "atMs": 29000,
+      "intentTag": "takumi-public-route",
       "entries": [
         {
           "spawnId": "way_wave_09_spawn_01",
-          "enemyId": "enemy_standard",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_left",
           "seed": 16
         },
         {
           "spawnId": "way_wave_09_spawn_02",
-          "enemyId": "enemy_standard",
-          "spawnPointId": "spawn_top_right",
+          "enemyId": "a1",
+          "spawnPointId": "spawn_top_center",
           "seed": 17
         },
         {
           "spawnId": "way_wave_09_spawn_03",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_center",
+          "enemyId": "a1",
+          "spawnPointId": "spawn_top_right",
           "seed": 18
         }
       ]
     },
     {
       "waveId": "way_wave_10",
-      "atMs": 62000,
-      "intentTag": "misaki-fragment-pressure",
+      "atMs": 31500,
+      "intentTag": "takumi-public-route",
       "entries": [
         {
           "spawnId": "way_wave_10_spawn_01",
-          "enemyId": "enemy_heavy",
-          "spawnPointId": "spawn_top_center",
+          "enemyId": "a2",
+          "spawnPointId": "spawn_top_left",
           "seed": 19
         },
         {
           "spawnId": "way_wave_10_spawn_02",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_side_left",
-          "seed": 20,
-          "overrides": {
-            "speed": 6,
-            "driftX": 28
-          }
-        },
-        {
-          "spawnId": "way_wave_10_spawn_03",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_side_right",
-          "seed": 21,
-          "overrides": {
-            "speed": 6,
-            "driftX": -28
-          }
+          "enemyId": "a1",
+          "spawnPointId": "spawn_top_right",
+          "seed": 20
         }
       ]
     },
     {
       "waveId": "way_wave_11",
-      "atMs": 72000,
-      "intentTag": "protect-final-word",
+      "atMs": 34000,
+      "intentTag": "misaki-fragment-pressure",
       "entries": [
         {
           "spawnId": "way_wave_11_spawn_01",
-          "enemyId": "enemy_scout",
+          "enemyId": "a2",
+          "spawnPointId": "spawn_top_center",
+          "seed": 21
+        },
+        {
+          "spawnId": "way_wave_11_spawn_02",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_left",
           "seed": 22
         },
         {
-          "spawnId": "way_wave_11_spawn_02",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_center",
-          "seed": 23
-        },
-        {
           "spawnId": "way_wave_11_spawn_03",
-          "enemyId": "enemy_scout",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_right",
-          "seed": 24
-        },
-        {
-          "spawnId": "way_wave_11_spawn_04",
-          "enemyId": "enemy_standard",
-          "spawnPointId": "spawn_top_center",
-          "seed": 25,
-          "overrides": {
-            "speed": 14
-          }
+          "seed": 23
         }
       ]
     },
     {
       "waveId": "way_wave_12",
-      "atMs": 80000,
-      "intentTag": "protect-final-word",
+      "atMs": 37500,
+      "intentTag": "misaki-fragment-pressure",
       "entries": [
         {
           "spawnId": "way_wave_12_spawn_01",
-          "enemyId": "enemy_standard",
-          "spawnPointId": "spawn_side_left",
-          "seed": 26,
-          "overrides": {
-            "speed": 5,
-            "driftX": 34
-          }
+          "enemyId": "a2",
+          "spawnPointId": "spawn_top_left",
+          "seed": 24
         },
         {
           "spawnId": "way_wave_12_spawn_02",
-          "enemyId": "enemy_standard",
-          "spawnPointId": "spawn_side_right",
-          "seed": 27,
-          "overrides": {
-            "speed": 5,
-            "driftX": -34
-          }
+          "enemyId": "a2",
+          "spawnPointId": "spawn_top_right",
+          "seed": 25
+        }
+      ]
+    },
+    {
+      "waveId": "way_wave_13",
+      "atMs": 41000,
+      "intentTag": "misaki-fragment-pressure",
+      "entries": [
+        {
+          "spawnId": "way_wave_13_spawn_01",
+          "enemyId": "enemy_heavy",
+          "spawnPointId": "spawn_top_center",
+          "seed": 26
+        }
+      ]
+    },
+    {
+      "waveId": "way_wave_14",
+      "atMs": 44500,
+      "intentTag": "misaki-fragment-pressure",
+      "entries": [
+        {
+          "spawnId": "way_wave_14_spawn_01",
+          "enemyId": "a2",
+          "spawnPointId": "spawn_top_center",
+          "seed": 27
         },
         {
-          "spawnId": "way_wave_12_spawn_03",
-          "enemyId": "enemy_scout",
+          "spawnId": "way_wave_14_spawn_02",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_left",
           "seed": 28
         },
         {
-          "spawnId": "way_wave_12_spawn_04",
-          "enemyId": "enemy_scout",
+          "spawnId": "way_wave_14_spawn_03",
+          "enemyId": "a1",
           "spawnPointId": "spawn_top_right",
           "seed": 29
+        }
+      ]
+    },
+    {
+      "waveId": "way_wave_15",
+      "atMs": 48000,
+      "intentTag": "misaki-fragment-pressure",
+      "entries": [
+        {
+          "spawnId": "way_wave_15_spawn_01",
+          "enemyId": "a2",
+          "spawnPointId": "spawn_side_left",
+          "seed": 30,
+          "overrides": {
+            "speed": 6,
+            "driftX": 30
+          }
+        },
+        {
+          "spawnId": "way_wave_15_spawn_02",
+          "enemyId": "a2",
+          "spawnPointId": "spawn_side_right",
+          "seed": 31,
+          "overrides": {
+            "speed": 6,
+            "driftX": -30
+          }
+        },
+        {
+          "spawnId": "way_wave_15_spawn_03",
+          "enemyId": "a1",
+          "spawnPointId": "spawn_top_center",
+          "seed": 32
         }
       ]
     }
@@ -297,85 +339,72 @@
   "beatEvents": [
     {
       "beatId": "way_kana_soft_search",
-      "atMs": 0,
-      "durationMs": 24000,
+      "atMs": 1200,
+      "durationMs": 15000,
       "intentTag": "kana-soft-search",
       "transcriptChunkIds": [
         "chunk_way_001a",
         "chunk_way_001b",
         "chunk_way_001c",
-        "chunk_way_002a",
-        "chunk_way_002b",
-        "chunk_way_002c",
-        "chunk_way_003a",
-        "chunk_way_003b"
+        "chunk_way_002b"
       ],
       "relatedEnemyIds": [
-        "enemy_scout",
-        "enemy_standard"
+        "a1",
+        "a2"
       ]
     },
     {
       "beatId": "way_takumi_public_route",
-      "atMs": 26000,
-      "durationMs": 26000,
+      "atMs": 17000,
+      "durationMs": 15500,
       "intentTag": "takumi-public-route",
       "transcriptChunkIds": [
-        "chunk_way_004a",
+        "chunk_way_003b",
         "chunk_way_004b",
-        "chunk_way_005a",
-        "chunk_way_005b",
-        "chunk_way_006a",
-        "chunk_way_006b"
+        "chunk_way_005a"
       ],
       "relatedEnemyIds": [
-        "enemy_scout",
-        "enemy_standard",
+        "a1",
+        "a2",
         "enemy_heavy"
       ],
       "relatedHazardIds": [
-        "hazard_way_01",
-        "hazard_way_02"
+        "hazard_way_01"
       ]
     },
     {
       "beatId": "way_misaki_fragment_pressure",
-      "atMs": 54000,
-      "durationMs": 26000,
+      "atMs": 30400,
+      "durationMs": 7800,
       "intentTag": "misaki-fragment-pressure",
       "transcriptChunkIds": [
         "chunk_way_007a",
-        "chunk_way_007b",
-        "chunk_way_008a",
-        "chunk_way_008b",
-        "chunk_way_009a",
-        "chunk_way_009b"
+        "chunk_way_008a"
       ],
       "relatedEnemyIds": [
-        "enemy_scout",
-        "enemy_standard",
+        "a1",
+        "a2",
         "enemy_heavy"
       ],
+      "relatedHazardIds": [
+        "hazard_way_02"
+      ],
       "fragmentWindow": {
-        "startMs": 54000,
-        "endMs": 80000
+        "startMs": 30400,
+        "endMs": 38200
       }
     },
     {
       "beatId": "way_protect_final_word",
-      "atMs": 82500,
-      "durationMs": 2500,
+      "atMs": 39600,
+      "durationMs": 3400,
       "intentTag": "protect-final-word",
       "transcriptChunkIds": [
-        "chunk_way_010a",
-        "chunk_way_010b"
-      ],
-      "relatedHazardIds": [
-        "hazard_way_03"
+        "chunk_way_009b"
       ],
       "fragmentWindow": {
-        "startMs": 82500,
-        "endMs": 85000
+        "startMs": 39600,
+        "endMs": 43000
       }
     }
   ],
@@ -383,7 +412,7 @@
     {
       "hazardId": "hazard_way_01",
       "kind": "magneticDisaster",
-      "spawnAtMs": 22500,
+      "spawnAtMs": 23000,
       "telegraphMs": 1200,
       "activeMs": 2200,
       "fadeOutMs": 600,
@@ -393,7 +422,7 @@
       "area": {
         "shape": "rect",
         "x": 10,
-        "y": 52,
+        "y": 60,
         "width": 360,
         "height": 92
       },
@@ -406,42 +435,19 @@
     {
       "hazardId": "hazard_way_02",
       "kind": "magneticDisaster",
-      "spawnAtMs": 45000,
-      "telegraphMs": 1500,
-      "activeMs": 2600,
-      "fadeOutMs": 800,
+      "spawnAtMs": 45500,
+      "telegraphMs": 1300,
+      "activeMs": 2400,
+      "fadeOutMs": 700,
       "tickIntervalMs": 250,
-      "noiseDamage": 0.09,
+      "noiseDamage": 0.08,
       "enemyDamagePerSecond": 22,
       "area": {
         "shape": "rect",
-        "x": 40,
-        "y": -10,
-        "width": 320,
-        "height": 120
-      },
-      "motion": {
-        "motionKind": "static"
-      },
-      "visualPresetId": "hazard_magnetic_disaster_standard",
-      "visibilityConditionId": "cond_always"
-    },
-    {
-      "hazardId": "hazard_way_03",
-      "kind": "magneticDisaster",
-      "spawnAtMs": 70000,
-      "telegraphMs": 1200,
-      "activeMs": 2600,
-      "fadeOutMs": 600,
-      "tickIntervalMs": 250,
-      "noiseDamage": 0.08,
-      "enemyDamagePerSecond": 20,
-      "area": {
-        "shape": "rect",
         "x": -160,
-        "y": 28,
+        "y": 30,
         "width": 220,
-        "height": 92
+        "height": 100
       },
       "motion": {
         "motionKind": "linear",

@@ -298,7 +298,12 @@ export function drawTrail(
   const basePoints: RoundedTrailPoint[] = new Array(renderNodes.length)
   for (let i = 0; i < renderNodes.length; i++) {
     const node = renderNodes[i]
-    const p = toCanvasPoint(viewport, W, H, pad, node.node.wx, node.node.wy)
+    const p = worldToCanvasPoint({
+      bounds: viewport,
+      size: { width: W, height: H },
+      padding: pad,
+      worldPosition: { x: node.node.wx, y: node.node.wy },
+    })
     basePoints[i] = { x: p.x, y: p.y, nodeIndex: node.sourceIndex }
   }
 
@@ -571,7 +576,12 @@ function drawLightMotes(
     const shimmer = 0.7 + 0.3 * Math.sin(age * 0.012 + m.phase)
     const radius = m.r * (0.3 + 0.7 * fadeOut)
 
-    const sp = toCanvasPoint(viewport, W, H, pad, m.wx, m.wy)
+    const sp = worldToCanvasPoint({
+      bounds: viewport,
+      size: { width: W, height: H },
+      padding: pad,
+      worldPosition: { x: m.wx, y: m.wy },
+    })
 
     // ぼんやりしたハロー (控えめ)
     ctx.globalAlpha = opacity * 0.12 * shimmer
@@ -588,14 +598,4 @@ function drawLightMotes(
     ctx.fill()
   }
   ctx.restore()
-}
-
-
-function toCanvasPoint(bounds: Rect, W: number, H: number, pad: number, wx: number, wy: number) {
-  return worldToCanvasPoint({
-    bounds,
-    size: { width: W, height: H },
-    padding: pad,
-    worldPosition: { x: wx, y: wy },
-  })
 }

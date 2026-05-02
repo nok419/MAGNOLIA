@@ -8,6 +8,7 @@ export function drawExploreScanPulseLayer(
     playerPoint: { x: number; y: number }
     viewport: Rect
     width: number
+    height: number
     padding: number
     elapsedMs: number
     pulses: ExploreRenderState["scanPulses"]
@@ -20,12 +21,15 @@ export function drawExploreScanPulseLayer(
     return
   }
   const worldToPx = (input.width - input.padding * 2) / Math.max(1, input.viewport.width)
+  const maxVisibleRadius = computeMaxVisiblePulseRadius(input.playerPoint, input.width, input.height)
   ctx.save()
   for (const pulse of input.pulses) {
     const progress = clampScalar((input.elapsedMs - pulse.startedAtMs) / Math.max(1, pulse.durationMs), 0, 1)
     const radius = pulse.radius * worldToPx * easeOutCubic(progress)
     const fade = (1 - progress) * input.alpha
-    if (fade <= 0.01) {
+    // scan の遠距離反応は signal-hints の視界円端 HUD に任せます。
+    // 波面が画面外へ抜けた後は巨大な radial gradient を作らず、探索中の frame 負荷を抑えます。
+    if (fade <= 0.01 || radius > maxVisibleRadius) {
       continue
     }
     ctx.globalAlpha = fade
@@ -42,4 +46,18 @@ export function drawExploreScanPulseLayer(
     })
   }
   ctx.restore()
+}
+
+function computeMaxVisiblePulseRadius(
+  playerPoint: { x: number; y: number },
+  width: number,
+  height: number,
+): number {
+  const farthestCornerDistance = Math.max(
+    Math.hypot(playerPoint.x, playerPoint.y),
+    Math.hypot(width - playerPoint.x, playerPoint.y),
+    Math.hypot(playerPoint.x, height - playerPoint.y),
+    Math.hypot(width - playerPoint.x, height - playerPoint.y),
+  )
+  return farthestCornerDistance + 24
 }

@@ -11,15 +11,6 @@ export type BoundaryReleaseSequence = {
   focusPoint: { x: number; y: number }
 }
 
-function toCanvasPoint(bounds: Rect, width: number, height: number, padding: number, wx: number, wy: number) {
-  return worldToCanvasPoint({
-    bounds,
-    size: { width, height },
-    padding,
-    worldPosition: { x: wx, y: wy },
-  })
-}
-
 export function drawRestrictedBoundary(
   ctx: CanvasRenderingContext2D,
   input: {
@@ -37,22 +28,22 @@ export function drawRestrictedBoundary(
     } | null
   },
 ) {
-  const topLeft = toCanvasPoint(
-    input.viewport,
-    input.width,
-    input.height,
-    input.padding,
-    input.areaBounds.x,
-    input.areaBounds.y,
-  )
-  const bottomRight = toCanvasPoint(
-    input.viewport,
-    input.width,
-    input.height,
-    input.padding,
-    input.areaBounds.x + input.areaBounds.width,
-    input.areaBounds.y + input.areaBounds.height,
-  )
+  const canvasSize = { width: input.width, height: input.height }
+  const topLeft = worldToCanvasPoint({
+    bounds: input.viewport,
+    size: canvasSize,
+    padding: input.padding,
+    worldPosition: { x: input.areaBounds.x, y: input.areaBounds.y },
+  })
+  const bottomRight = worldToCanvasPoint({
+    bounds: input.viewport,
+    size: canvasSize,
+    padding: input.padding,
+    worldPosition: {
+      x: input.areaBounds.x + input.areaBounds.width,
+      y: input.areaBounds.y + input.areaBounds.height,
+    },
+  })
   const rectX = Math.min(topLeft.x, bottomRight.x)
   const rectY = Math.min(topLeft.y, bottomRight.y)
   const rectW = Math.abs(bottomRight.x - topLeft.x)
@@ -77,14 +68,12 @@ export function drawRestrictedBoundary(
   })
 
   if (input.releaseSequence) {
-    const focusPoint = toCanvasPoint(
-      input.viewport,
-      input.width,
-      input.height,
-      input.padding,
-      input.releaseSequence.focusPoint.x,
-      input.releaseSequence.focusPoint.y,
-    )
+    const focusPoint = worldToCanvasPoint({
+      bounds: input.viewport,
+      size: canvasSize,
+      padding: input.padding,
+      worldPosition: input.releaseSequence.focusPoint,
+    })
     drawBoundaryReleaseShockwave(ctx, {
       x: focusPoint.x,
       y: focusPoint.y,

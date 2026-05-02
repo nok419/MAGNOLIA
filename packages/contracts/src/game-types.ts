@@ -178,8 +178,13 @@ export type SettingsKeybindings = {
 export type DifficultyModifiers = {
   difficulty: Difficulty
   enemyHpMultiplier: number
+  enemySpawnCountMultiplier: number
   enemyNoiseDamageMultiplier: number
   enemyCadenceMultiplier: number
+  enemyProjectileSpeedMultiplier: number
+  enemyPatternBurstBonus: number
+  enemyPatternSpreadMultiplier: number
+  magneticDisasterFrequencyMultiplier: number
   noiseDecayRateMultiplier: number
   hearingThresholdOffset: number
   selfRepairPointMultiplier: number
@@ -908,6 +913,7 @@ export type RuntimeEffectRequest =
       position: Vector2
       radius: number
       durationMs: number
+      cooldownMs?: number
       moveSpeedMultiplier?: number
       blocksEnemyBullets: boolean
       allowAttackDuringUse: boolean

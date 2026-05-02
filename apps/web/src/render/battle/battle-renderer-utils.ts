@@ -63,7 +63,7 @@ export function normalizeCanvasVector(x: number, y: number) {
   return { x: x / length, y: y / length }
 }
 
-export function hashString(str: string): number {
+export function hashRenderString(str: string): number {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
     hash = (hash * 31 + str.charCodeAt(i)) | 0

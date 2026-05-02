@@ -1,9 +1,11 @@
 import {
   useEffect,
+  useRef,
   type Dispatch,
   type SetStateAction,
 } from "react"
 import type { ContentBundle } from "@magnolia/contracts"
+import { audioEvents } from "@/audio"
 import {
   readPresentationDurationMs,
   REBOOT_SEQUENCE_CUE_ID,
@@ -16,7 +18,7 @@ import {
 import { pruneExpiredPresentationEvents } from "@/app/presentation/presentation-reducer"
 import type { WebPresentationState } from "@/app/presentation/presentation-state"
 import type { ExploreItemPopup } from "@/app/popups/item-popups"
-import type { MagnoliaAppState } from "@/app/use-magnolia-app"
+import type { MagnoliaAppState } from "@/app/app-state"
 
 type UsePresentationTimersParams = {
   activeOverlay: WebPresentationState["activeOverlay"]
@@ -37,6 +39,22 @@ export function usePresentationTimers({
   presentationEvents,
   setState,
 }: UsePresentationTimersParams) {
+  const reconstructedOverlayRequestIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (
+      activeOverlay?.cueId !== REBOOT_SEQUENCE_CUE_ID ||
+      reconstructedOverlayRequestIdRef.current === activeOverlay.requestId
+    ) {
+      return
+    }
+
+    // boot console と reboot request は同じ session 同期で届くため、
+    // request 受信時ではなく reboot が実際に active になった瞬間へ音を合わせます。
+    reconstructedOverlayRequestIdRef.current = activeOverlay.requestId
+    audioEvents.reconstructionStarted()
+  }, [activeOverlay?.cueId, activeOverlay?.requestId])
+
   useEffect(() => {
     if (!activeOverlay || !shouldAutoDismissOverlayPresentation(activeOverlay)) {
       return

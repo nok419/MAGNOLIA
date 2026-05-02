@@ -36,6 +36,7 @@ import type {
   SettingsPath,
   SettingsRow,
   SettingsValue,
+  StartDebugModeCommand,
   StartNewGameAtSlotCommand,
   TimeRange,
   TranscriptChunk,
@@ -60,7 +61,6 @@ import {
 import type {
   InternalBattleState,
   InternalEnemyState,
-  InternalBattleFragmentState,
   InternalPickupState,
 } from "./battle-state"
 import {
@@ -77,19 +77,12 @@ import {
   selectVisibleWorldMapSnapshot,
 } from "./selectors"
 import {
-  appendTimeRange,
   computeAreaCompletionRate,
-  computeRecoverableArchiveHeardRanges,
-  computeRestorationRate,
   hasVisibleArchiveContent,
   isTransmissionSignalIdentified,
   readTransmissionCompletionState,
-  subtractTimeRanges,
-  timeRangesFromTranscriptSpans,
-  transcriptSpanForTimeRange,
 } from "./progression"
 import {
-  createBattleFragmentRecoveredPresentation,
   createMissionBeatPresentation,
   createInitialSystemMessagePresentation,
   createRebootSequencePresentation,
@@ -115,12 +108,11 @@ import {
 import {
   BATTLE_HEIGHT,
   BATTLE_WIDTH,
-  clamp01,
-  doesCircleIntersectHazardArea,
   isCircleInsideCircle,
   resolveHitRadius,
   resolveSpawnPoint,
 } from "./battle-world"
+import { clamp01 } from "./math"
 import { fireEnemyPatterns as fireEnemyPatternsFromRegistry } from "./battle/enemy-pattern-system"
 import {
   advanceEnemyMovement,
@@ -129,6 +121,13 @@ import {
 import { spawnMissionEnemies as spawnMissionEnemiesFromSystem } from "./battle/spawn-system"
 import { buildBattleRenderState } from "./battle/battle-render-state"
 import { stepBattleFrame } from "./battle/step-battle"
+import {
+  maybeSpawnBattleFragment as maybeSpawnBattleFragmentFromSystem,
+  updateBattleFragments as updateBattleFragmentsFromSystem,
+} from "./battle/fragments-system"
+import {
+  applyMagneticDisasterEffects as applyMagneticDisasterEffectsFromSystem,
+} from "./battle/hazard-interaction-system"
 import {
   DEFAULT_EXPLORE_SCAN_RADIUS,
   DEFAULT_EXPLORE_VISION_RADIUS,
@@ -140,7 +139,10 @@ import {
 } from "./explore/explore-session-runtime"
 import { stepExploreFrame } from "./explore/step-explore"
 import { dispatchGameCommand } from "./command/dispatch-command"
-import { createInitialProfileAggregate } from "./profile-factory"
+import {
+  createDebugProfileAggregate,
+  createInitialProfileAggregate,
+} from "./profile-factory"
 import {
   createBattleSnapshotFromState,
   createEmptyExploreSnapshot,
@@ -208,6 +210,7 @@ export class MagnoliaGameSession {
   private lastCommandErrorReason: string | undefined
   private archiveSelection: { areaId?: AreaId; transmissionId?: TransmissionId } = {}
   private instanceSerial = 0
+  private debugProfileActive = false
 
   constructor(input: {
     content: ContentBundle
@@ -319,7 +322,9 @@ export class MagnoliaGameSession {
       playerPosition: this.activeProfile.profile.playerPosition,
       mapLogic,
       featureAccess,
+      transmissions: this.content.transmissions,
       transmissionProgress: toRecord(this.activeProfile.transmissionProgress, "transmissionId"),
+      clearedMissionIds: this.activeProfile.profile.clearedMissionIds,
     })
     const nearestAnyTransmissionStrength = computeNearestAnyTransmissionStrength({
       playerPosition: this.activeProfile.profile.playerPosition,
@@ -529,6 +534,7 @@ export class MagnoliaGameSession {
     return buildBattleRenderState({
       battle: this.battleState,
       content: this.content,
+      clearedMissionIds: this.activeProfile?.profile.clearedMissionIds,
       equippedMainId: this.activeProfile?.profile.equipped.main,
       equippedSubId: this.activeProfile?.profile.equipped.sub,
     })
@@ -538,6 +544,7 @@ export class MagnoliaGameSession {
     this.lastCommandErrorReason = undefined
     await dispatchGameCommand(command, {
       startNewGameAtSlot: (nextCommand) => this.handleStartNewGame(nextCommand),
+      startDebugMode: (nextCommand) => this.handleStartDebugMode(nextCommand),
       resumeSaveSlot: (nextCommand) => this.handleResumeSaveSlot(nextCommand.slotId),
       openArchive: () => this.handleOpenArchive(),
       openEquipment: () => this.handleOpenEquipment(),
@@ -656,7 +663,7 @@ export class MagnoliaGameSession {
             this.applyEffectRequests(battle, effectRequests, battlePassives),
           updateSupportFields: (battle, dtMs) => this.updateSupportFields(battle, dtMs),
           applyMagneticDisasterEffects: (battle, dtMs) =>
-            this.applyMagneticDisasterEffects(battle, dtMs),
+            applyMagneticDisasterEffectsFromSystem(battle, dtMs),
         },
         actors: {
           updateEnemies: (battle, dtMs) => this.updateEnemies(battle, dtMs),
@@ -669,8 +676,18 @@ export class MagnoliaGameSession {
             this.spawnSelfRepairPickup(battle, position, amount),
         },
         fragments: {
-          maybeSpawnBattleFragment: (fragmentInput) => this.maybeSpawnBattleFragment(fragmentInput),
-          updateBattleFragments: (battle, dtMs) => this.updateBattleFragments(battle, dtMs),
+          maybeSpawnBattleFragment: (fragmentInput) =>
+            maybeSpawnBattleFragmentFromSystem({
+              ...fragmentInput,
+              difficulty: this.settings.difficulty,
+              nextInstanceId: (prefix) => this.nextInstanceId(prefix),
+            }),
+          updateBattleFragments: (battle, dtMs) =>
+            updateBattleFragmentsFromSystem({
+              battle,
+              dtMs,
+              playerHitRadius: this.resolvePlayerHitRadius(),
+            }),
         },
         player: {
           resolvePlayerHitRadius: () => this.resolvePlayerHitRadius(),
@@ -687,198 +704,6 @@ export class MagnoliaGameSession {
         },
       },
     })
-  }
-
-  private maybeSpawnBattleFragment(input: {
-    battle: InternalBattleState
-    audioWindow: TimeRange
-    strength: number
-  }): void {
-    const battle = input.battle
-    const fragmentCooldownMs = 1300
-    if (battle.elapsedMs - battle.lastFragmentSpawnedAtMs < fragmentCooldownMs) {
-      return
-    }
-
-    const activeChunk = battle.transcript.find(
-      (chunk) =>
-        chunk.startMs < input.audioWindow.endMs &&
-        chunk.endMs > input.audioWindow.startMs,
-    )
-    if (!activeChunk) {
-      return
-    }
-
-    const chunkDurationMs = Math.max(1, activeChunk.endMs - activeChunk.startMs)
-    const centerRatio = clamp01(
-      ((input.audioWindow.startMs + input.audioWindow.endMs) / 2 - activeChunk.startMs) /
-        chunkDurationMs,
-    )
-    const widthRatio = Math.min(0.42, 0.22 + clamp01(input.strength) * 0.16)
-    const startRatio = clamp01(centerRatio - widthRatio / 2)
-    const endRatio = clamp01(Math.max(startRatio + 0.12, centerRatio + widthRatio / 2))
-    const timeRange = {
-      startMs: activeChunk.startMs + chunkDurationMs * startRatio,
-      endMs: activeChunk.startMs + chunkDurationMs * endRatio,
-    }
-    const span = transcriptSpanForTimeRange(activeChunk, timeRange)
-    const seed = hashString(`${activeChunk.chunkId}:${Math.floor(battle.elapsedMs / 250)}:${battle.fragments.length}`)
-    const angle = -Math.PI * 0.5 + (pseudoRandomUnit(seed) - 0.5) * Math.PI * 1.25
-    const distance = 72 + pseudoRandomUnit(seed + 17) * 112
-    const fragment: InternalBattleFragmentState = {
-      fragmentId: this.nextInstanceId("frag_signal"),
-      chunkId: span.chunkId,
-      startRatio: span.startRatio,
-      endRatio: span.endRatio,
-      position: {
-        x: Math.max(24, Math.min(BATTLE_WIDTH - 24, battle.playerPosition.x + Math.cos(angle) * distance)),
-        y: Math.max(52, Math.min(BATTLE_HEIGHT - 36, battle.playerPosition.y + Math.sin(angle) * distance)),
-      },
-      // fragment は通信欠損が自機付近からこぼれたものとして見せるため、
-      // 判定とは別に出現元と発生時刻を renderState へ渡します。
-      originPosition: { ...battle.playerPosition },
-      createdAtMs: battle.elapsedMs,
-      radius: 13,
-      expiresAtMs: battle.elapsedMs + (this.settings.difficulty === "terminal" ? 2800 : 3800),
-      strength: clamp01(input.strength),
-    }
-
-    battle.fragments.push(fragment)
-    battle.lastFragmentSpawnedAtMs = battle.elapsedMs
-  }
-
-  private updateBattleFragments(
-    battle: InternalBattleState,
-    dtMs: number,
-  ): ReturnType<typeof flattenPresentationRequests> {
-    const remaining: InternalBattleFragmentState[] = []
-    const presentationRequests = [] as ReturnType<typeof flattenPresentationRequests>
-    let collected = false
-    const dtSeconds = dtMs / 1000
-
-    for (const fragment of battle.fragments) {
-      if (fragment.expiresAtMs <= battle.elapsedMs) {
-        continue
-      }
-      this.pullFragmentTowardPlayer({
-        fragment,
-        playerPosition: battle.playerPosition,
-        dtSeconds,
-      })
-      if (isCircleInsideCircle(battle.playerPosition, this.resolvePlayerHitRadius(), fragment.position, fragment.radius)) {
-        const recoveredRange = this.resolveFragmentTimeRange(battle, fragment)
-        if (recoveredRange) {
-          battle.heardRanges = appendTimeRange(battle.heardRanges, recoveredRange)
-          battle.damageRanges = subtractTimeRanges(battle.damageRanges, [recoveredRange])
-          battle.newlyRecoveredRange = recoveredRange
-          presentationRequests.push(
-            ...createBattleFragmentRecoveredPresentation({
-              fragmentId: fragment.fragmentId,
-              chunkId: fragment.chunkId,
-            }),
-          )
-          collected = true
-        }
-        continue
-      }
-      remaining.push(fragment)
-    }
-
-    battle.fragments = remaining
-    if (collected) {
-      this.refreshBattleRestorationRate(battle)
-    }
-    return presentationRequests
-  }
-
-  private pullFragmentTowardPlayer(input: {
-    fragment: InternalBattleFragmentState
-    playerPosition: Vector2
-    dtSeconds: number
-  }): void {
-    const toPlayer = {
-      x: input.playerPosition.x - input.fragment.position.x,
-      y: input.playerPosition.y - input.fragment.position.y,
-    }
-    const distance = Math.hypot(toPlayer.x, toPlayer.y)
-    if (distance > 132 || distance <= 0.001) {
-      return
-    }
-
-    // fragment は失敗を取り戻す手段なので、近づいた後は pickup と同じように吸着させます。
-    const direction = normalizeVector(toPlayer)
-    const speed = 420 + input.fragment.strength * 140
-    const travel = Math.min(distance, speed * input.dtSeconds)
-    input.fragment.position.x += direction.x * travel
-    input.fragment.position.y += direction.y * travel
-  }
-
-  private resolveFragmentTimeRange(
-    battle: InternalBattleState,
-    fragment: InternalBattleFragmentState,
-  ): TimeRange | null {
-    const chunk = battle.transcript.find((candidate) => candidate.chunkId === fragment.chunkId)
-    if (!chunk) {
-      return null
-    }
-    return timeRangesFromTranscriptSpans(battle.transcript, [{
-      chunkId: fragment.chunkId,
-      startRatio: fragment.startRatio,
-      endRatio: fragment.endRatio,
-    }])[0] ?? null
-  }
-
-  private refreshBattleRestorationRate(battle: InternalBattleState): void {
-    battle.restorationRate = computeRestorationRate(
-      computeRecoverableArchiveHeardRanges({
-        heardRanges: battle.heardRanges,
-        seededHeardRanges: battle.seededHeardRanges,
-        damageRanges: battle.damageRanges,
-      }),
-      battle.transcript,
-    )
-  }
-
-  private applyMagneticDisasterEffects(
-    battle: InternalBattleState,
-    dtMs: number,
-  ): void {
-    const activeHazards = battle.hazards.filter(
-      (hazard) => hazard.phase === "active",
-    )
-    if (activeHazards.length === 0) {
-      return
-    }
-
-    // 磁気災害は局所的な環境ノイズではなく、空間全体を乱す場として扱います。
-    // そのため、内部に入った敵弾は消え、敵機も継続的に損耗します。
-    battle.projectiles = battle.projectiles.filter((projectile) => {
-      if (projectile.side !== "enemy" || projectile.nonColliding) {
-        return true
-      }
-
-      return !activeHazards.some((hazard) =>
-        doesCircleIntersectHazardArea(projectile.position, projectile.radius, hazard.area),
-      )
-    })
-
-    const dtSeconds = dtMs / 1000
-    for (const enemy of battle.enemies) {
-      const totalHazardDps = activeHazards.reduce((sum, hazard) => {
-        if (!doesCircleIntersectHazardArea(enemy.position, enemy.radius, hazard.area)) {
-          return sum
-        }
-        return sum + hazard.enemyDamagePerSecond
-      }, 0)
-
-      if (totalHazardDps <= 0) {
-        continue
-      }
-
-      enemy.hp -= totalHazardDps * dtSeconds
-      enemy.burnUntilMs = Math.max(enemy.burnUntilMs, battle.elapsedMs + 180)
-      enemy.burnDamagePerSec = Math.max(enemy.burnDamagePerSec, totalHazardDps * 0.1)
-    }
   }
 
   selectArchive(areaId: AreaId, transmissionId: TransmissionId): void {
@@ -904,6 +729,7 @@ export class MagnoliaGameSession {
     this.normalizeInitialOs(aggregate.profile)
     this.normalizeOwnedEquipmentLevels(aggregate.profile)
     this.activeProfile = aggregate
+    this.debugProfileActive = false
     this.resetExploreSignalRuntime()
     this.screen = "explore"
     await this.repository.createProfileAtSlot(command.slotId, aggregate)
@@ -922,9 +748,25 @@ export class MagnoliaGameSession {
     this.normalizeInitialOs(aggregate.profile)
     this.normalizeOwnedEquipmentLevels(aggregate.profile)
     this.activeProfile = aggregate
+    this.debugProfileActive = false
     this.resetExploreSignalRuntime()
     this.screen = "explore"
     this.ensureArchiveSelection()
+  }
+
+  private async handleStartDebugMode(command: StartDebugModeCommand): Promise<void> {
+    const aggregate = createDebugProfileAggregate({
+      difficulty: command.difficulty,
+      content: this.content,
+    })
+    this.normalizeInitialOs(aggregate.profile)
+    this.normalizeOwnedEquipmentLevels(aggregate.profile)
+    this.activeProfile = aggregate
+    this.debugProfileActive = true
+    this.resetExploreSignalRuntime()
+    this.archiveSelection = {}
+    this.battleState = null
+    this.screen = "explore"
   }
 
   private handleOpenArchive(): void {
@@ -1207,6 +1049,7 @@ export class MagnoliaGameSession {
       selfRepairPointsEarned: 0,
       cleared: false,
       spawnedWaveIds: new Set<string>(),
+      wavePerformance: {},
       firedBeatIds: new Set<string>(),
       playerPosition: resolveSpawnPoint(mission.playerSpawnId, this.content.battleSpawnPoints),
       mainCooldownMs: 0,
@@ -1262,11 +1105,16 @@ export class MagnoliaGameSession {
     this.resetExploreSignalRuntime()
     this.archiveSelection = {}
     this.presentationQueue = []
+    this.debugProfileActive = false
     this.screen = "title"
   }
 
   private async saveCurrentProfile(): Promise<void> {
     if (!this.activeProfile) {
+      return
+    }
+    if (this.debugProfileActive) {
+      // debug mode は既存 slot を上書きしない一時 profile として扱います。
       return
     }
     this.activeProfile.profile.updatedAt = new Date().toISOString()
@@ -1281,6 +1129,10 @@ export class MagnoliaGameSession {
 
   private async saveProfileToSlot(slotId: SaveSlotId): Promise<void> {
     if (!this.activeProfile) {
+      return
+    }
+    if (this.debugProfileActive) {
+      // 自動保存や手動保存が debug profile を通常 slot へ混ぜないようにします。
       return
     }
     if (slotId === this.activeProfile.profile.slotId) {
@@ -1816,6 +1668,7 @@ export class MagnoliaGameSession {
     effectRequests: RuntimeEffectRequest[],
     modifierPatch: RuntimeModifierPatch = {},
   ): {
+    events: DomainEvent[]
     presentationRequests: ReturnType<typeof flattenPresentationRequests>
   } {
     return applyBattleEffectRequests({
@@ -2284,18 +2137,4 @@ function readMapCollectibleMarkerKind(
   node: CollectibleMapNode,
 ): WorldMapCollectibleViewModel["markerKind"] {
   return node.collectibleKind === "hiddenEquipment" ? "equipment" : "resource"
-}
-
-function hashString(input: string): number {
-  let hash = 2166136261
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index)
-    hash = Math.imul(hash, 16777619)
-  }
-  return hash >>> 0
-}
-
-function pseudoRandomUnit(seed: number): number {
-  const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453
-  return value - Math.floor(value)
 }

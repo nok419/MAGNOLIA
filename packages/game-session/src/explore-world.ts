@@ -15,8 +15,9 @@ import type {
   Vector2,
   WorldMapLogic,
 } from "@magnolia/contracts"
-import { isTransmissionIncomplete, isTransmissionSignalIdentified } from "./progression"
+import { isTransmissionIncomplete } from "./progression"
 import type { Rect } from "./runtime-types"
+import { clamp01 } from "./math"
 
 const WORLD_CELL_SIZE = 20
 // world map の拡張後も探索履歴を保持できるよう、reveal bitmap の範囲を広げます。
@@ -348,13 +349,19 @@ export function computeNearestTransmissionStrength(input: {
   playerPosition: Vector2
   mapLogic: WorldMapLogic
   featureAccess: ExploreFeatureAccess
+  transmissions: Record<TransmissionId, TransmissionMaster>
   transmissionProgress: Record<TransmissionId, TransmissionProgressRow>
+  clearedMissionIds: readonly string[]
 }): number {
+  const clearedMissionIds = new Set(input.clearedMissionIds)
   const candidates = input.mapLogic.transmissionNodes
     .filter((node) => input.featureAccess.accessibleTransmissionIds.includes(node.transmissionId))
-    // 下段の強度計は「まだ発見していない通信」だけに反応させます。
-    // 既に接続履歴がある通信は、未クリアでも波形側だけで距離反応を残します。
-    .filter((node) => !isTransmissionSignalIdentified(input.transmissionProgress[node.transmissionId]))
+    // scan 済みでも未クリアの mission は強度計の探索対象として残します。
+    // 除外は接続履歴ではなく、mission clear の durable state を基準にします。
+    .filter((node) => {
+      const transmission = input.transmissions[node.transmissionId]
+      return transmission ? !clearedMissionIds.has(transmission.missionId) : true
+    })
   if (candidates.length === 0) {
     return 0
   }
@@ -425,8 +432,4 @@ export function findNearbyNode<T extends { x: number; y: number; interactionRadi
 
 export function isWithinRadius(position: Vector2, target: Vector2, radius: number): boolean {
   return Math.hypot(position.x - target.x, position.y - target.y) <= radius
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
 }

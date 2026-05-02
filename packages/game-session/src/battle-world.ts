@@ -7,6 +7,7 @@ import {
   type ContentHitboxPreset,
   type Vector2,
 } from "@magnolia/contracts"
+import { hashString } from "./math"
 
 export const BATTLE_WIDTH = BATTLE_FIELD_WIDTH
 export const BATTLE_HEIGHT = BATTLE_FIELD_HEIGHT
@@ -71,10 +72,6 @@ function readPositiveNumber(value: number | undefined, fallback: number): number
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback
 }
 
-export function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
-
 function readPatternNumericParam(
   pattern: BulletPattern,
   key: string,
@@ -130,15 +127,6 @@ function vectorFromAngleDeg(angleDeg: number): Vector2 {
     x: Math.cos(radians),
     y: Math.sin(radians),
   }
-}
-
-function hashString(input: string): number {
-  let hash = 2166136261
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index)
-    hash = Math.imul(hash, 16777619)
-  }
-  return hash >>> 0
 }
 
 function pseudoRandomUnit(seed: number): number {

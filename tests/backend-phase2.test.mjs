@@ -39,6 +39,190 @@ test("equipment catalog ViewModel and purchase precondition use the same reason"
   )
 })
 
+test("debug mode starts after mission 01 with magnolia and level 1 equipment", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  const saveSlotsBefore = JSON.stringify(session.getSnapshot().saveSlots.slots)
+
+  await session.dispatch({ type: "startDebugMode", difficulty: "calm" })
+
+  const content = session.getContentBundle()
+  const profile = session.getProfileAggregate().profile
+  const equipmentIds = Object.keys(content.equipment).sort()
+  const exploreSnapshot = session.getExploreSnapshot()
+  const renderState = session.getExploreRenderState()
+  const progress = session.getProfileAggregate().transmissionProgress.find(
+    (entry) => entry.transmissionId === "tx_good_morning",
+  )
+
+  assert.equal(session.getSnapshot().screen, "explore")
+  assert.deepEqual([...profile.ownedEquipmentIds].sort(), equipmentIds)
+  assert.ok(equipmentIds.every((equipmentId) => profile.equipmentLevels[equipmentId] === 1))
+  assert.equal(profile.selfRepairPoints, 900)
+  assert.ok(profile.clearedMissionIds.includes("mission_good_morning"))
+  assert.equal(profile.equipped.os, "eq_os_magnolia")
+  assert.ok(profile.unlockedFlags.includes("tutorial.released"))
+  assert.ok(profile.unlockedFlags.includes("ui.map.enabled"))
+  assert.equal(exploreSnapshot.featureAccess.canOpenMap, true)
+  assert.equal(exploreSnapshot.featureAccess.mapVisionUnlocked, true)
+  assert.equal(renderState.tutorialRestricted, false)
+  assert.equal(progress?.clearCount, 1)
+  assert.equal(progress?.archiveRestorationRate, 1)
+  assert.equal(progress?.signalConfidence, 1)
+
+  await session.dispatch({ type: "saveToCurrentSlot" })
+  assert.equal(JSON.stringify(session.getSnapshot().saveSlots.slots), saveSlotsBefore)
+})
+
+test("terminal difficulty can be selected and applied to current progression", async () => {
+  const { createSession, resolveBattlefieldHazardSpecsForDifficulty } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  await session.dispatch({ type: "changeSetting", path: "difficulty", value: "terminal" })
+
+  const content = session.getContentBundle()
+  const profile = session.getProfileAggregate().profile
+  const terminalModifiers = content.difficultyModifiers.terminal
+  assert.equal(session.getSettings().difficulty, "terminal")
+  assert.equal(profile.difficulty, "terminal")
+
+  await session.dispatch({ type: "startMission", missionId: "mission_good_morning" })
+
+  const mission = content.missions.mission_good_morning
+  const baseHearingThreshold = mission.hearingThresholdOverride ?? content.playerShipSpec.hearingThreshold
+  const expectedHearingThreshold = Math.min(
+    1,
+    Math.max(0, baseHearingThreshold + (terminalModifiers.hearingThresholdOffset ?? 0)),
+  )
+  assert.equal(
+    session.battleState.noiseState.hearingThreshold,
+    expectedHearingThreshold,
+  )
+
+  const generatedHazard = resolveBattlefieldHazardSpecsForDifficulty({
+    mission,
+    difficultyModifiers: terminalModifiers,
+  }).find((hazard) => hazard.hazardId.includes("__terminal_"))
+  assert.ok(generatedHazard)
+
+  session.battleState.elapsedMs = Math.max(0, generatedHazard.spawnAtMs - 1)
+  session.stepBattle({
+    dtMs: 2,
+    move: { x: 0, y: 0 },
+    fireMain: false,
+    fireSub: false,
+    focus: false,
+    pausePressed: false,
+  })
+  assert.ok(
+    session.battleState.hazards.some((hazard) => hazard.hazardId === generatedHazard.hazardId),
+  )
+})
+
+test("terminal difficulty increases hazard and spawn pressure in every mission", async () => {
+  const {
+    loadContentBundle,
+    resolveBattlefieldHazardSpecsForDifficulty,
+    spawnMissionEnemies,
+  } = await bundleBackendPhase2()
+  const content = loadContentBundle()
+
+  for (const mission of Object.values(content.missions)) {
+    const calmHazards = resolveBattlefieldHazardSpecsForDifficulty({
+      mission,
+      difficultyModifiers: content.difficultyModifiers.calm,
+    })
+    const terminalHazards = resolveBattlefieldHazardSpecsForDifficulty({
+      mission,
+      difficultyModifiers: content.difficultyModifiers.terminal,
+    })
+    assert.ok(
+      terminalHazards.length > calmHazards.length,
+      `${mission.missionId} should schedule more magnetic disasters on terminal`,
+    )
+
+    const calmBattle = createDifficultySpawnBattle(mission)
+    spawnMissionEnemies({
+      battle: calmBattle,
+      previousElapsedMs: 0,
+      enemies: content.enemies,
+      battleSpawnPoints: content.battleSpawnPoints,
+      hitboxPresets: content.contentHitboxPresets,
+      difficultyModifiers: content.difficultyModifiers.calm,
+      nextInstanceId: (prefix) => `${prefix}.calm`,
+    })
+
+    const terminalBattle = createDifficultySpawnBattle(mission)
+    spawnMissionEnemies({
+      battle: terminalBattle,
+      previousElapsedMs: 0,
+      enemies: content.enemies,
+      battleSpawnPoints: content.battleSpawnPoints,
+      hitboxPresets: content.contentHitboxPresets,
+      difficultyModifiers: content.difficultyModifiers.terminal,
+      nextInstanceId: (prefix) => `${prefix}.terminal`,
+    })
+
+    assert.ok(
+      terminalBattle.enemies.length > calmBattle.enemies.length,
+      `${mission.missionId} should spawn more enemies on terminal`,
+    )
+    assert.equal(
+      sumExpectedEnemies(terminalBattle),
+      terminalBattle.enemies.length,
+    )
+    assert.ok(
+      terminalBattle.enemies.some((enemy) => enemy.maxHp > content.enemies[enemy.enemyId].hp),
+      `${mission.missionId} should apply terminal enemy HP`,
+    )
+  }
+})
+
+test("terminal difficulty changes enemy projectile patterns", async () => {
+  const { fireEnemyPatterns, loadContentBundle } = await bundleBackendPhase2()
+  const content = loadContentBundle()
+  const calmBattle = createDifficultyPatternBattle()
+  const terminalBattle = createDifficultyPatternBattle()
+
+  fireEnemyPatterns({
+    battle: calmBattle,
+    enemy: createDifficultyPatternEnemy(),
+    enemyDefinition: {
+      ...content.enemies.enemy_standard,
+      bulletPatternIds: ["bp_standard_spread"],
+    },
+    bulletPatterns: content.bulletPatterns,
+    projectiles: content.projectiles,
+    hitboxPresets: content.contentHitboxPresets,
+    difficultyModifiers: content.difficultyModifiers.calm,
+    nextInstanceId: (prefix) => `${prefix}.calm`,
+  })
+  fireEnemyPatterns({
+    battle: terminalBattle,
+    enemy: createDifficultyPatternEnemy(),
+    enemyDefinition: {
+      ...content.enemies.enemy_standard,
+      bulletPatternIds: ["bp_standard_spread"],
+    },
+    bulletPatterns: content.bulletPatterns,
+    projectiles: content.projectiles,
+    hitboxPresets: content.contentHitboxPresets,
+    difficultyModifiers: content.difficultyModifiers.terminal,
+    nextInstanceId: (prefix) => `${prefix}.terminal`,
+  })
+
+  const pattern = content.bulletPatterns.bp_standard_spread
+  assert.equal(calmBattle.projectiles.length, pattern.burstCount)
+  assert.equal(
+    terminalBattle.projectiles.length,
+    pattern.burstCount + content.difficultyModifiers.terminal.enemyPatternBurstBonus,
+  )
+  assert.ok(
+    readProjectileSpeed(terminalBattle.projectiles[0]) > readProjectileSpeed(calmBattle.projectiles[0]),
+  )
+})
+
 test("subsystem equipment cannot be equipped in both subsystem slots", async () => {
   const { createSession } = await bundleBackendPhase2()
   const session = await createSession()
@@ -169,6 +353,75 @@ test("scan identification is normalized into saved exploration state", async () 
   )
 })
 
+test("scan-identified uncleared missions still drive signal strength", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  for (let index = 0; index < 6; index += 1) {
+    session.stepExplore({
+      dtMs: 2200,
+      move: { x: 0, y: 0 },
+      dashPressed: false,
+      interactPressed: false,
+      scanPressed: true,
+    })
+  }
+
+  const progress = session.getProfileAggregate().transmissionProgress.find(
+    (entry) => entry.transmissionId === "tx_good_morning",
+  )
+
+  assert.equal(progress.signalConfidence, 1)
+  assert.equal(
+    session.getProfileAggregate().profile.clearedMissionIds.includes("mission_good_morning"),
+    false,
+  )
+  assert.ok(session.getExploreRenderState().nearestTransmissionStrength > 0)
+})
+
+test("mission icons inside the explored view do not require scan identification", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  const profile = session.getProfileAggregate().profile
+  profile.playerPosition = { x: 214, y: 126 }
+  session.stepExplore({
+    dtMs: 16,
+    move: { x: 0, y: 0 },
+    dashPressed: false,
+    interactPressed: false,
+    scanPressed: false,
+  })
+
+  const progress = session.getProfileAggregate().transmissionProgress.find(
+    (entry) => entry.transmissionId === "tx_good_morning",
+  )
+  assert.ok((progress?.signalConfidence ?? 0) < 1)
+  assert.equal(progress?.signalDiscoveredAt, undefined)
+  assert.ok(
+    session.getExploreRenderState().visibleTransmissions.some(
+      (node) => node.nodeId === "node_tx_good_morning",
+    ),
+  )
+})
+
+test("MAGNOLIA level 2 expands the explore vision circle from the narrower base", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  const profile = session.getProfileAggregate().profile
+  assert.equal(session.getExploreRenderState().visionRadius, 132)
+
+  profile.ownedEquipmentIds.push("eq_os_magnolia")
+  profile.equipmentLevels.eq_os_magnolia = 2
+  profile.equipped.os = "eq_os_magnolia"
+
+  assert.equal(session.getExploreRenderState().visionRadius, 150)
+})
+
 test("scan tutorial hint is dismissed by scan or the first mission clear", async () => {
   const { createSession } = await bundleBackendPhase2()
   const session = await createSession()
@@ -196,6 +449,60 @@ test("scan tutorial hint is dismissed by scan or the first mission clear", async
   assert.equal(clearedSession.getExploreRenderState().shouldShowScanHint, false)
 })
 
+test("equipment tutorial icon ends after MAGNOLIA is equipped", async () => {
+  const { createSession, selectEquipmentHint } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  const profile = session.getProfileAggregate().profile
+  profile.clearedMissionIds.push("mission_good_morning")
+  profile.ownedEquipmentIds.push("eq_os_magnolia")
+  profile.equipmentLevels.eq_os_magnolia = 1
+
+  assert.equal(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: [],
+    }).shouldShowEquipmentTutorialIcon,
+    true,
+  )
+  assert.equal(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: [],
+    }).equipmentGuideTargetId,
+    "eq_os_magnolia",
+  )
+  assert.equal(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: ["eq_os_magnolia"],
+    }).equipmentGuideTargetId,
+    null,
+  )
+
+  profile.equipped.os = "eq_os_magnolia"
+  assert.equal(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: [],
+    }).shouldShowEquipmentTutorialIcon,
+    false,
+  )
+  assert.equal(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: [],
+    }).equipmentGuideTargetId,
+    null,
+  )
+})
+
 test("explore node interaction keeps visual-near icons clickable", async () => {
   const { createSession } = await bundleBackendPhase2()
   const session = await createSession()
@@ -215,7 +522,7 @@ test("explore node interaction keeps visual-near icons clickable", async () => {
   await session.dispatch({ type: "interactExploreNode", nodeId: "node_collect_repair_cluster_e" })
 
   assert.ok(profile.collectedNodeIds.includes("node_collect_repair_cluster_e"))
-  assert.equal(profile.selfRepairPoints, pointsBeforeCollect + 16)
+  assert.equal(profile.selfRepairPoints, pointsBeforeCollect + 52)
 })
 
 test("mission beat events become PresentationRequest without mission-specific frontend branches", async () => {
@@ -243,8 +550,8 @@ test("mission beat events become PresentationRequest without mission-specific fr
     requests.some(
       (request) =>
         request.cueId === "battle.mission.beat" &&
-        request.beatId === "gm_main_confirmation" &&
-        request.transcriptChunkIds.includes("chunk_gm_003a"),
+        request.beatId === "gm_main_drill" &&
+        request.transcriptChunkIds.includes("chunk_gm_002a"),
     ),
   )
 })
@@ -254,6 +561,7 @@ test("battle render state exposes transmission audio sync state", async () => {
   const session = await createSession()
   await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
   await session.dispatch({ type: "startMission", missionId: "mission_good_morning" })
+  session.drainDomainEvents()
   const battle = session.battleState
   battle.transmission = {
     ...battle.transmission,
@@ -283,6 +591,117 @@ test("battle render state exposes transmission audio sync state", async () => {
   assert.equal(playingState.audioPlaybackMs, 1300)
 })
 
+test("missed enemies in the preceding waves corrupt the next subtitle in all playable missions", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const missionIds = [
+    "mission_good_morning",
+    "mission_where_are_you",
+    "mission_evacuation",
+  ]
+
+  for (const missionId of missionIds) {
+    const session = await createSession()
+    await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+    if (missionId !== "mission_good_morning") {
+      session.getProfileAggregate().profile.clearedMissionIds.push("mission_good_morning")
+    }
+    await session.dispatch({ type: "startMission", missionId })
+
+    const battle = session.battleState
+    const target = activateSubtitleAfterPrecedingWaves({
+      battle,
+      destroyedEnemyCount: 0,
+      progress: 0.05,
+    })
+    const renderState = session.getBattleRenderState()
+
+    assert.equal(renderState.activeSubtitle.chunkId, target.chunk.chunkId)
+    assert.equal(renderState.activeSubtitle.waveInterference.mode, "heavy")
+    assert.equal(renderState.activeSubtitle.waveInterference.expectedEnemyCount, target.expectedEnemyCount)
+    assert.equal(renderState.activeSubtitle.waveInterference.destroyedEnemyCount, 0)
+  }
+})
+
+test("minor wave misses stay readable and medium misses recover during the subtitle", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+  await session.dispatch({ type: "startMission", missionId: "mission_good_morning" })
+
+  const battle = session.battleState
+  const readableTarget = activateSubtitleAfterPrecedingWaves({
+    battle,
+    destroyedEnemyCount: "all-but-one",
+    minExpectedEnemyCount: 4,
+    progress: 0.05,
+  })
+  const readableInterference = session.getBattleRenderState().activeSubtitle.waveInterference
+  assert.equal(readableInterference.mode, "readableGlitch")
+  assert.equal(readableInterference.destroyedEnemyCount, readableTarget.expectedEnemyCount - 1)
+
+  const recoveringTarget = activateSubtitleAfterPrecedingWaves({
+    battle,
+    destroyedEnemyCount: 2,
+    minExpectedEnemyCount: 3,
+    progress: 0.05,
+  })
+  const earlyInterference = session.getBattleRenderState().activeSubtitle.waveInterference
+  assert.equal(earlyInterference.mode, "recovering")
+  assert.equal(earlyInterference.expectedEnemyCount, recoveringTarget.expectedEnemyCount)
+
+  activateSubtitleAfterPrecedingWaves({
+    battle,
+    chunkId: recoveringTarget.chunk.chunkId,
+    destroyedEnemyCount: 2,
+    progress: 0.95,
+  })
+  const lateInterference = session.getBattleRenderState().activeSubtitle.waveInterference
+  assert.equal(lateInterference.mode, "recovering")
+  assert.ok(lateInterference.effectiveMissRate < earlyInterference.effectiveMissRate)
+})
+
+test("mission evacuation final observation is scrambled until b1 is defeated", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+  session.getProfileAggregate().profile.clearedMissionIds.push("mission_good_morning")
+  await session.dispatch({ type: "startMission", missionId: "mission_evacuation" })
+
+  const battle = session.battleState
+  const finalChunk = battle.transcript.find(
+    (chunk) => chunk.chunkId === "tx_evacuation_09a",
+  )
+  const bossWave = battle.mission.waves.find(
+    (wave) => wave.waveId === "evac_wave_17_boss",
+  )
+  assert.equal(finalChunk.text, "観測情報を提供します")
+  assert.equal(bossWave.entries[0].enemyId, "b1")
+
+  battle.phase = "playing"
+  battle.audioPlaybackMs = finalChunk.startMs + 100
+  battle.elapsedMs = battle.mission.audioStartDelayMs + battle.audioPlaybackMs
+  battle.heardRanges = [{ startMs: 0, endMs: battle.transcript.at(-1).endMs }]
+  battle.damageRanges = []
+  battle.restorationRate = 1
+  battle.wavePerformance = {
+    [bossWave.waveId]: {
+      waveId: bossWave.waveId,
+      atMs: bossWave.atMs,
+      expectedEnemyCount: 1,
+      destroyedSpawnIds: new Set(),
+    },
+  }
+
+  const lockedSubtitle = session.getBattleRenderState().activeSubtitle
+  assert.equal(lockedSubtitle.chunkId, "tx_evacuation_09a")
+  assert.equal(lockedSubtitle.waveInterference.mode, "heavy")
+
+  battle.wavePerformance[bossWave.waveId].destroyedSpawnIds.add("evac_wave_17_boss_spawn_01")
+  const unlockedSubtitle = session.getBattleRenderState().activeSubtitle
+  assert.equal(unlockedSubtitle.text, "観測情報を提供します")
+  assert.equal(unlockedSubtitle.waveInterference, undefined)
+})
+
 test("main pulse and noise canceller can be used in the same battle frame", async () => {
   const { createSession } = await bundleBackendPhase2()
   const session = await createSession()
@@ -301,6 +720,78 @@ test("main pulse and noise canceller can be used in the same battle frame", asyn
   const renderState = session.getBattleRenderState()
   assert.equal(renderState.player.barrierState.active, true)
   assert.ok(renderState.projectiles.some((projectile) => projectile.projectileId === "proj_player_pulse"))
+})
+
+test("noise canceller level 3 cooldown scales with consumed barrier time", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  const profile = session.getProfileAggregate().profile
+  if (!profile.ownedEquipmentIds.includes("eq_sub_noise_canceller")) {
+    profile.ownedEquipmentIds.push("eq_sub_noise_canceller")
+  }
+  profile.equipmentLevels.eq_sub_noise_canceller = 3
+  profile.equipped.sub = "eq_sub_noise_canceller"
+  await session.dispatch({ type: "startMission", missionId: "mission_good_morning" })
+
+  const battle = session.battleState
+  session.stepBattle({
+    dtMs: 16,
+    move: { x: 0, y: 0 },
+    fireMain: false,
+    fireSub: true,
+    focus: false,
+    pausePressed: false,
+  })
+
+  assert.equal(battle.barrier?.maxMs, 1600)
+  assert.equal(battle.subCooldownMs, 0)
+
+  session.stepBattle({
+    dtMs: 200,
+    move: { x: 0, y: 0 },
+    fireMain: false,
+    fireSub: true,
+    focus: false,
+    pausePressed: false,
+  })
+  session.stepBattle({
+    dtMs: 16,
+    move: { x: 0, y: 0 },
+    fireMain: false,
+    fireSub: false,
+    focus: false,
+    pausePressed: false,
+  })
+
+  assert.equal(battle.barrier, undefined)
+  assert.ok(battle.subCooldownMs > 90)
+  assert.ok(battle.subCooldownMs < 100)
+
+  battle.subCooldownMs = 0
+  session.stepBattle({
+    dtMs: 16,
+    move: { x: 0, y: 0 },
+    fireMain: false,
+    fireSub: true,
+    focus: false,
+    pausePressed: false,
+  })
+
+  assert.equal(battle.barrier?.maxMs, 1600)
+
+  session.stepBattle({
+    dtMs: 1700,
+    move: { x: 0, y: 0 },
+    fireMain: false,
+    fireSub: true,
+    focus: false,
+    pausePressed: false,
+  })
+
+  assert.equal(battle.barrier, undefined)
+  assert.equal(battle.subCooldownMs, 700)
 })
 
 test("pulse melee collision follows the visible sweep after the first frame", async () => {
@@ -352,6 +843,48 @@ test("pulse melee collision follows the visible sweep after the first frame", as
   }
 
   assert.equal(battle.enemies.length, 0)
+})
+
+test("main pulse melee emits a domain event when the sweep spawns", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+  await session.dispatch({ type: "startMission", missionId: "mission_good_morning" })
+
+  const battle = session.battleState
+  const enemyPosition = {
+    x: battle.playerPosition.x,
+    y: battle.playerPosition.y - 95,
+  }
+  battle.enemies = [{
+    enemyInstanceId: "test.front-noise",
+    enemyId: "enemy_standard",
+    spawnId: "test.front-noise",
+    patternSeed: "test.front-noise",
+    spawnPosition: enemyPosition,
+    position: enemyPosition,
+    hp: 200,
+    maxHp: 200,
+    enteredAtMs: battle.elapsedMs,
+    patternLastFiredAtMs: {},
+    burnDamagePerSec: 0,
+    burnUntilMs: 0,
+    radius: 14,
+    overrides: { speed: 0 },
+  }]
+
+  const meleeFrame = session.stepBattle({
+    dtMs: 34,
+    move: { x: 0, y: 0 },
+    fireMain: true,
+    fireSub: false,
+    focus: false,
+    pausePressed: false,
+  })
+
+  assert.ok(
+    meleeFrame.events.some((event) => event.type === "playerMainMeleeUsed"),
+  )
 })
 
 test("visual-only enemy bullets stay non-colliding across runtime clears", async () => {
@@ -500,7 +1033,7 @@ test("equipment runtime applies level overrides to active and passive effects", 
   assert.equal(pulseLevel3.main.activeEffects[0].params.meleeDamage, 92)
 
   const carrierLevel3 = resolve({ main: "eq_main_carrier" }, { eq_main_carrier: 3 })
-  const carrierRequest = fireEquippedMainWeapon({
+  const carrierRequests = fireEquippedMainWeapon({
     bindings: bindingsFor(carrierLevel3),
     context: {
       playerPosition: { x: 240, y: 450 },
@@ -508,11 +1041,18 @@ test("equipment runtime applies level overrides to active and passive effects", 
       resolvedLoadout: carrierLevel3,
       frameTimeMs: 16,
     },
-  })[0]
+  })
+  const carrierRequest = carrierRequests[0]
   assert.equal(carrierRequest.damage, 48)
+  assert.equal(carrierRequest.params.explosionRadius, 40)
+  assert.equal(carrierRequest.params.trailExplosionIntervalMs, 190)
   assert.equal(carrierRequest.params.explosionDamageMultiplier, 1)
   assert.equal(carrierRequest.params.explosionAreaDamageMultiplier, 1)
   assert.equal(carrierRequest.params.explosionClearsEnemyProjectiles, true)
+  assert.equal(
+    carrierRequests.find((request) => request.kind === "applyCooldown")?.durationMs,
+    750,
+  )
 
   const cancellerLevel3 = resolve({ sub: "eq_sub_noise_canceller" }, { eq_sub_noise_canceller: 3 })
   const barrierRequest = useEquippedSubWeapon({
@@ -526,7 +1066,8 @@ test("equipment runtime applies level overrides to active and passive effects", 
     },
   })[0]
   assert.equal(barrierRequest.radius, 48)
-  assert.equal(barrierRequest.durationMs, 1400)
+  assert.equal(barrierRequest.durationMs, 1600)
+  assert.equal(barrierRequest.cooldownMs, 700)
   assert.equal(barrierRequest.allowAttackDuringUse, true)
   const barrierCooldownRequest = useEquippedSubWeapon({
     bindings: bindingsFor(cancellerLevel3),
@@ -538,11 +1079,10 @@ test("equipment runtime applies level overrides to active and passive effects", 
       stock: 3,
     },
   }).find((request) => request.kind === "applyCooldown")
-  assert.ok(barrierCooldownRequest)
-  assert.equal(barrierCooldownRequest.durationMs, 1500)
+  assert.equal(barrierCooldownRequest, undefined)
 
   const silentWaveLevel3 = resolve({ sub: "eq_sub_silent_wave" }, { eq_sub_silent_wave: 3 })
-  const fieldRequest = useEquippedSubWeapon({
+  const silentWaveRequests = useEquippedSubWeapon({
     bindings: bindingsFor(silentWaveLevel3),
     context: {
       playerPosition: { x: 240, y: 450 },
@@ -551,10 +1091,15 @@ test("equipment runtime applies level overrides to active and passive effects", 
       frameTimeMs: 16,
       stock: 3,
     },
-  })[0]
+  })
+  const fieldRequest = silentWaveRequests[0]
   assert.equal(fieldRequest.radius, 84)
   assert.equal(fieldRequest.dpsInField, 4)
   assert.equal(fieldRequest.blocksMagneticDisaster, true)
+  assert.equal(
+    silentWaveRequests.find((request) => request.kind === "applyCooldown")?.durationMs,
+    3000,
+  )
 
   const guidedLevel3 = resolve({ subsystem: "eq_subsystem_guided_wave" }, { eq_subsystem_guided_wave: 3 })
   const guidedPatch = applyEquippedPassives({
@@ -569,7 +1114,7 @@ test("equipment runtime applies level overrides to active and passive effects", 
     bindings: bindingsFor(burnLevel3),
     context: { phase: "battle", resolvedLoadout: burnLevel3 },
   })
-  assert.equal(burnPatch.statModifiers.burnDamagePerSec, 3.2)
+  assert.equal(burnPatch.statModifiers.burnDamagePerSec, 6.4)
   assert.equal(burnPatch.statModifiers.burnDurationMs, 3800)
   assert.equal(burnPatch.visibilityModifiers.burnEnabled, true)
 
@@ -692,6 +1237,148 @@ test("battle fragments pull toward the player and restore damaged ranges when co
   assert.ok(battle.restorationRate > 0)
 })
 
+test("player hit damages a readable transcript span before fragment recovery", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+  await session.dispatch({ type: "startMission", missionId: "mission_good_morning" })
+  const battle = session.battleState
+  const transcriptEndMs = battle.transcript.at(-1).endMs
+  battle.elapsedMs = battle.mission.audioStartDelayMs + 5000
+  battle.audioPlaybackMs = 5000
+  battle.phase = "playing"
+  battle.heardRanges = [{ startMs: 0, endMs: transcriptEndMs }]
+  battle.damageRanges = []
+  battle.restorationRate = 1
+  battle.projectiles = [{
+    projectileInstanceId: "projectile.hit.test",
+    projectileId: "proj_enemy_basic",
+    side: "enemy",
+    position: { ...battle.playerPosition },
+    velocity: { x: 0, y: 0 },
+    radius: 12,
+    remainingMs: 1000,
+    spawnDelayMs: 0,
+    damage: 0,
+    noiseDamage: 0.08,
+  }]
+
+  session.stepBattle({
+    dtMs: 16,
+    move: { x: 0, y: 0 },
+    fireMain: false,
+    fireSub: false,
+    focus: false,
+    pausePressed: false,
+  })
+
+  const damagedRange = battle.damageRanges[0]
+  const renderState = session.getBattleRenderState()
+  assert.ok(damagedRange.endMs - damagedRange.startMs >= 1000)
+  assert.ok(battle.restorationRate < 0.99)
+  assert.ok(renderState.activeSubtitle.damagedSpans.length > 0)
+})
+
+function createDifficultySpawnBattle(mission) {
+  return {
+    mission,
+    spawnedWaveIds: new Set(),
+    elapsedMs: mission.durationMs,
+    enemies: [],
+    wavePerformance: {},
+  }
+}
+
+function sumExpectedEnemies(battle) {
+  return Object.values(battle.wavePerformance).reduce(
+    (total, wave) => total + wave.expectedEnemyCount,
+    0,
+  )
+}
+
+function createDifficultyPatternBattle() {
+  return {
+    elapsedMs: 0,
+    projectiles: [],
+  }
+}
+
+function createDifficultyPatternEnemy() {
+  return {
+    enemyInstanceId: "enemy.difficulty.pattern",
+    enemyId: "enemy_standard",
+    spawnId: "enemy.difficulty.pattern",
+    patternSeed: "difficulty-pattern",
+    spawnPosition: { x: 240, y: 120 },
+    position: { x: 240, y: 120 },
+    hp: 56,
+    maxHp: 56,
+    enteredAtMs: 0,
+    patternLastFiredAtMs: {},
+    burnDamagePerSec: 0,
+    burnUntilMs: 0,
+    radius: 12,
+  }
+}
+
+function readProjectileSpeed(projectile) {
+  return Math.hypot(projectile.velocity.x, projectile.velocity.y)
+}
+
+function activateSubtitleAfterPrecedingWaves(input) {
+  const target = selectSubtitleWaveWindow(input)
+  const destroyedEnemyCount = input.destroyedEnemyCount === "all-but-one"
+    ? target.expectedEnemyCount - 1
+    : input.destroyedEnemyCount
+  const chunkDurationMs = target.chunk.endMs - target.chunk.startMs
+  input.battle.phase = "playing"
+  input.battle.audioPlaybackMs = target.chunk.startMs + Math.max(1, Math.floor(chunkDurationMs * input.progress))
+  input.battle.elapsedMs = input.battle.mission.audioStartDelayMs + input.battle.audioPlaybackMs
+  input.battle.heardRanges = [{ startMs: 0, endMs: input.battle.transcript.at(-1).endMs }]
+  input.battle.damageRanges = []
+  input.battle.restorationRate = 1
+  input.battle.wavePerformance = buildWavePerformance(target.waves, destroyedEnemyCount)
+  return target
+}
+
+function selectSubtitleWaveWindow(input) {
+  const requestedChunkId = input.chunkId
+  for (let index = 1; index < input.battle.transcript.length; index += 1) {
+    const chunk = input.battle.transcript[index]
+    if (requestedChunkId && chunk.chunkId !== requestedChunkId) {
+      continue
+    }
+    const previousChunk = input.battle.transcript[index - 1]
+    const previousStartMs = input.battle.mission.audioStartDelayMs + previousChunk.startMs
+    const currentStartMs = input.battle.mission.audioStartDelayMs + chunk.startMs
+    const waves = input.battle.mission.waves.filter(
+      (wave) => wave.atMs >= previousStartMs && wave.atMs < currentStartMs,
+    )
+    const expectedEnemyCount = waves.reduce((total, wave) => total + wave.entries.length, 0)
+    if (expectedEnemyCount >= (input.minExpectedEnemyCount ?? 1)) {
+      return { chunk, waves, expectedEnemyCount }
+    }
+  }
+
+  throw new Error(`No subtitle wave window found for ${input.battle.mission.missionId}`)
+}
+
+function buildWavePerformance(waves, destroyedEnemyCount) {
+  const performance = {}
+  let remainingDestroyed = destroyedEnemyCount
+  for (const wave of waves) {
+    const destroyedEntries = wave.entries.slice(0, Math.max(0, remainingDestroyed))
+    remainingDestroyed -= destroyedEntries.length
+    performance[wave.waveId] = {
+      waveId: wave.waveId,
+      atMs: wave.atMs,
+      expectedEnemyCount: wave.entries.length,
+      destroyedSpawnIds: new Set(destroyedEntries.map((entry) => entry.spawnId)),
+    }
+  }
+  return performance
+}
+
 async function bundleBackendPhase2() {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "magnolia-backend-phase2-"))
   const entry = path.join(tempDir, "entry.ts")
@@ -701,11 +1388,14 @@ async function bundleBackendPhase2() {
     "import { applyBattleEffectRequests } from './packages/game-session/src/battle-effects.ts'",
     "import { resolveBattleCollisions } from './packages/game-session/src/battle/collision-system.ts'",
     "import { fireEnemyPatterns } from './packages/game-session/src/battle/enemy-pattern-system.ts'",
+    "import { spawnMissionEnemies } from './packages/game-session/src/battle/spawn-system.ts'",
+    "import { resolveBattlefieldHazardSpecsForDifficulty } from './packages/game-session/src/hazards.ts'",
+    "import { selectEquipmentHint } from './packages/game-session/src/selectors.ts'",
     "import { loadContentBundle } from './packages/persistence/src/load-content-bundle.ts'",
     "import { applyEquippedPassives, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEquippedMainWeapon, resolveLoadout, runSubsystemHooks, useEquippedSubWeapon } from './packages/game-session/src/equipment-runtime.ts'",
     "import { normalizePersistedAggregate, normalizePersistedSettings } from './packages/persistence/src/save-normalizer.ts'",
     "import { createDefaultSaveSlots, createDefaultSettings } from './packages/persistence/src/defaults.ts'",
-    "export { applyBattleEffectRequests, applyEquippedPassives, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEnemyPatterns, fireEquippedMainWeapon, loadContentBundle, normalizePersistedAggregate, resolveBattleCollisions, resolveLoadout, runSubsystemHooks, useEquippedSubWeapon }",
+    "export { applyBattleEffectRequests, applyEquippedPassives, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEnemyPatterns, fireEquippedMainWeapon, loadContentBundle, normalizePersistedAggregate, resolveBattleCollisions, resolveBattlefieldHazardSpecsForDifficulty, resolveLoadout, runSubsystemHooks, selectEquipmentHint, spawnMissionEnemies, useEquippedSubWeapon }",
     "export async function createSession() {",
     "  const repository = createMemoryRepository()",
     "  const session = new MagnoliaGameSession({ content: loadContentBundle(), repository })",

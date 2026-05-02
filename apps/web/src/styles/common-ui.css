@@ -227,20 +227,20 @@
 .common-status-chip { padding: 0 10px; }
 .common-signal-badge--warm,
 .common-status-chip--warm {
-  border-color: rgba(240, 198, 116, 0.36);
+  border-color: color-mix(in srgb, var(--color-residual-warmth) 36%, transparent);
   color: var(--color-residual-warmth);
-  background: rgba(240, 198, 116, 0.06);
+  background: color-mix(in srgb, var(--color-residual-warmth) 6%, transparent);
 }
 .common-signal-badge--danger,
 .common-status-chip--danger {
-  border-color: rgba(255, 90, 110, 0.34);
+  border-color: color-mix(in srgb, var(--color-threat-noise) 34%, transparent);
   color: var(--color-threat-noise);
-  background: rgba(255, 90, 110, 0.06);
+  background: color-mix(in srgb, var(--color-threat-noise) 6%, transparent);
 }
 .common-signal-badge--muted,
 .common-status-chip--muted {
   color: var(--color-signal-muted);
-  background: rgba(140, 195, 255, 0.03);
+  background: color-mix(in srgb, var(--color-line-accent) 3%, transparent);
 }
 
 .common-tab-list {

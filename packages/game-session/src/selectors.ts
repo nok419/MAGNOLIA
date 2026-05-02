@@ -60,7 +60,8 @@ type EquipmentStatGroupViewModel = EquipmentCatalogViewModel["items"][number]["s
 
 export type EquipmentHintSelection = {
   unseenEquipmentIds: EquipmentId[]
-  shouldShowRewardHint: boolean
+  shouldShowEquipmentTutorialIcon: boolean
+  equipmentGuideTargetId: EquipmentId | null
 }
 
 export function selectEquipmentHint(input: {
@@ -70,7 +71,11 @@ export function selectEquipmentHint(input: {
 }): EquipmentHintSelection {
   const profile = input.profile?.profile
   if (!profile) {
-    return { unseenEquipmentIds: [], shouldShowRewardHint: false }
+    return {
+      unseenEquipmentIds: [],
+      shouldShowEquipmentTutorialIcon: false,
+      equipmentGuideTargetId: null,
+    }
   }
 
   const seenEquipmentSet = new Set(input.seenEquipmentIds)
@@ -78,7 +83,11 @@ export function selectEquipmentHint(input: {
     (equipmentId) => !seenEquipmentSet.has(equipmentId),
   )
   if (!input.content || unseenEquipmentIds.length === 0) {
-    return { unseenEquipmentIds, shouldShowRewardHint: false }
+    return {
+      unseenEquipmentIds,
+      shouldShowEquipmentTutorialIcon: false,
+      equipmentGuideTargetId: null,
+    }
   }
 
   const equippedIds = new Set(
@@ -90,7 +99,8 @@ export function selectEquipmentHint(input: {
     ].filter(isEquipmentId),
   )
   const clearedMissionIds = new Set(profile.clearedMissionIds)
-  const shouldShowRewardHint = unseenEquipmentIds.some((equipmentId) => {
+  let equipmentGuideTargetId: EquipmentId | null = null
+  const shouldShowEquipmentTutorialIcon = unseenEquipmentIds.some((equipmentId) => {
     if (equippedIds.has(equipmentId)) {
       return false
     }
@@ -101,10 +111,19 @@ export function selectEquipmentHint(input: {
     }
 
     const transmission = input.content?.transmissions[equipment.unlockSource.transmissionId]
-    return transmission ? clearedMissionIds.has(transmission.missionId) : false
+    // 機体追従の E は、初回 reward の OS 換装を案内するチュートリアルアイコンです。
+    // 後続の未確認装備はメニュー内の NEW 表示に任せ、探索中の E を再点灯させません。
+    const shouldGuide =
+      equipment.slot === "os" &&
+      transmission &&
+      clearedMissionIds.has(transmission.missionId)
+    if (shouldGuide) {
+      equipmentGuideTargetId = equipmentId
+    }
+    return shouldGuide
   })
 
-  return { unseenEquipmentIds, shouldShowRewardHint }
+  return { unseenEquipmentIds, shouldShowEquipmentTutorialIcon, equipmentGuideTargetId }
 }
 
 function isEquipmentId(value: EquipmentId | null | undefined): value is EquipmentId {
@@ -814,10 +833,9 @@ export function buildWorldMapVisibilityState(input: {
     .filter((node) => isWorldNodeVisible(node.accessConditionId, input))
     .filter(
       (node) =>
-        (
-          visibleCellSet.has(toWorldCellKey(node.x, node.y)) &&
-          isTransmissionSignalIdentified(input.transmissionProgress[node.transmissionId])
-        ) ||
+        // 視界内の mission icon は scan 識別に依存させません。
+        // scan は遠距離の方向と信頼度を示す補助で、近距離の発見を塞ぐ条件にはしません。
+        visibleCellSet.has(toWorldCellKey(node.x, node.y)) ||
         extraNodeIds.has(node.nodeId),
     )
     .map((node) => node.nodeId)

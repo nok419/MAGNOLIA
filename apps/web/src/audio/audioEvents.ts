@@ -111,6 +111,10 @@ export const audioEvents = {
     audioHub.play(SOUND_KEYS.SYSTEM_SAVE_LOAD);
   },
 
+  reconstructionStarted(): void {
+    audioHub.play(SOUND_KEYS.SYSTEM_RECONSTRUCT);
+  },
+
   explorationEntered(options?: BgmOptions): void {
     audioHub.playBgm(SOUND_KEYS.BGM_EXPLORATION, options ?? { fadeMs: 700 });
   },
@@ -188,6 +192,10 @@ export const audioEvents = {
 
   playerShot(options?: PlaySoundOptions): void {
     audioHub.play(SOUND_KEYS.COMBAT_PLAYER_SHOT, options);
+  },
+
+  playerMelee(options?: PlaySoundOptions): void {
+    audioHub.play(SOUND_KEYS.COMBAT_PLAYER_MELEE, options ?? { volume: 0.58 });
   },
 
   enemyShot(variant: EnemyShotVariant = 'default', options?: PlaySoundOptions): void {

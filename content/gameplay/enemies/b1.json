@@ -1,8 +1,8 @@
 {
   "enemyId": "b1",
-  "hp": 760,
-  "collisionDamage": 22,
-  "analysisValue": 80,
+  "hp": 1180,
+  "collisionDamage": 28,
+  "analysisValue": 110,
   "behaviorKind": "slowDescent",
   "behaviorParams": {
     "speed": 12,
@@ -16,5 +16,5 @@
   ],
   "visualPresetId": "vis_enemy_b1",
   "hitboxPresetId": "hitbox_enemy_large",
-  "dropSelfRepairPoints": 50
+  "dropSelfRepairPoints": 80
 }

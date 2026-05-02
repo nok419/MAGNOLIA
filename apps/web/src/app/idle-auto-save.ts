@@ -5,10 +5,12 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react"
-import type { RootSnapshot, SaveSlotId } from "@magnolia/contracts"
+import type { SaveSlotId } from "@magnolia/contracts"
 import type { MagnoliaGameSession } from "@magnolia/game-session"
 import type { IdleAutoSaveViewModel } from "@/app/app-types"
-import type { MagnoliaAppState } from "@/app/use-magnolia-app"
+import type { MagnoliaAppState } from "@/app/app-state"
+import { selectIdleAutoSaveSlot } from "@/app/save-slot-selectors"
+import { dispatchManyAndSync } from "@/app/session-command-runner"
 import type { useMagnoliaInput } from "@/app/use-magnolia-input"
 
 const IDLE_AUTO_SAVE_WARNING_AFTER_MS = 50_000
@@ -124,11 +126,20 @@ export function useIdleAutoSave({
     })
 
     try {
-      await session.dispatch({ type: "saveToSlot", slotId: countdown.targetSlotId })
-      await session.dispatch({ type: "returnToTitle" })
-      idleCountdownRef.current = null
-      input.markActivity(Date.now())
-      syncFromSession(session)
+      await dispatchManyAndSync(
+        session,
+        [
+          { type: "saveToSlot", slotId: countdown.targetSlotId },
+          { type: "returnToTitle" },
+        ],
+        {
+          syncFromSession,
+          beforeSync: () => {
+            idleCountdownRef.current = null
+            input.markActivity(Date.now())
+          },
+        },
+      )
     } catch (error) {
       idleCountdownRef.current = null
       setState((current) => ({
@@ -140,31 +151,4 @@ export function useIdleAutoSave({
       setIdleAutoSave(null)
     }
   }
-}
-
-function selectIdleAutoSaveSlot(
-  slots: RootSnapshot["saveSlots"]["slots"],
-): SaveSlotId {
-  const emptySlot = slots.find((slot) => isTitleSaveSlotEmpty(slot))
-  if (emptySlot) {
-    return emptySlot.slotId
-  }
-
-  // 空きがない場合は、要求通り最も古い updatedAt のスロットを自動保存先にします。
-  const oldestSlot = [...slots].sort(
-    (left, right) => readSlotUpdatedAtMs(left.updatedAt) - readSlotUpdatedAtMs(right.updatedAt),
-  )[0]
-  return oldestSlot?.slotId ?? 1
-}
-
-function isTitleSaveSlotEmpty(slot: RootSnapshot["saveSlots"]["slots"][number]): boolean {
-  return !slot.profileId || slot.playTimeMs <= 0
-}
-
-function readSlotUpdatedAtMs(updatedAt: string | undefined): number {
-  if (!updatedAt) {
-    return 0
-  }
-  const parsed = Date.parse(updatedAt)
-  return Number.isFinite(parsed) ? parsed : 0
 }

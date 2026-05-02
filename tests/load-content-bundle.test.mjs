@@ -53,16 +53,32 @@ test("loadContentBundle loads content presets and presentation cues", async () =
     "spawn_top_right",
   ])
   assert.deepEqual(counts.movementPatterns, [
+    "move_linear_a2",
     "move_linear_standard",
+    "move_pause_then_drift_b1",
+    "move_pause_then_drift_c1",
     "move_pause_then_drift_heavy",
+    "move_sine_drift_a1",
     "move_sine_drift_scout",
   ])
   assert.equal(counts.visualPresets, 18)
   assert.equal(counts.hitboxPresets, 7)
   assert.equal(counts.backgroundPresets, 2)
   assert.equal(counts.presentationCues, 16)
-  assert.deepEqual(counts.enemies, ["enemy_heavy", "enemy_scout", "enemy_standard"])
+  assert.deepEqual(counts.enemies, [
+    "a1",
+    "a2",
+    "b1",
+    "c1",
+    "enemy_heavy",
+    "enemy_scout",
+    "enemy_standard",
+  ])
   assert.deepEqual(counts.bulletPatterns, [
+    "bp_a2_lance_spread",
+    "bp_b1_core_burst",
+    "bp_b1_lance_stream",
+    "bp_c1_pressure_ring",
     "bp_heavy_burst",
     "bp_scout_single",
     "bp_spiral_stream",
@@ -70,7 +86,9 @@ test("loadContentBundle loads content presets and presentation cues", async () =
   ])
   assert.deepEqual(counts.projectiles, [
     "proj_enemy_basic",
+    "proj_enemy_core",
     "proj_enemy_geo",
+    "proj_enemy_lance",
     "proj_enemy_petal",
     "proj_player_carrier",
     "proj_player_carrier_blast",

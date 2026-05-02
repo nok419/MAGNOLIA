@@ -1,6 +1,6 @@
 /* =========================================================
-   INTERACTION PROMPT
-   自機、マップ上のアイコン、通常のメニュー要素に同じ誘導を付ける。
+   TUTORIAL ICON
+   自機、マップ上のアイコン、通常のメニュー要素に同じチュートリアルアイコンを付ける。
    ========================================================= */
 @keyframes mg-interaction-prompt-draw {
   from { stroke-dashoffset: 220; }
@@ -52,7 +52,7 @@
 .interaction-prompt-anchor {
   --interaction-prompt-accent: var(--mg-warm);
   --interaction-prompt-rgb: 240, 198, 116;
-  --interaction-prompt-key-text: #0b1424;
+  --interaction-prompt-key-text: var(--color-void-panel-solid);
 }
 
 .interaction-prompt--cyan {
