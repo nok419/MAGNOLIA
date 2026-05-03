@@ -33,7 +33,7 @@ type ExploreScreenProps = {
   exploreEvents?: TimedPresentationRequest<ExploreChannelPresentationRequest>[]
   itemPopups?: Array<{ id: string; title: string; detail: string }>
   shipVariant: ShipVariant
-  showEquipmentTutorialIcon?: boolean
+  showOsMagnoliaEquipPrompt?: boolean
   onInteractNode?: (nodeId: WorldMapNodeId, context: ExploreInteractionContext) => void
   onSetMoveTarget?: (worldPosition: { x: number; y: number } | null) => void
   onConsumePrimaryClick?: () => void
@@ -50,6 +50,11 @@ type ExploreClickRipple = {
   id: number
   x: number
   y: number
+}
+
+type SignalGuidePopupState = {
+  releaseRequestId: string
+  visible: boolean
 }
 
 // signal パネルの波形は決定的に生成し、距離による強度は別の値として合成します。
@@ -73,7 +78,7 @@ export function ExploreScreen({
   exploreEvents = [],
   itemPopups = [],
   shipVariant,
-  showEquipmentTutorialIcon = false,
+  showOsMagnoliaEquipPrompt = false,
   onInteractNode,
   onSetMoveTarget,
   onConsumePrimaryClick,
@@ -114,7 +119,9 @@ export function ExploreScreen({
   const [waveformFrame, setWaveformFrame] = useState(0)
   const [overlayFrame, setOverlayFrame] = useState<ExploreOverlayFrame | null>(null)
   const [clickRipples, setClickRipples] = useState<ExploreClickRipple[]>([])
+  const [signalGuidePopup, setSignalGuidePopup] = useState<SignalGuidePopupState | null>(null)
   const clickRippleIdRef = useRef(0)
+  const pendingSignalGuideReleaseIdRef = useRef<string | null>(null)
 
   const emitExploreClickRipple = useCallback((point: { x: number; y: number }) => {
     const id = clickRippleIdRef.current + 1
@@ -140,6 +147,47 @@ export function ExploreScreen({
     return () => window.clearInterval(timerId)
   }, [canShowStrengthMeter, presentation.hidesHud])
 
+  useEffect(() => {
+    if (presentation.kind === "release") {
+      pendingSignalGuideReleaseIdRef.current = presentation.requestId
+      return
+    }
+    if (presentation.kind !== "none") {
+      return
+    }
+
+    const releaseRequestId = pendingSignalGuideReleaseIdRef.current
+    if (!releaseRequestId) {
+      return
+    }
+
+    // 境界解放ムービーの視界復帰後にだけ案内を出します。
+    // cue 自体は一度きりなので、画面 local state で request 単位の重複だけ防ぎます。
+    pendingSignalGuideReleaseIdRef.current = null
+    setSignalGuidePopup((current) =>
+      current?.releaseRequestId === releaseRequestId
+        ? current
+        : { releaseRequestId, visible: true },
+    )
+  }, [presentation])
+
+  useEffect(() => {
+    if (!signalGuidePopup?.visible) {
+      return undefined
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.code !== "Enter" && event.code !== "NumpadEnter" && event.code !== "Escape") {
+        return
+      }
+      event.preventDefault()
+      setSignalGuidePopup((current) => current ? { ...current, visible: false } : current)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [signalGuidePopup?.visible])
+
   const waveformBars = useMemo(() => {
     return Array.from({ length: WAVEFORM_BAR_COUNT }, (_, i) =>
       buildSignalWaveformAmplitude(i, waveformFrame),
@@ -156,6 +204,8 @@ export function ExploreScreen({
   const scanCooldownPct = Math.round(Math.max(0, Math.min(1, renderState.scanCooldownRatio ?? 1)) * 100)
   const movementModeLabel = readMovementModeLabel(renderState.movementMode)
   const canShowPrompts = presentation.kind === "none"
+  const canShowOsMagnoliaEquipPrompt =
+    showOsMagnoliaEquipPrompt && snapshot.featureAccess.hudEnabled && !presentation.hidesHud
   const shouldShowScanHint = canShowPrompts && overlayFrame !== null && renderState.shouldShowScanHint
   const shipPromptPlacement = overlayFrame
     ? resolveTutorialIconPlacement(overlayFrame.playerPoint, overlayFrame.width)
@@ -164,6 +214,8 @@ export function ExploreScreen({
     canShowPrompts && overlayFrame
       ? readFirstMissionTutorialIconTarget(renderState, overlayFrame)
       : null
+  const canShowSignalGuidePopup =
+    signalGuidePopup?.visible === true && canShowPrompts && canShowStrengthMeter
 
   const handleCanvasPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
@@ -307,11 +359,11 @@ export function ExploreScreen({
         </section>
       ) : null}
 
-      {canShowStrengthMeter ? (
+      {canShowStrengthMeter || canShowOsMagnoliaEquipPrompt ? (
         <section
-          className={`ehud ehud--signal${hudTransitionClass}`}
+          className={`ehud ehud--signal${canShowOsMagnoliaEquipPrompt ? " ehud--signal-prompt" : ""}${hudTransitionClass}`}
           style={signalPanelStyle}
-          aria-label="signal strength"
+          aria-label={canShowOsMagnoliaEquipPrompt ? "os magnolia equipment prompt" : "signal strength"}
         >
           <div className="ehud__bracket ehud__bracket--tl" />
           <div className="ehud__bracket ehud__bracket--tr" />
@@ -319,48 +371,60 @@ export function ExploreScreen({
           <div className="ehud__bracket ehud__bracket--br" />
           <div className="ehud__scanline" />
 
-          <header className="ehud__header">
-            <span className="ehud__diamond">◇</span>
-            <span className="ehud__label">SIGNAL</span>
-          </header>
+          {canShowOsMagnoliaEquipPrompt ? (
+            <div className="ehud-signal-prompt" role="status">
+              <span className="ehud-signal-prompt__label">EQUIPMENT</span>
+              <p className="ehud-signal-prompt__message">
+                os magnoliaを装備してください
+              </p>
+              <span className="ehud-signal-prompt__hint">E / Esc</span>
+            </div>
+          ) : (
+            <>
+              <header className="ehud__header">
+                <span className="ehud__diamond">◇</span>
+                <span className="ehud__label">SIGNAL</span>
+              </header>
 
-          <div className="ehud-signal__body">
-            <div className="ehud-signal__frequency" aria-hidden="true">
-              <div className="ehud-signal__waveform">
-                <span className="ehud-signal__waveform-baseline" />
-                <span className="ehud-signal__waveform-cursor" />
-                <div className="ehud-signal__waveform-bars">
-                  {waveformBars.map((amp, i) => (
-                    <span
-                      key={i}
-                      className="ehud-signal__waveform-bar"
-                      style={{
-                        ["--bar-amp" as keyof CSSProperties]: amp,
-                      }}
-                    />
-                  ))}
+              <div className="ehud-signal__body">
+                <div className="ehud-signal__frequency" aria-hidden="true">
+                  <div className="ehud-signal__waveform">
+                    <span className="ehud-signal__waveform-baseline" />
+                    <span className="ehud-signal__waveform-cursor" />
+                    <div className="ehud-signal__waveform-bars">
+                      {waveformBars.map((amp, i) => (
+                        <span
+                          key={i}
+                          className="ehud-signal__waveform-bar"
+                          style={{
+                            ["--bar-amp" as keyof CSSProperties]: amp,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ehud-signal__strength" aria-hidden="true">
+                  <div className="ehud-signal__strength-readout">
+                    <span>{strongestSignalHint ? readSignalHintLabel(strongestSignalHint) : "UNFOUND"}</span>
+                  </div>
+                  <div className="ehud-signal__meter">
+                    <span className="ehud-signal__meter-fill" />
+                    <span className="ehud-signal__meter-needle" />
+                    {Array.from({ length: STRENGTH_SEGMENT_COUNT }, (_, index) => (
+                      <span
+                        key={index}
+                        className={`ehud-signal__meter-seg ${
+                          index < activeStrengthSegments ? "ehud-signal__meter-seg--on" : ""
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="ehud-signal__strength" aria-hidden="true">
-              <div className="ehud-signal__strength-readout">
-                <span>{strongestSignalHint ? readSignalHintLabel(strongestSignalHint) : "UNFOUND"}</span>
-              </div>
-              <div className="ehud-signal__meter">
-                <span className="ehud-signal__meter-fill" />
-                <span className="ehud-signal__meter-needle" />
-                {Array.from({ length: STRENGTH_SEGMENT_COUNT }, (_, index) => (
-                  <span
-                    key={index}
-                    className={`ehud-signal__meter-seg ${
-                      index < activeStrengthSegments ? "ehud-signal__meter-seg--on" : ""
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </section>
       ) : null}
 
@@ -385,12 +449,12 @@ export function ExploreScreen({
       ) : null}
 
       <section className={`ehud ehud--help${hudTransitionClass}`} style={hudTransitionStyle}>
-        <ControlHelpRow label="move" keys={["WASD", "↑→↓←"]} />
-        <ControlHelpRow label="connect" keys={["Enter", "click"]} />
+        <ControlHelpRow label="move" keys={["WASD", "↑←↓→"]} />
+        <ControlHelpRow label="connect" keys={["Enter", "左クリック", "Z"]} />
         {renderState.shouldShowScanHint ? (
-          <ControlHelpRow label="scan" keys={["Space", "click 2"]} />
+          <ControlHelpRow label="scan" keys={["Space", "右クリック", "X"]} />
         ) : null}
-        <ControlHelpRow label="equipment" keys={["E"]} />
+        <ControlHelpRow label="equipment" keys={["E", "Esc"]} />
         <ControlHelpRow label="map" keys={["M"]} />
       </section>
 
@@ -398,23 +462,11 @@ export function ExploreScreen({
         <TutorialIconCallout
           anchor={overlayFrame.playerPoint}
           placement={shipPromptPlacement}
-          keyLabel={["Space", "click 2"]}
+          keyLabel={["Space", "右クリック", "X"]}
           label="scan"
           tone="warm"
           motion="static"
-          ariaLabel="Space または click 2 でスキャンを出します"
-        />
-      ) : null}
-
-      {showEquipmentTutorialIcon && canShowPrompts && overlayFrame ? (
-        <TutorialIconCallout
-          anchor={overlayFrame.playerPoint}
-          placement={shipPromptPlacement}
-          keyLabel="E"
-          label="equipment"
-          tone="warm"
-          motion="static"
-          ariaLabel="press E to open equipment"
+          ariaLabel="Space、右クリック、X でスキャンを出します"
         />
       ) : null}
 
@@ -425,11 +477,11 @@ export function ExploreScreen({
             firstMissionTutorialIconTarget.screenAnchor,
             overlayFrame.width,
           )}
-          keyLabel={["Enter", "click"]}
+          keyLabel={["Enter", "左クリック", "Z"]}
           label="connect"
           tone="cyan"
           motion="static"
-          ariaLabel="Enter または click で mission 01 を開始します"
+          ariaLabel="Enter、左クリック、Z で mission 01 を開始します"
         />
       ) : null}
 
@@ -442,6 +494,62 @@ export function ExploreScreen({
             </section>
           ))}
         </div>
+      ) : null}
+
+      {canShowSignalGuidePopup ? (
+        <section
+          className="signal-guide-popup"
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="signal-guide-popup-title"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <div className="signal-guide-popup__bracket signal-guide-popup__bracket--tl" />
+          <div className="signal-guide-popup__bracket signal-guide-popup__bracket--tr" />
+          <div className="signal-guide-popup__bracket signal-guide-popup__bracket--bl" />
+          <div className="signal-guide-popup__bracket signal-guide-popup__bracket--br" />
+          <header className="signal-guide-popup__header">
+            <span className="signal-guide-popup__diamond" aria-hidden="true">◇</span>
+            <h2 id="signal-guide-popup-title">SIGNAL HUD</h2>
+          </header>
+          <div className="signal-guide-popup__body">
+            <p>
+              SIGNAL は、いま拾えている反応の種類と距離帯を示します。
+              メーターが高いほど通信反応が近く、波形が強いほど周囲の反応が多い状態です。
+            </p>
+            <p>
+              scan は <kbd>Space</kbd>、<kbd>click 2</kbd>（右クリック）、<kbd>X</kbd> で出します。
+              反応は自機から見た方角に弧と短い線で表示されます。
+            </p>
+            <ul className="signal-guide-popup__legend" aria-label="視界範囲円の色">
+              <li>
+                <span className="signal-guide-popup__swatch signal-guide-popup__swatch--transmission" />
+                赤は mission や通信反応です。
+              </li>
+              <li>
+                <span className="signal-guide-popup__swatch signal-guide-popup__swatch--equipment" />
+                黄は装備や収集物です。
+              </li>
+              <li>
+                <span className="signal-guide-popup__swatch signal-guide-popup__swatch--repair" />
+                緑は自己修復ポイントです。
+              </li>
+              <li>
+                <span className="signal-guide-popup__swatch signal-guide-popup__swatch--vision" />
+                青白い円が現在の視界範囲です。
+              </li>
+            </ul>
+          </div>
+          <button
+            className="signal-guide-popup__button"
+            type="button"
+            onClick={() => {
+              setSignalGuidePopup((current) => current ? { ...current, visible: false } : current)
+            }}
+          >
+            understood
+          </button>
+        </section>
       ) : null}
     </main>
   )

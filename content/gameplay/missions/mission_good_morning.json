@@ -246,12 +246,6 @@
           "seed": 20
         },
         {
-          "spawnId": "gm_wave_13_spawn_02",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_center",
-          "seed": 21
-        },
-        {
           "spawnId": "gm_wave_13_spawn_03",
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
@@ -322,12 +316,6 @@
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_left",
           "seed": 28
-        },
-        {
-          "spawnId": "gm_wave_16_spawn_02",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_right",
-          "seed": 29
         }
       ]
     }

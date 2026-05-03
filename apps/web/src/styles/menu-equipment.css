@@ -99,7 +99,7 @@
   border: none;
   color: var(--mg-text-muted);
   font-family: var(--font-mono);
-  font-size: clamp(10px, 0.85vw, 12px);
+  font-size: clamp(13px, 1vw, 15px);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding:
@@ -158,7 +158,7 @@
 }
 .menu-tab--back {
   color: var(--mg-text-muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 .menu-tab--back:hover { 
   color: var(--mg-red);
@@ -181,12 +181,12 @@
    ========================================================= */
 .equip-4col {
   display: grid;
-  grid-template-columns: 210px 140px minmax(200px, 1fr) minmax(240px, 1.2fr);
+  grid-template-columns: 252px 240px minmax(250px, 0.92fr) minmax(360px, 1.25fr);
   gap: 1px;
   background: var(--mg-border);
   border: 1px solid var(--mg-border);
   border-radius: 4px;
-  min-height: 500px;
+  min-height: 590px;
   overflow: hidden;
   position: relative;
   /* Very faint tech grid layer backing the entire equipment UI */
@@ -199,7 +199,7 @@
 /* ── ship status panel (first column) ── */
 .equip-ship-status {
   background: rgba(4, 10, 22, 0.94);
-  padding: 14px 12px;
+  padding: 18px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -208,7 +208,7 @@
 }
 .equip-ship-status__title {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.18em;
   color: var(--mg-accent);
   text-transform: uppercase;
@@ -258,7 +258,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 10px;
+  padding: 8px 12px;
   background: rgba(93, 164, 209, 0.03);
   border: none;
   border-left: 2px solid var(--mg-border);
@@ -277,17 +277,17 @@
   background: rgba(93, 164, 209, 0.08);
 }
 .equip-ship-slot__label {
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.1em;
   color: var(--mg-text-muted);
-  min-width: 38px;
+  min-width: 46px;
   flex-shrink: 0;
 }
 .equip-ship-slot--active .equip-ship-slot__label {
   color: var(--mg-accent);
 }
 .equip-ship-slot__name {
-  font-size: 11px;
+  font-size: 15px;
   color: var(--mg-text);
   white-space: nowrap;
   overflow: hidden;
@@ -311,7 +311,7 @@
 }
 .equip-ship-appearance__label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.18em;
   color: rgba(199, 230, 248, 0.88);
   text-transform: uppercase;
@@ -325,10 +325,10 @@
 }
 .equip-ship-appearance__option {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 6px 8px;
+  padding: 8px 10px;
   background: rgba(93, 164, 209, 0.04);
   border: 1px solid rgba(93, 164, 209, 0.18);
   color: rgba(180, 214, 235, 0.78);
@@ -365,10 +365,11 @@
   border: none;
   color: var(--mg-text-muted);
   font-family: var(--font-mono);
-  font-size: 13px;
+  width: 100%;
+  font-size: 16px;
   letter-spacing: 0.08em;
   text-align: left;
-  padding: 10px 16px;
+  padding: 13px 18px;
   cursor: pointer;
   border-left: 3px solid transparent;
   transition: all var(--dur-fast);
@@ -408,8 +409,17 @@
 .equip-cat__label {
   flex: 1 1 auto;
   min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.equip-categories .interaction-prompt-anchor--block {
+  width: 100%;
+}
+
+.equip-categories .interaction-prompt-anchor--block > .equip-cat {
+  width: 100%;
 }
 
 @keyframes mg-new-badge-pulse {
@@ -424,11 +434,11 @@
 .equip-cat__new-badge {
   flex: 0 0 auto;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.18em;
   line-height: 1;
-  padding: 3px 6px;
+  padding: 4px 7px;
   color: var(--color-void-panel-solid);
   background: var(--mg-warm);
   border-radius: 2px;
@@ -437,26 +447,6 @@
 
 .equip-cat--has-new {
   color: var(--mg-text);
-}
-
-@keyframes equipment-guide-pulse {
-  0%, 100% {
-    box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--mg-warm) 55%, transparent),
-      0 0 10px color-mix(in srgb, var(--mg-warm) 24%, transparent);
-  }
-  50% {
-    box-shadow:
-      inset 0 0 0 1px var(--mg-warm),
-      0 0 18px color-mix(in srgb, var(--mg-warm) 42%, transparent);
-  }
-}
-
-.equip-cat--guide {
-  color: var(--mg-warm);
-  border-left-color: var(--mg-warm);
-  background: color-mix(in srgb, var(--mg-warm) 9%, transparent);
-  animation: equipment-guide-pulse 1.35s ease-in-out infinite;
 }
 
 /* 装備リストの各アイテムに付く NEW バッジ。右上に絶対配置し、
@@ -470,11 +460,11 @@
   top: 6px;
   right: 8px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.18em;
   line-height: 1;
-  padding: 3px 6px;
+  padding: 4px 7px;
   color: var(--color-void-panel-solid);
   background: var(--mg-warm);
   border-radius: 2px;
@@ -484,24 +474,6 @@
 
 .list-card--new {
   border-color: rgba(240, 198, 116, 0.45);
-}
-
-.equip-list--plain > .list-card--guide {
-  border-color: var(--mg-warm) !important;
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--mg-warm) 14%, transparent),
-      transparent 78%
-    ),
-    color-mix(in srgb, var(--color-void-depth) 78%, transparent);
-  animation: equipment-guide-pulse 1.35s ease-in-out infinite;
-}
-
-.equip-list--plain > .list-card--guide::before {
-  background: var(--mg-warm);
-  opacity: 1;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--mg-warm) 54%, transparent);
 }
 
 @keyframes mg-pulse-glow {
@@ -530,10 +502,31 @@
    前方に押し出され、アクセントと影で分離する。
    ========================================================= */
 .equip-list--plain {
-  padding: 16px 14px;
-  gap: 8px;
+  padding: 20px 18px;
+  gap: 12px;
   perspective: 1400px;
   perspective-origin: 50% 50%;
+}
+
+.equip-list--plain .interaction-prompt-anchor--block {
+  width: 100%;
+}
+
+.equip-list--plain .interaction-prompt-anchor--block > .list-card {
+  width: 100%;
+}
+
+.equip-list-card__title {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.equip-list-card__desc {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .equip-list--plain > .list-card {
@@ -574,26 +567,6 @@
   background: linear-gradient(180deg, transparent, var(--mg-accent) 24%, var(--mg-accent) 76%, transparent);
   box-shadow: 0 0 10px var(--mg-glow-blue);
   pointer-events: none;
-}
-
-.equip-list--plain > .list-card--selected.list-card--guide {
-  border-color: var(--mg-warm) !important;
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--mg-warm) 16%, transparent),
-      transparent 78%
-    ),
-    color-mix(in srgb, var(--color-void-depth) 72%, transparent);
-  box-shadow:
-    0 18px 36px color-mix(in srgb, var(--color-void-depth) 52%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--mg-warm) 54%, transparent),
-    0 0 32px color-mix(in srgb, var(--mg-warm) 22%, transparent);
-}
-
-.equip-list--plain > .list-card--selected.list-card--guide::after {
-  background: linear-gradient(180deg, transparent, var(--mg-warm) 24%, var(--mg-warm) 76%, transparent);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--mg-warm) 54%, transparent);
 }
 
 .equip-list--plain > .list-card--unowned {
@@ -665,7 +638,7 @@
     radial-gradient(circle at 0 0, rgba(93, 164, 209, 0.06) 1px, transparent 1px) 0 0 / 22px 22px,
     /* パネル全体の淡い垂直グラデ */
     linear-gradient(180deg, rgba(8, 17, 32, 0.94), rgba(4, 10, 22, 0.96));
-  padding: 28px 34px 24px;
+  padding: 32px 38px 28px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -768,7 +741,7 @@
 }
 .equip-detail__eyebrow {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--mg-text-muted);
@@ -778,12 +751,12 @@
 }
 .equip-detail__diamond {
   color: var(--mg-accent);
-  font-size: 9px;
+  font-size: 11px;
   text-shadow: 0 0 6px var(--mg-glow-blue);
 }
 .equip-detail__id {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   color: var(--mg-accent);
   opacity: 0.75;
@@ -825,7 +798,7 @@
 }
 .equip-detail__slot-chip {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   padding: 3px 10px;
@@ -845,7 +818,7 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.18em;
   color: var(--mg-text-muted);
 }
@@ -876,21 +849,21 @@
 
 /* 本文 */
 .equip-detail__desc {
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.62;
   margin: 0 0 14px;
   color: var(--mg-text);
 }
 
 .equip-detail__stat-groups {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
   margin: 0 0 14px;
 }
 
 .equip-detail__stat-group {
-  padding: 9px 10px;
+  padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--color-signal-primary) 18%, transparent);
   background: color-mix(in srgb, var(--color-void-depth) 42%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-void-depth) 22%, transparent);
@@ -899,7 +872,7 @@
 .equip-detail__stat-heading {
   margin: 0 0 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.16em;
   color: var(--mg-accent);
   text-transform: uppercase;
@@ -914,11 +887,11 @@
 
 .equip-detail__stat-row {
   display: grid;
-  grid-template-columns: minmax(58px, 0.88fr) minmax(64px, 1fr);
+  grid-template-columns: minmax(74px, 0.88fr) minmax(82px, 1fr);
   gap: 8px;
   align-items: baseline;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.35;
 }
 
@@ -944,7 +917,7 @@
 
 .equip-detail__stat-row dd small {
   color: var(--mg-text-muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .equip-detail__upgrade-preview {
@@ -953,17 +926,17 @@
   gap: 8px;
   align-items: baseline;
   margin: 0 0 14px;
-  padding: 8px 10px;
+  padding: 9px 12px;
   border: 1px solid color-mix(in srgb, var(--color-residual-warmth) 22%, transparent);
   background: color-mix(in srgb, var(--color-residual-warmth) 4%, transparent);
   color: var(--mg-text);
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.45;
 }
 
 .equip-detail__upgrade-track {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--mg-warm);
   white-space: nowrap;
@@ -974,7 +947,7 @@
   position: relative;
   margin: 0 0 18px;
   padding: 4px 0 4px 16px;
-  font-size: 12px;
+  font-size: 15px;
   font-style: italic;
   color: var(--mg-text-dim);
   line-height: 1.6;
@@ -999,7 +972,7 @@
 .equip-detail__footer-note {
   margin: 16px 0 0;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.22em;
   color: var(--mg-text-muted);
   opacity: 0.5;
@@ -1010,25 +983,56 @@
 .equip-detail__actions {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 4px;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 20%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-signal-primary) 8%, transparent), transparent 56%),
+    color-mix(in srgb, var(--color-void-depth) 34%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-void-depth) 28%, transparent),
+    0 0 20px color-mix(in srgb, var(--color-signal-primary) 8%, transparent);
+}
+
+.equip-detail__action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.equip-detail__button-row {
+  align-items: stretch;
+  gap: 10px;
+}
+
+.equip-detail__button-row .interaction-prompt-anchor {
+  flex: 1 1 200px;
+}
+
+.equip-detail__button-row .interaction-prompt-anchor > .action-button {
+  width: 100%;
+}
+
+.equip-detail__button-row .action-button {
+  flex: 1 1 200px;
 }
 
 .equip-detail__equip-action.action-button {
-  min-height: 38px;
-  padding: 9px 18px;
-  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 46%, transparent);
+  min-height: 52px;
+  padding: 13px 22px;
+  border: 1px solid color-mix(in srgb, var(--color-signal-primary) 60%, transparent);
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--color-signal-primary) 16%, transparent), transparent),
-    color-mix(in srgb, var(--color-void-depth) 62%, transparent);
+    linear-gradient(90deg, color-mix(in srgb, var(--color-signal-primary) 24%, transparent), transparent),
+    color-mix(in srgb, var(--color-void-depth) 48%, transparent);
   color: var(--color-signal-readable);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   letter-spacing: 0.18em;
   text-shadow: 0 0 10px color-mix(in srgb, var(--color-signal-primary) 44%, transparent);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--color-signal-primary) 12%, transparent),
-    0 0 18px color-mix(in srgb, var(--color-signal-primary) 16%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--color-signal-readable) 10%, transparent),
+    0 0 22px color-mix(in srgb, var(--color-signal-primary) 22%, transparent);
 }
 .equip-detail__equip-action.action-button::before,
 .equip-detail__equip-action.action-button::after {
@@ -1045,31 +1049,31 @@
     inset 0 0 0 1px color-mix(in srgb, var(--color-signal-readable) 42%, transparent);
 }
 
-.equip-detail__equip-action--guide.action-button {
-  border-color: var(--mg-warm);
-  color: var(--mg-warm);
+.equip-detail__unequip-action.action-button {
+  min-height: 52px;
+  padding: 13px 20px;
+  border: 1px solid color-mix(in srgb, var(--mg-red) 58%, transparent);
   background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--mg-warm) 18%, transparent),
-      transparent
-    ),
-    color-mix(in srgb, var(--color-void-depth) 58%, transparent);
-  animation: equipment-guide-pulse 1.35s ease-in-out infinite;
-  text-shadow: 0 0 10px color-mix(in srgb, var(--mg-warm) 48%, transparent);
+    linear-gradient(90deg, color-mix(in srgb, var(--mg-red) 18%, transparent), transparent),
+    color-mix(in srgb, var(--color-void-depth) 48%, transparent);
+  color: color-mix(in srgb, var(--mg-red) 84%, #fff);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--mg-red) 34%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--mg-red) 10%, transparent),
+    0 0 18px color-mix(in srgb, var(--mg-red) 16%, transparent);
 }
 
-.equip-detail__equip-action--guide.action-button::before,
-.equip-detail__equip-action--guide.action-button::after {
+.equip-detail__unequip-action.action-button:hover:not(:disabled) {
+  color: var(--color-void-depth);
   background:
-    linear-gradient(
-      90deg,
-      transparent,
-      var(--mg-warm) 24%,
-      var(--color-signal-readable) 50%,
-      var(--mg-warm) 76%,
-      transparent
-    );
+    linear-gradient(180deg, color-mix(in srgb, var(--mg-red) 62%, #fff), var(--mg-red));
+  text-shadow: none;
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--mg-red) 24%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 34%, transparent);
 }
 
 /* ロック中・最大レベル時のインライン通知 */
@@ -1078,18 +1082,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 9px 13px;
   border: 1px dashed rgba(93, 164, 209, 0.2);
   background: rgba(93, 164, 209, 0.03);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--mg-text-muted);
 }
 .equip-detail__locked-mark,
 .equip-detail__max-mark {
   color: var(--mg-accent);
-  font-size: 10px;
+  font-size: 11px;
   opacity: 0.75;
 }
 .equip-detail__max-note {
@@ -1108,7 +1112,7 @@
    ========================================================= */
 .procurement {
   position: relative;
-  padding: 14px 16px 14px 18px;
+  padding: 16px 18px 16px 20px;
   background:
     radial-gradient(circle at 0 0, rgba(93, 164, 209, 0.04) 1px, transparent 1px) 0 0 / 16px 16px,
     linear-gradient(180deg, rgba(12, 24, 44, 0.55) 0%, rgba(4, 12, 24, 0.7) 100%);
@@ -1119,7 +1123,7 @@
     0 0 20px rgba(93, 164, 209, 0.06);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   overflow: hidden;
 }
 /* 左端アクセント縦線 (他 HUD と意匠統一) */
@@ -1164,19 +1168,19 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--mg-text-muted);
 }
 .procurement--upgrade .procurement__eyebrow {
-  padding: 5px 9px 5px 7px;
+  padding: 6px 10px 6px 8px;
   border: 1px solid color-mix(in srgb, var(--color-residual-warmth) 48%, transparent);
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--color-residual-warmth) 18%, transparent), transparent),
     color-mix(in srgb, var(--color-void-depth) 42%, transparent);
   color: var(--mg-warm);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.28em;
   text-shadow: 0 0 10px color-mix(in srgb, var(--color-residual-warmth) 50%, transparent);
   box-shadow:
@@ -1185,7 +1189,7 @@
 }
 .procurement__diamond {
   color: var(--mg-accent);
-  font-size: 9px;
+  font-size: 11px;
   text-shadow: 0 0 6px var(--mg-glow-blue);
 }
 .procurement--upgrade .procurement__diamond {
@@ -1198,7 +1202,7 @@
   align-items: baseline;
   gap: 4px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--mg-text-dim);
 }
@@ -1207,7 +1211,7 @@
 }
 .procurement__level-arrow {
   color: var(--mg-accent);
-  font-size: 10px;
+  font-size: 12px;
   margin: 0 2px;
   text-shadow: 0 0 6px var(--mg-glow-blue);
 }
@@ -1218,7 +1222,7 @@
 .procurement__level-max {
   color: var(--mg-text-muted);
   opacity: 0.6;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* cost / balance 行 */
@@ -1236,7 +1240,7 @@
 }
 .procurement__key {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--mg-text-muted);
@@ -1247,11 +1251,11 @@
   letter-spacing: 0.04em;
 }
 .procurement__num {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 500;
 }
 .procurement__unit {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--mg-text-muted);
   margin-left: 3px;
   letter-spacing: 0.12em;
@@ -1301,7 +1305,7 @@
 .procurement__shortage-note {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--mg-text-dim);
 }
@@ -1318,9 +1322,9 @@
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  padding: 12px 16px;
+  padding: 13px 18px;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
@@ -1368,7 +1372,7 @@
   text-align: left;
 }
 .procurement__cta-cost {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   opacity: 0.82;
 }
@@ -1404,7 +1408,7 @@
 }
 .equip-empty-state__text {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.25em;
   color: var(--mg-accent);
   margin: 0;
@@ -1416,7 +1420,7 @@
   display: inline-block;
   margin-left: 8px;
   padding: 1px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--font-mono);
   letter-spacing: 0.06em;
   color: var(--mg-accent);

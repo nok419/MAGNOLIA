@@ -1,8 +1,8 @@
 {
-  "bulletPatternId": "bp_scout_single",
+  "bulletPatternId": "bp_a1_pressure_stream",
   "patternKind": "goldenStream",
   "projectileId": "proj_enemy_basic",
-  "cadenceMs": 320,
+  "cadenceMs": 260,
   "burstCount": 1,
   "params": {
     "aimAtPlayer": false,

@@ -5,6 +5,7 @@ import { ScrambleText } from "@/components/common"
 import { MagnoliaLogo } from "@/components/title/MagnoliaLogo"
 import { SignalBackdropCanvas } from "@/components/title/SignalBackdropCanvas"
 import { useMenuNavigation } from "@/hooks/useMenuNavigation"
+import { TITLE_UI_SOUND_VOLUME } from "@/audio"
 import type { ScrambleOptions } from "@/hooks/useScrambleText"
 import type { SaveSlotSummary, SlotSelectMode } from "@/app/app-types"
 import type { DisplayOptions } from "@/app/display-options"
@@ -178,6 +179,7 @@ export function TitleScreen({
     itemCount: navCount,
     onSelect: handleSelect,
     onCancel: isSlotPhase ? handleCancel : undefined,
+    soundVolume: TITLE_UI_SOUND_VOLUME,
   })
 
   useEffect(() => {

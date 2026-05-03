@@ -68,6 +68,7 @@ test("key visual render state fixture validates required content presets", async
 
 test("canvas cache and low frame rate mode are wired into battle and markers", () => {
   const pathCacheSource = readProjectFile("apps/web/src/render/shared/canvas-path-cache.ts")
+  const battleCanvasSource = readProjectFile("apps/web/src/render/battle/BattleCanvas.tsx")
   const drawBattleFrameSource = readProjectFile("apps/web/src/render/battle/draw-battle-frame.ts")
   const projectileSource = readProjectFile("apps/web/src/render/battle/projectiles/projectile-renderer.ts")
   const enemySource = readProjectFile("apps/web/src/render/battle/enemies/enemy-renderer.ts")
@@ -81,6 +82,8 @@ test("canvas cache and low frame rate mode are wired into battle and markers", (
   assert.match(pathCacheSource, /paletteRole/)
   assert.match(pathCacheSource, /reduceFlashing/)
   assert.match(pathCacheSource, /lowFrameRateMode/)
+  assert.match(battleCanvasSource, /BATTLE_CANVAS_PIXEL_RATIO_MAX = 1/)
+  assert.match(battleCanvasSource, /readBattleCanvasPixelRatio/)
   assert.match(drawBattleFrameSource, /lowFrameRateMode/)
   assert.match(projectileSource, /readCachedCanvasPath/)
   assert.match(enemySource, /readCachedCanvasPath/)
@@ -88,6 +91,10 @@ test("canvas cache and low frame rate mode are wired into battle and markers", (
   assert.match(markerSource, /readCachedCanvasPath/)
   assert.match(markerSource, /satelliteRole: "threatNoise"/)
   assert.match(markerSource, /satelliteRole: "signalReadable"/)
+  assert.match(markerSource, /complete:\s*\{[\s\S]*?accent: "#ffffff"/)
+  assert.match(markerSource, /complete:\s*\{[\s\S]*?haloRole: "signalReadable"/)
+  assert.match(markerSource, /function drawMissionObjectiveFrame/)
+  assert.match(markerSource, /input\.state !== "complete"[\s\S]*?drawMissionObjectiveFrame/)
   assert.match(trailSource, /TRAIL_RENDER_NODE_BUDGET/)
   assert.match(trailSource, /TRAIL_LOW_RENDER_NODE_BUDGET/)
   assert.match(trailSource, /selectTrailRenderNodes/)

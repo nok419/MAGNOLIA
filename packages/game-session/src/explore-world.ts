@@ -26,6 +26,7 @@ const WORLD_BITMAP_WIDTH = 128
 const WORLD_BITMAP_HEIGHT = 80
 const WORLD_BITMAP_ORIGIN_X = -640
 const WORLD_BITMAP_ORIGIN_Y = -520
+const SIGNAL_PANEL_REACTION_RADIUS = 420
 
 type ExploreFeatureAccess = Pick<
   FeatureAccessState,
@@ -368,7 +369,8 @@ export function computeNearestTransmissionStrength(input: {
   const nearestDistance = Math.min(
     ...candidates.map((node) => Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)),
   )
-  return clamp01(1 - nearestDistance / 300)
+  // SIGNAL panel は接近方向を読むための表示なので、接続可能距離より少し手前から反応させます。
+  return clamp01(1 - nearestDistance / SIGNAL_PANEL_REACTION_RADIUS)
 }
 
 /**
@@ -389,7 +391,8 @@ export function computeNearestAnyTransmissionStrength(input: {
   const nearestDistance = Math.min(
     ...candidates.map((node) => Math.hypot(node.x - input.playerPosition.x, node.y - input.playerPosition.y)),
   )
-  return clamp01(1 - nearestDistance / 300)
+  // 波形表示も強度バーと同じ距離感にそろえ、パネル内の反応差を小さくします。
+  return clamp01(1 - nearestDistance / SIGNAL_PANEL_REACTION_RADIUS)
 }
 
 export function computeCompassTargetAreaId(input: {
@@ -431,5 +434,7 @@ export function findNearbyNode<T extends { x: number; y: number; interactionRadi
 }
 
 export function isWithinRadius(position: Vector2, target: Vector2, radius: number): boolean {
-  return Math.hypot(position.x - target.x, position.y - target.y) <= radius
+  const dx = position.x - target.x
+  const dy = position.y - target.y
+  return dx * dx + dy * dy <= radius * radius
 }

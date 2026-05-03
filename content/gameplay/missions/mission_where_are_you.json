@@ -188,12 +188,6 @@
           "seed": 16
         },
         {
-          "spawnId": "way_wave_09_spawn_02",
-          "enemyId": "a1",
-          "spawnPointId": "spawn_top_center",
-          "seed": 17
-        },
-        {
           "spawnId": "way_wave_09_spawn_03",
           "enemyId": "a1",
           "spawnPointId": "spawn_top_right",
@@ -236,12 +230,6 @@
           "enemyId": "a1",
           "spawnPointId": "spawn_top_left",
           "seed": 22
-        },
-        {
-          "spawnId": "way_wave_11_spawn_03",
-          "enemyId": "a1",
-          "spawnPointId": "spawn_top_right",
-          "seed": 23
         }
       ]
     },
@@ -315,16 +303,6 @@
           "overrides": {
             "speed": 6,
             "driftX": 30
-          }
-        },
-        {
-          "spawnId": "way_wave_15_spawn_02",
-          "enemyId": "a2",
-          "spawnPointId": "spawn_side_right",
-          "seed": 31,
-          "overrides": {
-            "speed": 6,
-            "driftX": -30
           }
         },
         {

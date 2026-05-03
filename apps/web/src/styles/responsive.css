@@ -60,7 +60,7 @@
     justify-content: center;
   }
   .equip-ship-status__slots {
-    max-width: 280px;
+    max-width: 340px;
   }
   .key-visual-modal--windowed {
     width: calc(100vw - 32px);
@@ -78,7 +78,12 @@
     transform: none;
   }
   .ehud--help {
-    bottom: 186px;
+    bottom: 220px;
+  }
+  .signal-guide-popup {
+    right: 16px;
+    bottom: 16px;
+    width: min(420px, calc(100vw - 32px));
   }
 }
 
@@ -101,6 +106,17 @@
   }
 
   .ehud--help {
-    bottom: 200px;
+    bottom: 236px;
+  }
+  .signal-guide-popup {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    padding: 17px 18px 16px;
+  }
+  .signal-guide-popup__body {
+    font-size: 13px;
   }
 }

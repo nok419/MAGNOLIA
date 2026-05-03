@@ -22,6 +22,11 @@ import {
 import {
   readSeenEquipmentFromStorage,
 } from "@/app/storage/seen-equipment-store"
+import {
+  isBattlePerformanceProfilerEnabled,
+  readPerformanceNow,
+  recordBattleRenderStateSample,
+} from "@/app/battle-performance-profiler"
 import type { MagnoliaAppState } from "@/app/app-state"
 import type { useMagnoliaInput } from "@/app/use-magnolia-input"
 
@@ -73,7 +78,19 @@ export function syncMagnoliaAppStateFromSession({
   const exploreSnapshot = screen === "explore" ? snapshot.explore ?? session.getExploreSnapshot() : null
   const exploreRenderState = screen === "explore" ? session.getExploreRenderState() : null
   const worldMapViewModel = screen === "map" ? session.getWorldMapViewModel() : null
+  const shouldProfileBattle = screen === "battle" && isBattlePerformanceProfilerEnabled()
+  const battleRenderStateStartedAt = shouldProfileBattle ? readPerformanceNow() : 0
   const battleRenderState = screen === "battle" ? session.getBattleRenderState() : null
+  if (battleRenderState && shouldProfileBattle) {
+    const projectileCounts = countBattleProjectilesBySide(battleRenderState.projectiles)
+    recordBattleRenderStateSample({
+      renderStateMs: readPerformanceNow() - battleRenderStateStartedAt,
+      enemies: battleRenderState.enemies.length,
+      projectiles: battleRenderState.projectiles.length,
+      enemyProjectiles: projectileCounts.enemy,
+      playerProjectiles: projectileCounts.player,
+    })
+  }
   const archiveSnapshot =
     screen === "archive" || screen === "equipment" || screen === "settings"
       ? session.getArchiveSnapshot()
@@ -129,6 +146,15 @@ export function syncMagnoliaAppStateFromSession({
         archiveSnapshot,
         seenEquipmentIds,
         equipmentGuideTargetId,
+        battleTutorialIconState: reduceBattleTutorialIconState({
+          current: current.battleTutorialIconState,
+          previousScreen: current.snapshot?.screen,
+          previousElapsedMs: current.battleRenderState?.elapsedMs,
+          nextMissionId: snapshot.battle?.missionId,
+          nextElapsedMs: battleRenderState?.elapsedMs,
+          domainEvents,
+          screen,
+        }),
         itemPopups: [
           ...current.itemPopups.filter((popup) => popup.expiresAt > Date.now()),
           ...parsedPopups.popups,
@@ -138,6 +164,67 @@ export function syncMagnoliaAppStateFromSession({
       }
     })
   })
+}
+
+function reduceBattleTutorialIconState(input: {
+  current: MagnoliaAppState["battleTutorialIconState"]
+  previousScreen: ReturnType<MagnoliaGameSession["getSnapshot"]>["screen"] | undefined
+  previousElapsedMs: number | undefined
+  nextMissionId: NonNullable<MagnoliaAppState["battleTutorialIconState"]>["missionId"] | undefined
+  nextElapsedMs: number | undefined
+  domainEvents: DomainEvent[]
+  screen: ReturnType<MagnoliaGameSession["getSnapshot"]>["screen"]
+}): MagnoliaAppState["battleTutorialIconState"] {
+  if (input.screen !== "battle" || !input.nextMissionId) {
+    return null
+  }
+
+  const elapsedRewound =
+    input.previousElapsedMs !== undefined &&
+    input.nextElapsedMs !== undefined &&
+    input.nextElapsedMs + 1 < input.previousElapsedMs
+  const shouldReset =
+    !input.current ||
+    input.current.missionId !== input.nextMissionId ||
+    input.previousScreen !== "battle" ||
+    elapsedRewound
+  const emptyState: NonNullable<MagnoliaAppState["battleTutorialIconState"]> = {
+    missionId: input.nextMissionId,
+    mainUsed: false,
+    subUsed: false,
+  }
+  const base = shouldReset ? emptyState : input.current ?? emptyState
+
+  return {
+    missionId: input.nextMissionId,
+    // main の近接派生も main 操作として扱い、実際に攻撃が出た時点で表示を閉じます。
+    mainUsed: base.mainUsed || input.domainEvents.some(isBattleMainTutorialDismissEvent),
+    // barrier は DomainEvent が分かれているため、sub 使用済み判定に含めます。
+    subUsed: base.subUsed || input.domainEvents.some(isBattleSubTutorialDismissEvent),
+  }
+}
+
+function isBattleMainTutorialDismissEvent(event: DomainEvent): boolean {
+  return event.type === "playerMainWeaponFired" || event.type === "playerMainMeleeUsed"
+}
+
+function isBattleSubTutorialDismissEvent(event: DomainEvent): boolean {
+  return event.type === "playerSubWeaponUsed" || event.type === "playerBarrierStarted"
+}
+
+function countBattleProjectilesBySide(
+  projectiles: NonNullable<ReturnType<MagnoliaGameSession["getBattleRenderState"]>>["projectiles"],
+): { enemy: number; player: number } {
+  let enemy = 0
+  let player = 0
+  for (const projectile of projectiles) {
+    if (projectile.side === "enemy") {
+      enemy += 1
+    } else {
+      player += 1
+    }
+  }
+  return { enemy, player }
 }
 
 function attachExploreTransitionSource(

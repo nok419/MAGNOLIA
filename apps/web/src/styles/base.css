@@ -124,13 +124,13 @@ button, input, select, textarea { font: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 10px 20px;
+  min-height: 46px;
+  padding: 11px 20px;
   border: none;
   background: transparent;
   color: var(--mg-text);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.14em;
   text-transform: lowercase;

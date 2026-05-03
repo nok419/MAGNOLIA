@@ -20,6 +20,7 @@ type EnemyRendererInput = {
 type BattleEnemyRenderOptions = {
   reduceFlashing: boolean
   lowFrameRateMode: boolean
+  denseFrameMode: boolean
 }
 
 const BATTLE_ENEMY_RENDERERS: Record<
@@ -64,6 +65,7 @@ function drawCircleEnemy(
   const baseRole: CanvasPaletteRole = enemy.burning ? "residualWarmth" : readPaletteRole(enemy)
   const presetGlow = clamp01(enemy.visual.glowIntensity ?? 0.5)
   const orbitScale = Math.max(0.4, enemy.visual.orbitScale ?? 1)
+  const simplified = renderOptions.lowFrameRateMode || renderOptions.denseFrameMode
   const glyphCount = Math.max(1, enemy.visual.glyphCount ?? 1)
   const motion = readEnemyMotionProfile(enemy.visual.motionProfile)
   const glowIntensity = clamp01(0.3 + hpRatio * 0.5) * (0.6 + presetGlow * 0.6)
@@ -82,7 +84,7 @@ function drawCircleEnemy(
 
   ctx.save()
   ctx.shadowColor = rgba(baseRole, 0.32 + presetGlow * 0.4)
-  ctx.shadowBlur = 6 * glowIntensity
+  ctx.shadowBlur = simplified ? 0 : 6 * glowIntensity
 
   // orbit 2 — wide arc with gap. orbitScale は preset で外周拡縮。
   const r2 = r * (PHI * PHI) * orbitScale
@@ -94,17 +96,19 @@ function drawCircleEnemy(
   ctx.arc(x, y, r2, rot2 + gapAngle, rot2 + TAU - gapAngle)
   ctx.stroke()
 
-  // glyph icons on orbit 2 — preset.glyphCount を反映。
-  ctx.globalAlpha = 0.6 * glowIntensity
-  ctx.fillStyle = hex(baseRole)
-  for (let i = 0; i < glyphCount; i += 1) {
-    const a = rot2 + (TAU / glyphCount) * i + Math.PI / glyphCount
-    const ix = x + Math.cos(a) * r2
-    const iy = y + Math.sin(a) * r2
-    ctx.save()
-    ctx.translate(ix, iy)
-    ctx.fill(glyphPath)
-    ctx.restore()
+  if (!simplified) {
+    // glyph icons on orbit 2 — preset.glyphCount を反映。高密度時は本体と輪郭を優先します。
+    ctx.globalAlpha = 0.6 * glowIntensity
+    ctx.fillStyle = hex(baseRole)
+    for (let i = 0; i < glyphCount; i += 1) {
+      const a = rot2 + (TAU / glyphCount) * i + Math.PI / glyphCount
+      const ix = x + Math.cos(a) * r2
+      const iy = y + Math.sin(a) * r2
+      ctx.save()
+      ctx.translate(ix, iy)
+      ctx.fill(glyphPath)
+      ctx.restore()
+    }
   }
 
   // orbit 1 — partial arc
@@ -157,6 +161,7 @@ function drawCircleBossEnemy(
   const baseRole: CanvasPaletteRole = enemy.burning ? "residualWarmth" : readPaletteRole(enemy)
   const presetGlow = clamp01(enemy.visual.glowIntensity ?? 0.7)
   const orbitScale = Math.max(0.4, enemy.visual.orbitScale ?? 1.5)
+  const simplified = renderOptions.lowFrameRateMode || renderOptions.denseFrameMode
   const glyphCount = Math.max(2, enemy.visual.glyphCount ?? 4)
   const motion = readEnemyMotionProfile(enemy.visual.motionProfile)
   const glowIntensity = clamp01(0.36 + hpRatio * 0.54) * (0.6 + presetGlow * 0.6)
@@ -173,7 +178,7 @@ function drawCircleBossEnemy(
 
   ctx.save()
   ctx.shadowColor = rgba(baseRole, 0.4 + presetGlow * 0.4)
-  ctx.shadowBlur = 11 * glowIntensity
+  ctx.shadowBlur = simplified ? 0 : 11 * glowIntensity
 
   // outer orbit — wider radius for boss
   const r2 = r * (PHI * PHI) * orbitScale
@@ -185,27 +190,31 @@ function drawCircleBossEnemy(
   ctx.arc(x, y, r2, rot2 + gapAngle, rot2 + TAU - gapAngle)
   ctx.stroke()
 
-  // orbital glyph icons (preset.glyphCount 並列)
-  ctx.globalAlpha = 0.7 * glowIntensity
-  ctx.fillStyle = hex(baseRole)
-  for (let i = 0; i < glyphCount; i++) {
-    const a = rot2 + (TAU / glyphCount) * i + Math.PI / glyphCount
-    const ix = x + Math.cos(a) * r2
-    const iy = y + Math.sin(a) * r2
-    ctx.save()
-    ctx.translate(ix, iy)
-    ctx.fill(glyphPath)
-    ctx.restore()
+  if (!simplified) {
+    // orbital glyph icons (preset.glyphCount 並列)
+    ctx.globalAlpha = 0.7 * glowIntensity
+    ctx.fillStyle = hex(baseRole)
+    for (let i = 0; i < glyphCount; i++) {
+      const a = rot2 + (TAU / glyphCount) * i + Math.PI / glyphCount
+      const ix = x + Math.cos(a) * r2
+      const iy = y + Math.sin(a) * r2
+      ctx.save()
+      ctx.translate(ix, iy)
+      ctx.fill(glyphPath)
+      ctx.restore()
+    }
   }
 
   // mid orbit — counter-rotating thin ring (warmth で対比)
-  const rMid = r * PHI * 1.2 * orbitScale
-  ctx.globalAlpha = 0.22 * glowIntensity
-  ctx.strokeStyle = rgba("residualWarmth", 0.75)
-  ctx.lineWidth = 0.8
-  ctx.beginPath()
-  ctx.arc(x, y, rMid, rot3 + 0.4, rot3 + TAU - 0.4)
-  ctx.stroke()
+  if (!simplified) {
+    const rMid = r * PHI * 1.2 * orbitScale
+    ctx.globalAlpha = 0.22 * glowIntensity
+    ctx.strokeStyle = rgba("residualWarmth", 0.75)
+    ctx.lineWidth = 0.8
+    ctx.beginPath()
+    ctx.arc(x, y, rMid, rot3 + 0.4, rot3 + TAU - 0.4)
+    ctx.stroke()
+  }
 
   // inner orbit — partial arc
   const r1 = r * PHI * orbitScale

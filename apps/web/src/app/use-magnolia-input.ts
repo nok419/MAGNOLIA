@@ -11,9 +11,11 @@ const FALLBACK_MOVE_CODES = {
 }
 const INTERACT_FALLBACK_CODES = ["Enter", "NumpadEnter"]
 const MAP_FALLBACK_CODES = ["KeyM"]
-const EQUIPMENT_FALLBACK_CODES = ["KeyE"]
+const EQUIPMENT_FALLBACK_CODES = ["KeyE", "Escape"]
 const DASH_FALLBACK_CODES = ["ShiftRight"]
 const SCAN_FALLBACK_CODES = ["Space"]
+const PRIMARY_ACTION_FALLBACK_CODES = ["KeyZ"]
+const SECONDARY_ACTION_FALLBACK_CODES = ["KeyX"]
 
 type MouseButtons = {
   left: boolean
@@ -209,6 +211,15 @@ export function useMagnoliaInput() {
     }
   }, [])
 
+  function readMouseButtonJustPressed(button: keyof MouseButtons): boolean {
+    const queuedPress = queuedMousePressRef.current[button]
+    queuedMousePressRef.current[button] = false
+    const currentlyPressed = mouseButtonsRef.current[button]
+    const wasPressed = previousMouseButtonsRef.current[button]
+    previousMouseButtonsRef.current[button] = currentlyPressed
+    return queuedPress || (currentlyPressed && !wasPressed)
+  }
+
   return {
     getLastActivityAt(): number {
       return lastActivityAtRef.current
@@ -221,6 +232,26 @@ export function useMagnoliaInput() {
     },
     get mouseButtons(): MouseButtons {
       return mouseButtonsRef.current
+    },
+    isPrimaryActionPressed(settings: SettingsRow): boolean {
+      // 左利きでも同じ操作を取れるよう、クリック系の正本入力にキーボード別名を合流させます。
+      return (
+        mouseButtonsRef.current.left ||
+        isPressedAny(
+          [settings.keybindings.fireMain, ...PRIMARY_ACTION_FALLBACK_CODES],
+          keyStateRef.current,
+        )
+      )
+    },
+    isSecondaryActionPressed(settings: SettingsRow): boolean {
+      // 右クリックと X は、戦闘中の sub と探索中の scan で同じ副操作として扱います。
+      return (
+        mouseButtonsRef.current.right ||
+        isPressedAny(
+          [settings.keybindings.fireSub, ...SECONDARY_ACTION_FALLBACK_CODES],
+          keyStateRef.current,
+        )
+      )
     },
     readMovementVector(settings: SettingsRow): Vector2 {
       return readMovementVector(settings, keyStateRef.current)
@@ -304,21 +335,29 @@ export function useMagnoliaInput() {
       )
     },
     isPrimaryMouseJustPressed(): boolean {
-      const queuedPress = queuedMousePressRef.current.left
-      queuedMousePressRef.current.left = false
-      const currentlyPressed = mouseButtonsRef.current.left
-      const wasPressed = previousMouseButtonsRef.current.left
-      previousMouseButtonsRef.current.left = currentlyPressed
-      return queuedPress || (currentlyPressed && !wasPressed)
+      return readMouseButtonJustPressed("left")
     },
     isSecondaryMouseJustPressed(): boolean {
       // 探索では副ボタンを scan に使うため、左クリックとは独立した edge を持ちます。
-      const queuedPress = queuedMousePressRef.current.right
-      queuedMousePressRef.current.right = false
-      const currentlyPressed = mouseButtonsRef.current.right
-      const wasPressed = previousMouseButtonsRef.current.right
-      previousMouseButtonsRef.current.right = currentlyPressed
-      return queuedPress || (currentlyPressed && !wasPressed)
+      return readMouseButtonJustPressed("right")
+    },
+    isPrimaryActionJustPressed(settings: SettingsRow): boolean {
+      const mousePressed = readMouseButtonJustPressed("left")
+      const keyPressed = isJustPressedAny(
+        [settings.keybindings.fireMain, ...PRIMARY_ACTION_FALLBACK_CODES],
+        keyStateRef.current,
+        previousButtonsRef.current,
+      )
+      return mousePressed || keyPressed
+    },
+    isSecondaryActionJustPressed(settings: SettingsRow): boolean {
+      const mousePressed = readMouseButtonJustPressed("right")
+      const keyPressed = isJustPressedAny(
+        [settings.keybindings.fireSub, ...SECONDARY_ACTION_FALLBACK_CODES],
+        keyStateRef.current,
+        previousButtonsRef.current,
+      )
+      return mousePressed || keyPressed
     },
     syncButtonEdges(settings: SettingsRow): void {
       syncButtonEdges(settings, keyStateRef.current, previousButtonsRef.current)
@@ -424,6 +463,8 @@ function syncButtonEdges(
     ...EQUIPMENT_FALLBACK_CODES,
     ...DASH_FALLBACK_CODES,
     ...SCAN_FALLBACK_CODES,
+    ...PRIMARY_ACTION_FALLBACK_CODES,
+    ...SECONDARY_ACTION_FALLBACK_CODES,
   ])
 
   for (const code of trackedCodes) {
@@ -456,5 +497,6 @@ function shouldPreventDefaultForKey(code: string): boolean {
     "Enter",
     "NumpadEnter",
     "Space",
+    "Escape",
   ].includes(code)
 }

@@ -171,10 +171,11 @@ export function stepBattleFrame(input: {
       : host.content.playerShipSpec.baseMoveSpeed ?? 240
   const playerSpeed =
     baseMoveSpeed * focusSpeedMultiplier * (battle.barrier?.moveSpeedMultiplier ?? 1)
+  const moveDirection = normalizeVector(frameInput.move)
   battle.playerPosition = clampToRect(
     {
-      x: battle.playerPosition.x + normalizeVector(frameInput.move).x * playerSpeed * dtSeconds,
-      y: battle.playerPosition.y + normalizeVector(frameInput.move).y * playerSpeed * dtSeconds,
+      x: battle.playerPosition.x + moveDirection.x * playerSpeed * dtSeconds,
+      y: battle.playerPosition.y + moveDirection.y * playerSpeed * dtSeconds,
     },
     { x: 8, y: 8, width: BATTLE_WIDTH - 16, height: BATTLE_HEIGHT - 16 },
   )
@@ -287,21 +288,23 @@ export function stepBattleFrame(input: {
   host.actors.updateProjectiles(battle, frameInput.dtMs, battlePassives.statModifiers)
   host.pickups.updatePickups(battle, frameInput.dtMs)
 
+  const difficultyModifiers = host.difficulty.resolveDifficultyModifiers()
   const hazardResult = stepBattlefieldHazards({
     mission: battle.mission,
     missionState: host.mission.buildMissionState(),
     playerPosition: battle.playerPosition,
     dtMs: frameInput.dtMs,
-    difficultyModifiers: host.difficulty.resolveDifficultyModifiers(),
+    difficultyModifiers,
   })
   battle.hazards = hazardResult.missionState.hazards
   host.effects.applyMagneticDisasterEffects(battle, frameInput.dtMs)
 
+  const playerHitRadius = host.player.resolvePlayerHitRadius()
   const collisionEvents = resolveBattleCollisionsFromSystem({
     battle,
     dtMs: frameInput.dtMs,
     content: host.content,
-    resolvePlayerHitRadius: () => host.player.resolvePlayerHitRadius(),
+    resolvePlayerHitRadius: () => playerHitRadius,
     spawnSelfRepairPickup: (position, amount) => host.pickups.spawnSelfRepairPickup(battle, position, amount),
     nextInstanceId: (prefix) => host.ids.nextInstanceId(prefix),
   })
@@ -313,10 +316,9 @@ export function stepBattleFrame(input: {
   const fieldProtectsFromMagneticDisaster = battle.supportFields.some(
     (field) =>
       field.blocksMagneticDisaster &&
-      isCircleInsideCircle(battle.playerPosition, host.player.resolvePlayerHitRadius(), field.position, field.radius),
+      isCircleInsideCircle(battle.playerPosition, playerHitRadius, field.position, field.radius),
   )
 
-  const difficultyModifiers = host.difficulty.resolveDifficultyModifiers()
   battle.noiseState.noiseLevel = clamp01(
     battle.noiseState.noiseLevel -
       host.content.playerShipSpec.noiseDecayRate *

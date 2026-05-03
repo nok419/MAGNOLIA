@@ -25,6 +25,7 @@ const playerHitKeys: readonly SoundKey[] = [
 ];
 // タイトル確定後は 1 秒だけ暗転を見せ、音源の長さでは画面遷移を止めません。
 const TITLE_CONFIRM_TRANSITION_WAIT_MS = 1000;
+export const TITLE_UI_SOUND_VOLUME = 1.25;
 
 function selectPlayerHitKey(): SoundKey {
   // damaged_1 / damaged_2 は強弱指定ではなく連番なので、被弾の反復感を減らす用途で交互に近いランダム選択にします。
@@ -77,30 +78,30 @@ export const audioEvents = {
     return waitForConfirmCue;
   },
 
-  menuMove(direction: MenuDirection = 'down'): void {
-    audioHub.play(menuDirectionKey[direction]);
+  menuMove(direction: MenuDirection = 'down', options?: PlaySoundOptions): void {
+    audioHub.play(menuDirectionKey[direction], options);
   },
 
-  menuConfirm(): void {
+  menuConfirm(options?: PlaySoundOptions): void {
     audioHub.unlock();
-    audioHub.play(SOUND_KEYS.UI_CONFIRM);
+    audioHub.play(SOUND_KEYS.UI_CONFIRM, options);
   },
 
-  menuCancel(): void {
-    audioHub.play(SOUND_KEYS.UI_CANCEL);
+  menuCancel(options?: PlaySoundOptions): void {
+    audioHub.play(SOUND_KEYS.UI_CANCEL, options);
   },
 
-  uiOpen(): void {
-    audioHub.play(SOUND_KEYS.UI_OPEN);
+  uiOpen(options?: PlaySoundOptions): void {
+    audioHub.play(SOUND_KEYS.UI_OPEN, options);
   },
 
   equipmentPanelOpen(): void {
     // E キーで開く装備画面は探索操作からの遷移なので、通常の panel open より明瞭に鳴らします。
-    audioHub.play(SOUND_KEYS.UI_OPEN, { volume: 0.5 });
+    audioHub.play(SOUND_KEYS.UI_OPEN, { volume: 0.56 });
   },
 
-  uiClose(): void {
-    audioHub.play(SOUND_KEYS.UI_CLOSE);
+  uiClose(options?: PlaySoundOptions): void {
+    audioHub.play(SOUND_KEYS.UI_CLOSE, options);
   },
 
   uiError(): void {

@@ -30,6 +30,8 @@ type EnemyPatternHandlerInput = {
 type EnemyPatternHandler = (input: EnemyPatternHandlerInput) => InternalProjectileState[]
 
 const GOLDEN_ANGLE_RAD = 2.39996322972865332
+const ENEMY_PROJECTILE_SPEED_MULTIPLIER = 1.12
+const ENEMY_FOLLOWUP_CADENCE_MULTIPLIER = 1.8
 
 const ENEMY_PATTERN_HANDLERS: Record<string, EnemyPatternHandler> = {
   goldenStream: fireGoldenStream,
@@ -56,8 +58,18 @@ export function fireEnemyPatterns(input: {
   for (const patternId of input.enemyDefinition.bulletPatternIds) {
     const pattern = input.bulletPatterns[patternId]
     const projectile = input.projectiles[pattern.projectileId]
-    const cadenceMs = Math.max(80, pattern.cadenceMs * cadenceMultiplier)
-    const lastFiredAtMs = input.enemy.patternLastFiredAtMs[patternId] ?? -cadenceMs
+    const baseCadenceMs = Math.max(80, pattern.cadenceMs * cadenceMultiplier)
+    const hasFiredPattern = Object.prototype.hasOwnProperty.call(
+      input.enemy.patternLastFiredAtMs,
+      patternId,
+    )
+    // 初回射撃は出現直後の攻撃として残し、倒し損なった敵の追加射撃だけ間隔を伸ばします。
+    const cadenceMs = hasFiredPattern
+      ? baseCadenceMs * ENEMY_FOLLOWUP_CADENCE_MULTIPLIER
+      : baseCadenceMs
+    const lastFiredAtMs = hasFiredPattern
+      ? input.enemy.patternLastFiredAtMs[patternId]
+      : -baseCadenceMs
     if (input.battle.elapsedMs - lastFiredAtMs < cadenceMs) {
       continue
     }
@@ -145,14 +157,19 @@ function createEnemyProjectile(input: EnemyPatternHandlerInput, direction: { x: 
     throw new Error(`Missing hitbox preset: ${input.projectile.hitboxPresetId}`)
   }
   const nonColliding = input.pattern.params.nonColliding === true || input.pattern.params.visualOnly === true
+  // 敵弾が画面内に残る時間を少し短くするため、生成時の速度だけを一定倍率で上げます。
+  const projectileSpeed =
+    input.projectile.speed *
+    input.projectileSpeedMultiplier *
+    ENEMY_PROJECTILE_SPEED_MULTIPLIER
   return {
     projectileInstanceId: input.nextInstanceId(input.pattern.projectileId),
     projectileId: input.pattern.projectileId,
     side: "enemy",
     position: { ...input.enemy.position },
     velocity: {
-      x: direction.x * input.projectile.speed * input.projectileSpeedMultiplier,
-      y: direction.y * input.projectile.speed * input.projectileSpeedMultiplier,
+      x: direction.x * projectileSpeed,
+      y: direction.y * projectileSpeed,
     },
     radius: resolveHitRadius(hitbox),
     remainingMs: input.projectile.lifetimeMs,

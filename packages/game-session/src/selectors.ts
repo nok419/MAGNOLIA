@@ -61,6 +61,7 @@ type EquipmentStatGroupViewModel = EquipmentCatalogViewModel["items"][number]["s
 export type EquipmentHintSelection = {
   unseenEquipmentIds: EquipmentId[]
   shouldShowEquipmentTutorialIcon: boolean
+  shouldShowOsMagnoliaEquipPrompt: boolean
   equipmentGuideTargetId: EquipmentId | null
 }
 
@@ -74,18 +75,32 @@ export function selectEquipmentHint(input: {
     return {
       unseenEquipmentIds: [],
       shouldShowEquipmentTutorialIcon: false,
+      shouldShowOsMagnoliaEquipPrompt: false,
       equipmentGuideTargetId: null,
     }
   }
 
   const seenEquipmentSet = new Set(input.seenEquipmentIds)
-  const unseenEquipmentIds = profile.ownedEquipmentIds.filter(
-    (equipmentId) => !seenEquipmentSet.has(equipmentId),
-  )
+  const unseenEquipmentIds = profile.ownedEquipmentIds.filter((equipmentId) => {
+    if (seenEquipmentSet.has(equipmentId)) {
+      return false
+    }
+
+    const equipment = input.content?.equipment[equipmentId]
+    // 初期所持装備はプレイヤーが取得した新規装備ではないため、NEW 表示の対象から外します。
+    return equipment?.unlockSource.kind !== "initial"
+  })
+  const shouldShowOsMagnoliaEquipPrompt =
+    Boolean(input.content) &&
+    profile.clearedMissionIds.includes("mission_good_morning") &&
+    profile.ownedEquipmentIds.includes("eq_os_magnolia") &&
+    profile.equipped.os !== "eq_os_magnolia"
+
   if (!input.content || unseenEquipmentIds.length === 0) {
     return {
       unseenEquipmentIds,
       shouldShowEquipmentTutorialIcon: false,
+      shouldShowOsMagnoliaEquipPrompt,
       equipmentGuideTargetId: null,
     }
   }
@@ -100,7 +115,7 @@ export function selectEquipmentHint(input: {
   )
   const clearedMissionIds = new Set(profile.clearedMissionIds)
   let equipmentGuideTargetId: EquipmentId | null = null
-  const shouldShowEquipmentTutorialIcon = unseenEquipmentIds.some((equipmentId) => {
+  const hasOsMagnoliaGuideTarget = unseenEquipmentIds.some((equipmentId) => {
     if (equippedIds.has(equipmentId)) {
       return false
     }
@@ -123,7 +138,13 @@ export function selectEquipmentHint(input: {
     return shouldGuide
   })
 
-  return { unseenEquipmentIds, shouldShowEquipmentTutorialIcon, equipmentGuideTargetId }
+  return {
+    unseenEquipmentIds,
+    // 探索中の操作アイコンは scan や mission 接続だけに残し、OS 装備案内は signal 位置の文言で出します。
+    shouldShowEquipmentTutorialIcon: false,
+    shouldShowOsMagnoliaEquipPrompt,
+    equipmentGuideTargetId: hasOsMagnoliaGuideTarget ? equipmentGuideTargetId : null,
+  }
 }
 
 function isEquipmentId(value: EquipmentId | null | undefined): value is EquipmentId {

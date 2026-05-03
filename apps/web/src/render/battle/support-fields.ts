@@ -1,4 +1,5 @@
 import { PHI_INV, TAU } from "@/render/battle/battle-renderer-utils"
+import { rgba } from "@/render/shared/canvas-palette"
 
 export type BattleSupportFieldVisualKind = "barrier" | "silentWave"
 
@@ -60,7 +61,7 @@ function drawSilentWaveField(
   const counterSpin = -t * 0.0009
 
   ctx.save()
-  ctx.shadowColor = "rgba(116, 240, 255, 0.82)"
+  ctx.shadowColor = rgba("lineStrong", 0.82)
   ctx.shadowBlur = 14
 
   ctx.globalAlpha = 0.08

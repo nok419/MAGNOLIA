@@ -37,7 +37,7 @@ P0 は、入力・戦闘・バリア・通信遮断の判断に直結する最�
 | 19 | P1 | `apps/web/public/sound/explore/move.wav` | `/sound/explore/move.wav` | 探索中の移動ループ | `explorationMoveStart/Stop` | yes |
 | 20 | P1 | `apps/web/public/sound/explore/item-pickup.wav` | `/sound/explore/item-pickup.wav` | 通常アイテム回収 | `collectibleCollected` -> `explore.itemPickup` | no |
 | 21 | P1 | `apps/web/public/sound/explore/equipment-pickup.wav` | `/sound/explore/equipment-pickup.wav` | 装備回収 | `collectibleCollected(hiddenEquipment)` -> `explore.equipmentPickup` | no |
-| 22 | P1 | `apps/web/public/sound/combat/enemy-shot.wav` | `/sound/combat/enemy-shot.wav` | 敵射撃/敵弾発生 | `enemyProjectileFired` -> `combat.enemyShot` | no |
+| 22 | P1 | `apps/web/public/sound/combat/enemy-shot.mp3` | `/sound/combat/enemy-shot.mp3` | 敵射撃/敵弾発生。基準音量は小さめ | `enemyProjectileFired` -> `combat.enemyShot` | no |
 | 23 | P1 | `apps/web/public/sound/combat/enemy-hit.wav` | `/sound/combat/enemy-hit.wav` | 敵へ命中 | `playerProjectileHit` -> `combat.enemyHit` | no |
 | 24 | P1 | `apps/web/public/sound/combat/enemy-destroyed.wav` | `/sound/combat/enemy-destroyed.wav` | 敵撃破/小爆発 | `enemyDestroyed` -> `combat.enemyDestroyed`; `combat.explosion` も当面共用 | no |
 | 25 | P2 | `apps/web/public/sound/bgm/bgm-mission.wav` | `/sound/bgm/bgm-mission.wav` | 汎用ミッション BGM | `missionEntered` -> `bgm.mission.default` | yes |

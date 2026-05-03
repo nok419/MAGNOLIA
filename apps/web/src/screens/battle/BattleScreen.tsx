@@ -2,6 +2,7 @@ import type { ShipVariant, TranscriptSpan } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
 import type { ReactNode } from "react"
 import type { DisplayOptions } from "@/app/display-options"
+import type { BattleTutorialIconState } from "@/app/app-state"
 import type {
   BattlePresentationRequest,
   TimedPresentationRequest,
@@ -30,12 +31,20 @@ type SubtitleWaveInterference = NonNullable<
 type BattleScreenProps = {
   renderState: BattleRenderState
   battleEvents: TimedPresentationRequest<BattlePresentationRequest>[]
+  battleTutorialIconState: BattleTutorialIconState | null
   shipVariant: ShipVariant
   displayOptions: DisplayOptions
   onReturnToExplore: () => void
 }
 
-export function BattleScreen({ renderState, battleEvents, shipVariant, displayOptions, onReturnToExplore }: BattleScreenProps) {
+export function BattleScreen({
+  renderState,
+  battleEvents,
+  battleTutorialIconState,
+  shipVariant,
+  displayOptions,
+  onReturnToExplore,
+}: BattleScreenProps) {
   const progress =
     renderState.missionDurationMs > 0
       ? Math.max(0, Math.min(1, renderState.elapsedMs / renderState.missionDurationMs))
@@ -55,6 +64,10 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
   const recoverPulse = useEventPulse(battleEvents, SCRAMBLE_RECOVER_CUES)
   const shouldShowBattleStartTutorialIcons =
     !resultViewModel && renderState.elapsedMs <= BATTLE_START_TUTORIAL_ICON_MS
+  const shouldShowMainTutorialIcon =
+    shouldShowBattleStartTutorialIcons && !battleTutorialIconState?.mainUsed
+  const shouldShowSubTutorialIcon =
+    shouldShowBattleStartTutorialIcons && !battleTutorialIconState?.subUsed
   const battleTutorialIconAnchor = readBattleTutorialIconAnchor(renderState.player.position)
   const demoClearProgressLabel = resultViewModel
     ? `体験版：クリア済み${resultViewModel.demoClearProgress.clearedMissionCount}/${resultViewModel.demoClearProgress.totalMissionCount}`
@@ -70,26 +83,30 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
             shipVariant={shipVariant}
             displayOptions={displayOptions}
           />
-          {shouldShowBattleStartTutorialIcons ? (
+          {shouldShowMainTutorialIcon || shouldShowSubTutorialIcon ? (
             <div className="battle-tutorial-icons">
-              <TutorialIconCallout
-                anchor={battleTutorialIconAnchor}
-                placement="right-up"
-                keyLabel="click"
-                label="main"
-                tone="warm"
-                motion="static"
-                ariaLabel="click で main weapon を使います"
-              />
-              <TutorialIconCallout
-                anchor={battleTutorialIconAnchor}
-                placement="left-up"
-                keyLabel="click 2"
-                label="sub"
-                tone="cyan"
-                motion="static"
-                ariaLabel="click 2 で sub weapon を使います"
-              />
+              {shouldShowMainTutorialIcon ? (
+                <TutorialIconCallout
+                  anchor={battleTutorialIconAnchor}
+                  placement="left-up"
+                  keyLabel={["左クリック", "Z"]}
+                  label="main"
+                  tone="warm"
+                  motion="static"
+                  ariaLabel="左クリック または Z で main weapon を使います"
+                />
+              ) : null}
+              {shouldShowSubTutorialIcon ? (
+                <TutorialIconCallout
+                  anchor={battleTutorialIconAnchor}
+                  placement="right-up"
+                  keyLabel={["右クリック", "X"]}
+                  label="sub"
+                  tone="cyan"
+                  motion="static"
+                  ariaLabel="右クリック または X で sub weapon を使います"
+                />
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -201,16 +218,16 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
         {resultViewModel ? null : (
           <PanelFrame title="control hint">
             <div className="battle-help-panel">
-              <p>move — wasd</p>
-              <p>main — left click</p>
-              <p>sub — click 2</p>
+              <p>move — wasd / arrows</p>
+              <p>main — 左クリック / z</p>
+              <p>sub — 右クリック / x</p>
               <p>focus — shift</p>
               <ActionButton
                 tone="danger"
                 className="battle-return-to-explore"
                 onClick={onReturnToExplore}
               >
-                return to explore
+                探索に戻る
               </ActionButton>
             </div>
           </PanelFrame>
@@ -271,8 +288,7 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
                     ))}
                   </ul>
                   <p className="battle-result-rewards__hint">
-                    <kbd className="battle-result-rewards__hint-key">E</kbd>
-                    を押して装備画面から装着してください
+                    装備画面で装着できます
                   </p>
                 </div>
               ) : null}
@@ -281,7 +297,7 @@ export function BattleScreen({ renderState, battleEvents, shipVariant, displayOp
                 className="battle-return-to-explore battle-return-to-explore--result"
                 onClick={onReturnToExplore}
               >
-                return to explore
+                探索に戻る
               </ActionButton>
             </PanelFrame>
           </div>

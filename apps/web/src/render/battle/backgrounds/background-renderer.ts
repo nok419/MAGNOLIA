@@ -5,6 +5,7 @@ import {
   seededRandom,
 } from "@/render/battle/battle-renderer-utils"
 import { rgba } from "@/render/shared/canvas-palette"
+import { readCachedCanvasPath } from "@/render/shared/canvas-path-cache"
 import type { BackgroundPreset } from "@magnolia/contracts"
 
 const WIDTH = BATTLE_CANVAS_WIDTH
@@ -49,12 +50,7 @@ function drawCentralTowerBackground(
   ctx.strokeStyle = `rgba(174, 236, 255, ${0.03 + input.background.structureDensity * 0.05})`
   ctx.lineWidth = 1
   const structureStep = 56 - input.background.structureDensity * 28
-  for (let x = input.width * 0.5 - 120; x <= input.width * 0.5 + 120; x += structureStep) {
-    ctx.beginPath()
-    ctx.moveTo(x, 0)
-    ctx.lineTo(input.width * 0.5 + (x - input.width * 0.5) * 0.36, input.height)
-    ctx.stroke()
-  }
+  ctx.stroke(readCentralTowerStructurePath(input, structureStep))
 
   drawBackgroundParticles(ctx, input, "140, 210, 250")
   drawBackgroundScanlines(ctx, input)
@@ -73,13 +69,8 @@ function drawBroadcastFacilityBackground(
 
   ctx.strokeStyle = `rgba(93, 164, 209, ${0.025 + input.background.structureDensity * 0.055})`
   ctx.lineWidth = 1
-  ctx.beginPath()
   const structureStep = 54 - input.background.structureDensity * 26
-  for (let x = 0; x < input.width; x += structureStep) {
-    ctx.moveTo(x, 0)
-    ctx.lineTo(x, input.height)
-  }
-  ctx.stroke()
+  ctx.stroke(readBroadcastFacilityStructurePath(input, structureStep))
 
   ctx.strokeStyle = `rgba(140, 195, 255, ${0.025 + input.background.residualWarmth * 0.08})`
   ctx.beginPath()
@@ -141,13 +132,84 @@ function drawBackgroundScanlines(
   ctx.lineWidth = 1
   const scanlineStep = input.lowFrameRateMode ? 11 : 6
   const offset = Math.floor(input.timeMs * 0.018) % scanlineStep
-  for (let y = offset; y < input.height; y += scanlineStep) {
-    ctx.beginPath()
-    ctx.moveTo(0, y)
-    ctx.lineTo(input.width, y)
-    ctx.stroke()
-  }
+  ctx.stroke(readBackgroundScanlinePath(input, scanlineStep, offset))
   ctx.restore()
+}
+
+function readCentralTowerStructurePath(
+  input: BattleBackgroundInput,
+  structureStep: number,
+): Path2D {
+  return readCachedCanvasPath(
+    {
+      rendererKind: "battle-background",
+      visualPresetId: input.background.presetId,
+      paletteRole: "background",
+      shape: "central-tower-structure",
+      shapeParams: [input.width, input.height, structureStep],
+      reduceFlashing: false,
+      lowFrameRateMode: input.lowFrameRateMode ?? false,
+    },
+    () => {
+      const path = new Path2D()
+      for (let x = input.width * 0.5 - 120; x <= input.width * 0.5 + 120; x += structureStep) {
+        path.moveTo(x, 0)
+        path.lineTo(input.width * 0.5 + (x - input.width * 0.5) * 0.36, input.height)
+      }
+      return path
+    },
+  )
+}
+
+function readBroadcastFacilityStructurePath(
+  input: BattleBackgroundInput,
+  structureStep: number,
+): Path2D {
+  return readCachedCanvasPath(
+    {
+      rendererKind: "battle-background",
+      visualPresetId: input.background.presetId,
+      paletteRole: "background",
+      shape: "broadcast-facility-structure",
+      shapeParams: [input.width, input.height, structureStep],
+      reduceFlashing: false,
+      lowFrameRateMode: input.lowFrameRateMode ?? false,
+    },
+    () => {
+      const path = new Path2D()
+      for (let x = 0; x < input.width; x += structureStep) {
+        path.moveTo(x, 0)
+        path.lineTo(x, input.height)
+      }
+      return path
+    },
+  )
+}
+
+function readBackgroundScanlinePath(
+  input: BattleBackgroundInput,
+  scanlineStep: number,
+  offset: number,
+): Path2D {
+  return readCachedCanvasPath(
+    {
+      rendererKind: "battle-background",
+      visualPresetId: input.background.presetId,
+      paletteRole: "background",
+      shape: "scanlines",
+      shapeParams: [input.width, input.height, scanlineStep, offset],
+      reduceFlashing: false,
+      lowFrameRateMode: input.lowFrameRateMode ?? false,
+    },
+    () => {
+      const path = new Path2D()
+      for (let y = offset; y < input.height; y += scanlineStep) {
+        path.moveTo(0, y)
+        path.lineTo(input.width, y)
+      }
+      return path
+    },
+  )
 }
 
 export function drawTransparentAtmosphere(ctx: CanvasRenderingContext2D, t: number) {

@@ -2,7 +2,7 @@
   "bulletPatternId": "bp_standard_spread",
   "patternKind": "radial",
   "projectileId": "proj_enemy_petal",
-  "cadenceMs": 2000,
+  "cadenceMs": 2200,
   "burstCount": 5,
   "params": {
     "aimAtPlayer": false,

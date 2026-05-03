@@ -2,8 +2,8 @@
   "bulletPatternId": "bp_heavy_burst",
   "patternKind": "radial",
   "projectileId": "proj_enemy_basic",
-  "cadenceMs": 2000,
-  "burstCount": 12,
+  "cadenceMs": 2200,
+  "burstCount": 11,
   "params": {
     "aimAtPlayer": false,
     "baseAngleDeg": 0,

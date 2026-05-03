@@ -14,7 +14,7 @@ import type {
   WorldMapNodeId,
 } from "@magnolia/contracts"
 import type { MagnoliaGameSession } from "@magnolia/game-session"
-import { audioEvents } from "@/audio"
+import { TITLE_UI_SOUND_VOLUME, audioEvents } from "@/audio"
 import type { SlotSelectMode } from "@/app/app-types"
 import type { MagnoliaAppState } from "@/app/app-state"
 import { dismissOverlayPresentation } from "@/app/presentation/overlay-queue"
@@ -77,14 +77,14 @@ export function createMagnoliaActions({
       })
     },
     openSlotSelect(mode: SlotSelectMode) {
-      audioEvents.uiOpen()
+      audioEvents.uiOpen({ volume: TITLE_UI_SOUND_VOLUME })
       setState((current) => ({
         ...current,
         slotSelectMode: mode,
       }))
     },
     closeSlotSelect() {
-      audioEvents.uiClose()
+      audioEvents.uiClose({ volume: TITLE_UI_SOUND_VOLUME })
       setState((current) => ({
         ...current,
         slotSelectMode: null,

@@ -2,12 +2,12 @@
   "bulletPatternId": "bp_a2_lance_spread",
   "patternKind": "radial",
   "projectileId": "proj_enemy_lance",
-  "cadenceMs": 1900,
-  "burstCount": 5,
+  "cadenceMs": 1600,
+  "burstCount": 6,
   "params": {
     "aimAtPlayer": false,
     "baseAngleDeg": 0,
-    "rotationDegPerSec": 12,
+    "rotationDegPerSec": 16,
     "phaseOffsetDeg": 0
   }
 }

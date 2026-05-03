@@ -33,22 +33,24 @@ export function drawSignalHintLayer(
     const arcHalf = hint.category === "broadcast" ? 0.34 : hint.category === "automated" ? 0.22 : 0.16
     const stateAlpha =
       detectedState === "recorded"
-        ? 0.68
+        ? 0.82
         : detectedState === "identified"
-          ? 0.56
+          ? 0.7
           : detectedState === "ghost"
-            ? 0.4
-            : 0.28
-    const alpha = input.alpha * stateAlpha * (0.42 + strength * 0.58)
+            ? 0.52
+            : 0.38
+    const alpha = input.alpha * stateAlpha * (0.5 + strength * 0.5)
 
     ctx.globalAlpha = alpha
     ctx.strokeStyle = color
+    ctx.shadowColor = color
+    ctx.shadowBlur = input.reduceFlashing ? 3 : 7
     ctx.lineWidth =
       detectedState === "recorded"
-        ? 2.2
+        ? 3
         : detectedState === "identified"
-          ? 1.8
-          : 1.2
+          ? 2.4
+          : 1.8
     ctx.beginPath()
     ctx.arc(
       input.playerPoint.x,
@@ -61,7 +63,7 @@ export function drawSignalHintLayer(
 
     if (detectedState === "recorded" && !input.lowFrameRateMode) {
       ctx.globalAlpha = alpha * 0.36
-      ctx.lineWidth = 0.8
+      ctx.lineWidth = 1.1
       ctx.beginPath()
       ctx.arc(
         input.playerPoint.x,
@@ -77,6 +79,7 @@ export function drawSignalHintLayer(
       continue
     }
 
+    ctx.shadowBlur = input.reduceFlashing ? 2 : 5
     const markerX = input.playerPoint.x + Math.cos(bearingRad) * bandRadius
     const markerY = input.playerPoint.y + Math.sin(bearingRad) * bandRadius
     ctx.globalAlpha = alpha * (detectedState === "recorded" ? 0.95 : 0.74)
@@ -103,9 +106,9 @@ function drawSignalHintSymbol(
     reduceFlashing: boolean
   },
 ) {
-  const size = 3.8 + input.confidence * 2.4
+  const size = 5 + input.confidence * 3.2
   ctx.save()
-  ctx.lineWidth = input.recorded ? 1.6 : 1.2
+  ctx.lineWidth = input.recorded ? 2 : 1.6
   ctx.lineCap = "round"
   ctx.lineJoin = "round"
 
@@ -155,13 +158,13 @@ function readSignalHintColor(
 ): string {
   if (hint.kind === "transmission") {
     // scanで出るミッション方向は、通常の白い可読テキストと混ざらないよう赤で固定します。
-    return rgba("threatNoise", 0.86)
+    return rgba("threatNoise", 0.98)
   }
   if (hint.kind === "equipment") {
-    return rgba("residualWarmth", 0.88)
+    return rgba("residualWarmth", 0.96)
   }
   if (hint.kind === "repair") {
-    return rgba("restoration", 0.82)
+    return rgba("restoration", 0.94)
   }
   switch (hint.category) {
     case "broadcast":

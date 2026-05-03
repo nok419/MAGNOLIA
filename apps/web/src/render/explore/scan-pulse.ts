@@ -41,7 +41,7 @@ export function drawExploreScanPulseLayer(
       reduceFlashing: Boolean(input.reduceFlashing),
       lowFrameRateMode: Boolean(input.lowFrameRateMode),
       nowMs: input.elapsedMs,
-      intensity: 1,
+      intensity: input.reduceFlashing ? 1 : 1.25,
       semantic: "scan",
     })
   }

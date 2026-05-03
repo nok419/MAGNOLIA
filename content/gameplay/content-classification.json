@@ -15,6 +15,7 @@
       "enemy_heavy"
     ],
     "bulletPatterns": [
+      "bp_a1_pressure_stream",
       "bp_a2_lance_spread",
       "bp_b1_core_burst",
       "bp_b1_lance_stream",

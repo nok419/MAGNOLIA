@@ -5,6 +5,7 @@ type MenuNavigationOptions = {
   itemCount: number
   onSelect: (index: number) => void
   onCancel?: () => void
+  soundVolume?: number
   /** wrap around when reaching edges */
   wrap?: boolean
 }
@@ -17,6 +18,7 @@ export function useMenuNavigation({
   itemCount,
   onSelect,
   onCancel,
+  soundVolume = 1,
   wrap = true,
 }: MenuNavigationOptions) {
   const [focusIndex, setFocusIndex] = useState(0)
@@ -45,7 +47,7 @@ export function useMenuNavigation({
           setFocusIndex((prev) => {
             const next = clamp(prev - 1)
             if (next !== prev) {
-              audioEvents.menuMove("up")
+              audioEvents.menuMove("up", { volume: soundVolume })
             }
             return next
           })
@@ -56,7 +58,7 @@ export function useMenuNavigation({
           setFocusIndex((prev) => {
             const next = clamp(prev + 1)
             if (next !== prev) {
-              audioEvents.menuMove("down")
+              audioEvents.menuMove("down", { volume: soundVolume })
             }
             return next
           })
@@ -65,13 +67,13 @@ export function useMenuNavigation({
         case "NumpadEnter":
         case "KeyZ":
           e.preventDefault()
-          audioEvents.menuConfirm()
+          audioEvents.menuConfirm({ volume: soundVolume })
           onSelect(focusIndex)
           break
         case "Escape":
         case "KeyX":
           e.preventDefault()
-          audioEvents.menuCancel()
+          audioEvents.menuCancel({ volume: soundVolume })
           onCancel?.()
           break
       }
@@ -84,7 +86,7 @@ export function useMenuNavigation({
       setFocusIndex((prev) => {
         const next = clamp(prev + (direction === "down" ? 1 : -1))
         if (next !== prev) {
-          audioEvents.menuMove(direction)
+          audioEvents.menuMove(direction, { volume: soundVolume })
         }
         return next
       })
@@ -96,7 +98,7 @@ export function useMenuNavigation({
       window.removeEventListener("keydown", handleKeyDown)
       window.removeEventListener("wheel", handleWheel)
     }
-  }, [focusIndex, itemCount, clamp, onSelect, onCancel])
+  }, [focusIndex, itemCount, clamp, onSelect, onCancel, soundVolume])
 
   return { focusIndex, setFocusIndex }
 }

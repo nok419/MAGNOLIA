@@ -23,6 +23,10 @@ import {
   normalizeVector,
 } from "./explore-world"
 
+export const BATTLE_ENEMY_PROJECTILE_BUDGET = 50
+const BATTLE_PROJECTILE_EXIT_MARGIN_MAX = 12
+const BATTLE_PROJECTILE_EXIT_MARGIN_MIN = 2
+
 export function applyBattleEffectRequests(input: {
   battle: InternalBattleState
   effectRequests: RuntimeEffectRequest[]
@@ -125,7 +129,9 @@ export function updateBattleProjectiles(input: {
   for (const projectile of input.battle.projectiles) {
     if (projectile.spawnDelayMs > 0) {
       projectile.spawnDelayMs -= input.dtMs
-      remainingProjectiles.push(projectile)
+      if (isProjectileInsideBattleRuntimeBounds(projectile)) {
+        remainingProjectiles.push(projectile)
+      }
       continue
     }
 
@@ -210,18 +216,64 @@ export function updateBattleProjectiles(input: {
       }
       continue
     }
-    if (
-      projectile.position.x < -80 ||
-      projectile.position.x > BATTLE_WIDTH + 80 ||
-      projectile.position.y < -80 ||
-      projectile.position.y > BATTLE_HEIGHT + 80
-    ) {
+    if (!isProjectileInsideBattleRuntimeBounds(projectile)) {
       continue
     }
     remainingProjectiles.push(projectile)
   }
 
-  input.battle.projectiles = [...remainingProjectiles, ...spawnedVisualProjectiles]
+  // trail explosion など、この frame で追加された表示用 projectile も同じ基準で画面外を落とします。
+  input.battle.projectiles = [...remainingProjectiles, ...spawnedVisualProjectiles].filter(
+    isProjectileInsideBattleRuntimeBounds,
+  )
+  trimEnemyProjectileBudget(input.battle)
+}
+
+function isProjectileInsideBattleRuntimeBounds(projectile: InternalProjectileState): boolean {
+  const margin = Math.max(
+    BATTLE_PROJECTILE_EXIT_MARGIN_MIN,
+    Math.min(BATTLE_PROJECTILE_EXIT_MARGIN_MAX, projectile.radius),
+  )
+  return (
+    projectile.position.x >= -margin &&
+    projectile.position.x <= BATTLE_WIDTH + margin &&
+    projectile.position.y >= -margin &&
+    projectile.position.y <= BATTLE_HEIGHT + margin
+  )
+}
+
+function trimEnemyProjectileBudget(battle: InternalBattleState): void {
+  const enemyProjectiles = battle.projectiles.filter((projectile) => projectile.side === "enemy")
+  const overflow = enemyProjectiles.length - BATTLE_ENEMY_PROJECTILE_BUDGET
+  if (overflow <= 0) {
+    return
+  }
+
+  const removalCandidates = enemyProjectiles
+    .map((projectile, index) => {
+      const dx = projectile.position.x - battle.playerPosition.x
+      const dy = projectile.position.y - battle.playerPosition.y
+      const distanceSq = dx * dx + dy * dy
+      const ageMs = projectile.ageMs ?? 0
+      return {
+        projectile,
+        index,
+        removalRank: distanceSq + ageMs * 12,
+      }
+    })
+    .sort((left, right) => right.removalRank - left.removalRank || left.index - right.index)
+
+  // 敵弾が増え過ぎると描画が先に詰まります。近い弾は残し、遠く古い弾から間引きます。
+  const removedProjectileIds = new Set(
+    removalCandidates
+      .slice(0, overflow)
+      .map((entry) => entry.projectile.projectileInstanceId),
+  )
+  battle.projectiles = battle.projectiles.filter(
+    (projectile) =>
+      projectile.side !== "enemy" ||
+      !removedProjectileIds.has(projectile.projectileInstanceId),
+  )
 }
 
 export function detonatePlayerProjectile(input: {

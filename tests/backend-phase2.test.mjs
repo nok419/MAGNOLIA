@@ -223,6 +223,136 @@ test("terminal difficulty changes enemy projectile patterns", async () => {
   )
 })
 
+test("surviving enemies delay follow-up shots after the opening volley", async () => {
+  const { fireEnemyPatterns, loadContentBundle } = await bundleBackendPhase2()
+  const content = loadContentBundle()
+  const battle = createDifficultyPatternBattle()
+  const enemy = createDifficultyPatternEnemy()
+  const patternId = "bp_scout_single"
+  const pattern = content.bulletPatterns[patternId]
+  const enemyDefinition = {
+    ...content.enemies.enemy_scout,
+    bulletPatternIds: [patternId],
+  }
+  const fire = () => fireEnemyPatterns({
+    battle,
+    enemy,
+    enemyDefinition,
+    bulletPatterns: content.bulletPatterns,
+    projectiles: content.projectiles,
+    hitboxPresets: content.contentHitboxPresets,
+    difficultyModifiers: content.difficultyModifiers.calm,
+    nextInstanceId: (prefix) => `${prefix}.${battle.elapsedMs}`,
+  })
+  const baseCadenceMs = pattern.cadenceMs * content.difficultyModifiers.calm.enemyCadenceMultiplier
+
+  fire()
+  assert.equal(battle.projectiles.length, pattern.burstCount)
+
+  battle.elapsedMs = baseCadenceMs
+  fire()
+  assert.equal(
+    battle.projectiles.length,
+    pattern.burstCount,
+    "follow-up shots should not use the old first-shot cadence",
+  )
+
+  battle.elapsedMs = baseCadenceMs * 1.8 + 1
+  fire()
+  assert.equal(battle.projectiles.length, pattern.burstCount * 2)
+})
+
+test("battle runtime caps enemy projectiles before render state growth", async () => {
+  const { createSession, BATTLE_ENEMY_PROJECTILE_BUDGET } = await bundleBackendPhase2()
+  const missionIds = ["mission_good_morning", "mission_where_are_you", "mission_evacuation"]
+
+  for (const missionId of missionIds) {
+    const session = await createSession()
+    await session.dispatch({ type: "startDebugMode", difficulty: "calm" })
+    await session.dispatch({ type: "startMission", missionId })
+
+    const durationMs = session.getContentBundle().missions[missionId].durationMs
+    let maxEnemyProjectiles = 0
+    for (let elapsedMs = 0; elapsedMs < durationMs + 2500; elapsedMs += 1000 / 60) {
+      session.stepBattle({
+        dtMs: 1000 / 60,
+        move: { x: 0, y: 0 },
+        fireMain: false,
+        fireSub: false,
+        focus: false,
+        pausePressed: false,
+      })
+      const enemyProjectileCount = session.battleState.projectiles.filter(
+        (projectile) => projectile.side === "enemy",
+      ).length
+      maxEnemyProjectiles = Math.max(maxEnemyProjectiles, enemyProjectileCount)
+    }
+
+    assert.ok(
+      maxEnemyProjectiles <= BATTLE_ENEMY_PROJECTILE_BUDGET,
+      `${missionId} enemy projectiles should stay within the runtime budget`,
+    )
+  }
+})
+
+test("battle runtime drops projectiles shortly after leaving the screen", async () => {
+  const { updateBattleProjectiles } = await bundleBackendPhase2()
+  const battle = {
+    playerPosition: { x: 240, y: 420 },
+    enemies: [],
+    projectiles: [
+      createRuntimeProjectile("enemy-inside", "enemy", { x: 10, y: 10 }, { x: 0, y: 0 }, 6),
+      createRuntimeProjectile("player-inside", "player", { x: 10, y: 20 }, { x: 0, y: 0 }, 6),
+      createRuntimeProjectile("enemy-outside-left", "enemy", { x: -13, y: 120 }, { x: 0, y: 0 }, 12),
+      createRuntimeProjectile("player-outside-bottom", "player", { x: 120, y: 653 }, { x: 0, y: 0 }, 12),
+    ],
+  }
+
+  updateBattleProjectiles({
+    battle,
+    dtMs: 1000 / 60,
+    statModifiers: undefined,
+    projectiles: {},
+    hitboxPresets: {},
+    nextInstanceId: (prefix) => `${prefix}.runtime-cull`,
+  })
+
+  assert.deepEqual(
+    battle.projectiles.map((projectile) => projectile.projectileInstanceId),
+    ["enemy-inside", "player-inside"],
+  )
+})
+
+test("magnetic disasters thin enemy projectiles without clearing the hazard area", async () => {
+  const { applyMagneticDisasterEffects } = await bundleBackendPhase2()
+  const projectiles = Array.from({ length: 12 }, (_, index) =>
+    createRuntimeProjectile(`enemy.hazard.${index}`, "enemy", { x: 120, y: 180 }, { x: 0, y: 0 }, 6),
+  )
+  const battle = {
+    elapsedMs: 12000,
+    enemies: [],
+    projectiles,
+    hazards: [{
+      hazardId: "hazard.test",
+      kind: "magneticDisaster",
+      phase: "active",
+      phaseProgress: 0.6,
+      area: { shape: "rect", x: 80, y: 140, width: 120, height: 120 },
+      motion: { motionKind: "static" },
+      tickIntervalMs: 250,
+      noiseDamage: 0.08,
+      enemyDamagePerSecond: 20,
+      visualPresetId: "hazard_magnetic_disaster_standard",
+    }],
+  }
+
+  applyMagneticDisasterEffects(battle, 16)
+
+  const remainingEnemyProjectiles = battle.projectiles.filter((projectile) => projectile.side === "enemy")
+  assert.ok(remainingEnemyProjectiles.length > 0)
+  assert.ok(remainingEnemyProjectiles.length < projectiles.length)
+})
+
 test("subsystem equipment cannot be equipped in both subsystem slots", async () => {
   const { createSession } = await bundleBackendPhase2()
   const session = await createSession()
@@ -380,6 +510,27 @@ test("scan-identified uncleared missions still drive signal strength", async () 
   assert.ok(session.getExploreRenderState().nearestTransmissionStrength > 0)
 })
 
+test("signal panel meters react beyond the old short range", async () => {
+  const { createSession } = await bundleBackendPhase2()
+  const session = await createSession()
+  await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
+
+  const profile = session.getProfileAggregate().profile
+  profile.playerPosition = { x: -120, y: 126 }
+  session.stepExplore({
+    dtMs: 16,
+    move: { x: 0, y: 0 },
+    dashPressed: false,
+    interactPressed: false,
+    scanPressed: false,
+  })
+
+  // good morning の通信から約334px離れた地点で、旧300px基準なら反応しません。
+  const renderState = session.getExploreRenderState()
+  assert.ok(renderState.nearestTransmissionStrength > 0)
+  assert.ok(renderState.nearestAnyTransmissionStrength > 0)
+})
+
 test("mission icons inside the explored view do not require scan identification", async () => {
   const { createSession } = await bundleBackendPhase2()
   const session = await createSession()
@@ -449,22 +600,47 @@ test("scan tutorial hint is dismissed by scan or the first mission clear", async
   assert.equal(clearedSession.getExploreRenderState().shouldShowScanHint, false)
 })
 
-test("equipment tutorial icon ends after MAGNOLIA is equipped", async () => {
+test("os magnolia signal prompt ends after MAGNOLIA is equipped", async () => {
   const { createSession, selectEquipmentHint } = await bundleBackendPhase2()
   const session = await createSession()
   await session.dispatch({ type: "startNewGameAtSlot", slotId: 1, difficulty: "calm" })
 
   const profile = session.getProfileAggregate().profile
+  assert.deepEqual(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: [],
+    }).unseenEquipmentIds,
+    [],
+  )
+
   profile.clearedMissionIds.push("mission_good_morning")
   profile.ownedEquipmentIds.push("eq_os_magnolia")
   profile.equipmentLevels.eq_os_magnolia = 1
 
+  assert.deepEqual(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: [],
+    }).unseenEquipmentIds,
+    ["eq_os_magnolia"],
+  )
   assert.equal(
     selectEquipmentHint({
       content: session.getContentBundle(),
       profile: session.getProfileAggregate(),
       seenEquipmentIds: [],
     }).shouldShowEquipmentTutorialIcon,
+    false,
+  )
+  assert.equal(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: [],
+    }).shouldShowOsMagnoliaEquipPrompt,
     true,
   )
   assert.equal(
@@ -474,6 +650,14 @@ test("equipment tutorial icon ends after MAGNOLIA is equipped", async () => {
       seenEquipmentIds: [],
     }).equipmentGuideTargetId,
     "eq_os_magnolia",
+  )
+  assert.equal(
+    selectEquipmentHint({
+      content: session.getContentBundle(),
+      profile: session.getProfileAggregate(),
+      seenEquipmentIds: ["eq_os_magnolia"],
+    }).shouldShowOsMagnoliaEquipPrompt,
+    true,
   )
   assert.equal(
     selectEquipmentHint({
@@ -490,7 +674,7 @@ test("equipment tutorial icon ends after MAGNOLIA is equipped", async () => {
       content: session.getContentBundle(),
       profile: session.getProfileAggregate(),
       seenEquipmentIds: [],
-    }).shouldShowEquipmentTutorialIcon,
+    }).shouldShowOsMagnoliaEquipPrompt,
     false,
   )
   assert.equal(
@@ -674,8 +858,20 @@ test("mission evacuation final observation is scrambled until b1 is defeated", a
   const bossWave = battle.mission.waves.find(
     (wave) => wave.waveId === "evac_wave_17_boss",
   )
+  const content = session.getContentBundle()
+  const bossDefinition = content.enemies.b1
+  const coreBurst = content.bulletPatterns.bp_b1_core_burst
+  const lanceStream = content.bulletPatterns.bp_b1_lance_stream
   assert.equal(finalChunk.text, "観測情報を提供します")
   assert.equal(bossWave.entries[0].enemyId, "b1")
+  // 最終観測のロック解除条件と同じ敵を見て、03 ボスの耐久と負荷調整後の弾幕を固定します。
+  assert.equal(bossDefinition.hp, 1500)
+  assert.equal(bossDefinition.collisionDamage, 34)
+  assert.equal(bossDefinition.behaviorParams.pauseMs, 9000)
+  assert.equal(coreBurst.cadenceMs, 2300)
+  assert.equal(coreBurst.burstCount, 26)
+  assert.equal(lanceStream.cadenceMs, 240)
+  assert.equal(lanceStream.burstCount, 5)
 
   battle.phase = "playing"
   battle.audioPlaybackMs = finalChunk.startMs + 100
@@ -1325,6 +1521,21 @@ function readProjectileSpeed(projectile) {
   return Math.hypot(projectile.velocity.x, projectile.velocity.y)
 }
 
+function createRuntimeProjectile(projectileInstanceId, side, position, velocity, radius) {
+  return {
+    projectileInstanceId,
+    projectileId: side === "enemy" ? "proj_enemy_basic" : "proj_player_pulse",
+    side,
+    position,
+    velocity,
+    radius,
+    remainingMs: 1000,
+    spawnDelayMs: 0,
+    damage: 0,
+    noiseDamage: 0.08,
+  }
+}
+
 function activateSubtitleAfterPrecedingWaves(input) {
   const target = selectSubtitleWaveWindow(input)
   const destroyedEnemyCount = input.destroyedEnemyCount === "all-but-one"
@@ -1385,7 +1596,8 @@ async function bundleBackendPhase2() {
   const outfile = path.join(tempDir, "backend-phase2.mjs")
   writeFileSync(entry, [
     "import { MagnoliaGameSession } from './packages/game-session/src/game-session.ts'",
-    "import { applyBattleEffectRequests } from './packages/game-session/src/battle-effects.ts'",
+    "import { applyBattleEffectRequests, BATTLE_ENEMY_PROJECTILE_BUDGET, updateBattleProjectiles } from './packages/game-session/src/battle-effects.ts'",
+    "import { applyMagneticDisasterEffects } from './packages/game-session/src/battle/hazard-interaction-system.ts'",
     "import { resolveBattleCollisions } from './packages/game-session/src/battle/collision-system.ts'",
     "import { fireEnemyPatterns } from './packages/game-session/src/battle/enemy-pattern-system.ts'",
     "import { spawnMissionEnemies } from './packages/game-session/src/battle/spawn-system.ts'",
@@ -1395,7 +1607,7 @@ async function bundleBackendPhase2() {
     "import { applyEquippedPassives, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEquippedMainWeapon, resolveLoadout, runSubsystemHooks, useEquippedSubWeapon } from './packages/game-session/src/equipment-runtime.ts'",
     "import { normalizePersistedAggregate, normalizePersistedSettings } from './packages/persistence/src/save-normalizer.ts'",
     "import { createDefaultSaveSlots, createDefaultSettings } from './packages/persistence/src/defaults.ts'",
-    "export { applyBattleEffectRequests, applyEquippedPassives, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEnemyPatterns, fireEquippedMainWeapon, loadContentBundle, normalizePersistedAggregate, resolveBattleCollisions, resolveBattlefieldHazardSpecsForDifficulty, resolveLoadout, runSubsystemHooks, selectEquipmentHint, spawnMissionEnemies, useEquippedSubWeapon }",
+    "export { applyBattleEffectRequests, applyEquippedPassives, applyMagneticDisasterEffects, BATTLE_ENEMY_PROJECTILE_BUDGET, createEquipmentRuntimeBindings, defaultEquipmentRuntimeRegistry, fireEnemyPatterns, fireEquippedMainWeapon, loadContentBundle, normalizePersistedAggregate, resolveBattleCollisions, resolveBattlefieldHazardSpecsForDifficulty, resolveLoadout, runSubsystemHooks, selectEquipmentHint, spawnMissionEnemies, updateBattleProjectiles, useEquippedSubWeapon }",
     "export async function createSession() {",
     "  const repository = createMemoryRepository()",
     "  const session = new MagnoliaGameSession({ content: loadContentBundle(), repository })",

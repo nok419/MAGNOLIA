@@ -11,7 +11,7 @@
   },
   "movementPatternId": "move_sine_drift_a1",
   "bulletPatternIds": [
-    "bp_scout_single"
+    "bp_a1_pressure_stream"
   ],
   "visualPresetId": "vis_enemy_a1",
   "hitboxPresetId": "hitbox_enemy_small",

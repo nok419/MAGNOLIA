@@ -57,7 +57,7 @@
     {
       "type": "transmission",
       "nodeId": "node_tx_evacuation",
-      "x": 1480,
+      "x": 1320,
       "y": 120,
       "transmissionId": "tx_evacuation",
       "areaId": "area_broadcast_facility",

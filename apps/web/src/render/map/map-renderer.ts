@@ -83,7 +83,7 @@ export function drawMapCanvas(input: {
     drawTransmissionMarker(ctx, {
       x: point.x,
       y: point.y,
-      size: isSelected ? 12 : 10,
+      size: isSelected ? 16 : 13,
       state: node.state,
       timeMs: input.timeMs,
       variant: "map",
@@ -96,7 +96,7 @@ export function drawMapCanvas(input: {
       transmissionId: node.transmissionId,
       x: point.x,
       y: point.y,
-      radius: 18,
+      radius: 22,
     })
   }
 

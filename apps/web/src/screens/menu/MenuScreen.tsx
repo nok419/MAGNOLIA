@@ -228,7 +228,6 @@ export function MenuScreen({
             shipVariant={settings.shipVariant}
             onSelectShipVariant={onSetShipVariant}
             unseenEquipmentIds={unseenEquipmentIds}
-            equipmentGuideTargetId={equipmentGuideTargetId ?? null}
             onMarkEquipmentSeen={onMarkEquipmentSeen}
           />
         ) : activeTab === "archive" && archiveViewModel ? (

@@ -64,6 +64,7 @@ export function useMagnoliaApp() {
     equipmentModalNodeId: null,
     seenEquipmentIds: [],
     equipmentGuideTargetId: null,
+    battleTutorialIconState: null,
   })
   const [idleAutoSave, setIdleAutoSave] = useState<IdleAutoSaveViewModel | null>(null)
   const sessionRef = useRef<MagnoliaGameSession | null>(null)
@@ -159,7 +160,7 @@ export function useMagnoliaApp() {
     seenEquipmentIds: state.seenEquipmentIds,
   })
   const { unseenEquipmentIds } = equipmentHint
-  const shouldShowEquipmentTutorialIcon = equipmentHint.shouldShowEquipmentTutorialIcon
+  const shouldShowOsMagnoliaEquipPrompt = equipmentHint.shouldShowOsMagnoliaEquipPrompt
 
   return {
     ready: state.ready,
@@ -183,8 +184,9 @@ export function useMagnoliaApp() {
     itemPopups: state.itemPopups,
     equipmentModalNodeId: state.equipmentModalNodeId,
     unseenEquipmentIds,
-    shouldShowEquipmentTutorialIcon,
+    shouldShowOsMagnoliaEquipPrompt,
     equipmentGuideTargetId: state.equipmentGuideTargetId,
+    battleTutorialIconState: state.battleTutorialIconState,
     idleAutoSave,
     saveSlots: buildSaveSlotSummaries(state.snapshot, state.content),
     setExploreMoveTarget: input.setExploreMoveTarget,

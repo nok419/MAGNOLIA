@@ -3,8 +3,8 @@
   "slot": "os",
   "name": "破損",
   "iconId": "icon_eq_os_broken",
-  "summary": "最低限の装備管理だけが残ったOS。",
-  "description": "Lv.10でLILYへ復旧する。",
+  "summary": "破損したOS。",
+  "description": "破損したOS。",
   "flavorText": "",
   "passiveEffectIds": [],
   "activeEffectIds": [],
@@ -18,61 +18,61 @@
     {
       "level": 1,
       "selfRepairPointCost": 0,
-      "upgradeSummary": "破損状態。性能変化なし。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 2,
       "selfRepairPointCost": 40,
-      "upgradeSummary": "性能変化なし。復旧処理だけが進む。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 3,
       "selfRepairPointCost": 50,
-      "upgradeSummary": "性能変化なし。復旧処理だけが進む。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 4,
       "selfRepairPointCost": 60,
-      "upgradeSummary": "性能変化なし。復旧処理だけが進む。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 5,
       "selfRepairPointCost": 70,
-      "upgradeSummary": "性能変化なし。復旧処理だけが進む。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 6,
       "selfRepairPointCost": 80,
-      "upgradeSummary": "性能変化なし。復旧処理だけが進む。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 7,
       "selfRepairPointCost": 90,
-      "upgradeSummary": "性能変化なし。復旧処理だけが進む。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 8,
       "selfRepairPointCost": 100,
-      "upgradeSummary": "性能変化なし。復旧処理だけが進む。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 9,
       "selfRepairPointCost": 110,
-      "upgradeSummary": "性能変化なし。次の段階でLILYへ復旧する。",
+      "upgradeSummary": "破損したOS。",
       "effectOverrides": {}
     },
     {
       "level": 10,
       "selfRepairPointCost": 140,
-      "upgradeSummary": "OS LILYを解放し、OSスロットへ装備する。",
+      "upgradeSummary": "破損したOS。",
       "transformEquipmentId": "eq_os_lily",
       "effectOverrides": {}
     }

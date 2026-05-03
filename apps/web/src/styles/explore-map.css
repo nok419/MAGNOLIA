@@ -5,7 +5,7 @@
 .ehud {
   position: absolute;
   z-index: 10;
-  padding: 15px 18px 14px 20px;
+  padding: 18px 22px 17px 24px;
   background:
     /* 極薄のドットグリッド: 近接時だけ読み取れる密度 */
     radial-gradient(circle at 0 0, rgba(93, 164, 209, 0.05) 1px, transparent 1px) 0 0 / 18px 18px,
@@ -19,7 +19,7 @@
     0 0 0 1px rgba(10, 22, 42, 0.3) inset,
     0 0 28px rgba(93, 164, 209, 0.05);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--mg-text-dim);
   pointer-events: auto;
   /* リブート完了からの段階フェードインのため opacity / transform を transition 対象に。
@@ -172,11 +172,11 @@
 .ehud__header--center { justify-content: center; }
 .ehud__diamond {
   color: var(--mg-accent);
-  font-size: 10px;
+  font-size: 14px;
   opacity: 0.7;
 }
 .ehud__label {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.28em;
   text-transform: uppercase;
@@ -187,14 +187,14 @@
 .ehud--status {
   top: 16px;
   left: 16px;
-  min-width: 200px;
-  max-width: 260px;
+  min-width: 250px;
+  max-width: 330px;
 }
 
 .ehud-status__area {
   margin: 0 0 10px;
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 21px;
   font-weight: 500;
   color: var(--mg-text);
   letter-spacing: 0.06em;
@@ -218,7 +218,7 @@
 }
 
 .ehud-status__key {
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--mg-text-muted);
@@ -228,7 +228,7 @@
 .ehud-status__bar-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ehud-status__bar {
@@ -238,8 +238,8 @@
 
 .ehud-status__seg {
   display: block;
-  width: 8px;
-  height: 6px;
+  width: 10px;
+  height: 7px;
   background: rgba(93, 164, 209, 0.08);
   border: 1px solid rgba(93, 164, 209, 0.12);
   transition: background 200ms, box-shadow 200ms;
@@ -251,7 +251,7 @@
 }
 
 .ehud-status__val {
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 500;
   color: var(--mg-text);
   letter-spacing: 0.05em;
@@ -268,7 +268,7 @@
 }
 
 .ehud-status__mode {
-  font-size: 10px;
+  font-size: 15px;
   font-family: var(--font-mono);
   letter-spacing: 0.06em;
   color: var(--mg-text);
@@ -299,7 +299,7 @@
 /* equipment rows */
 .ehud-status__equip {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 .ehud-status__equip-row {
   display: flex;
@@ -307,15 +307,15 @@
   gap: 8px;
 }
 .ehud-status__slot-label {
-  font-size: 9px;
+  font-size: 13px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--mg-accent);
   opacity: 0.6;
-  min-width: 32px;
+  min-width: 42px;
 }
 .ehud-status__slot-value {
-  font-size: 11px;
+  font-size: 16px;
   color: var(--mg-text-dim);
   letter-spacing: 0.04em;
   overflow: hidden;
@@ -332,8 +332,8 @@
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  min-width: 220px;
-  padding: 12px 18px 14px;
+  min-width: 280px;
+  padding: 16px 22px 18px;
 }
 
 .ehud--signal .ehud__header {
@@ -344,7 +344,7 @@
 .ehud--radar {
   top: 16px;
   right: 16px;
-  padding: 10px 10px 8px;
+  padding: 14px 14px 12px;
 }
 .ehud--radar .ehud__header {
   margin-bottom: 6px;
@@ -357,8 +357,8 @@
   bottom: 16px;
   left: 16px;
   display: grid;
-  gap: 4px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 14px 18px;
   background: rgba(6, 14, 28, 0.65);
 }
 .ehud--help p {
@@ -367,9 +367,9 @@
 
 .ehud-help__row {
   display: grid;
-  grid-template-columns: minmax(70px, 1fr) auto;
+  grid-template-columns: minmax(116px, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-family: var(--font-mono);
   color: rgba(179, 214, 236, 0.7);
   animation: ehud-help-breathe 5.8s ease-in-out infinite;
@@ -377,7 +377,7 @@
 }
 
 .ehud-help__label {
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 300;
   letter-spacing: 0.08em;
 }
@@ -385,22 +385,22 @@
 .ehud-help__keys {
   display: inline-flex;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 6px;
 }
 
 .ehud-help__key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 9px;
   border: 1px solid var(--color-residual-warmth);
   border-radius: 3px;
   background: transparent;
   color: var(--mg-accent);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -438,8 +438,8 @@
 
 .explore-item-popup {
   position: relative;
-  min-width: 260px;
-  padding: 14px 20px 14px 22px;
+  min-width: 290px;
+  padding: 16px 22px 16px 24px;
   border: 1px solid rgba(93, 164, 209, 0.24);
   background:
     radial-gradient(circle at 0 0, rgba(93, 164, 209, 0.05) 1px, transparent 1px) 0 0 / 18px 18px,
@@ -477,7 +477,7 @@
 
 .explore-item-popup__title {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--mg-accent);
@@ -486,9 +486,195 @@
 
 .explore-item-popup__detail {
   margin-top: 6px;
-  font-size: 14px;
+  font-size: 17px;
   color: var(--mg-text);
   letter-spacing: 0.02em;
+}
+
+.signal-guide-popup {
+  position: absolute;
+  z-index: 24;
+  right: 22px;
+  bottom: 22px;
+  width: min(440px, calc(100vw - 44px));
+  padding: 20px 22px 18px;
+  border: 1px solid var(--color-line-subtle);
+  border-radius: var(--surface-panel-radius);
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--color-signal-primary) 7%, transparent) 1px, transparent 1px) 0 0 / 18px 18px,
+    linear-gradient(135deg, color-mix(in srgb, var(--color-void-depth) 92%, transparent), color-mix(in srgb, var(--color-void-base) 96%, transparent));
+  box-shadow:
+    0 18px 42px color-mix(in srgb, var(--color-void-base) 74%, transparent),
+    0 0 28px color-mix(in srgb, var(--color-signal-primary) 11%, transparent);
+  color: var(--mg-text);
+  font-family: var(--font-mono);
+  pointer-events: auto;
+}
+
+.signal-guide-popup::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14%;
+  bottom: 14%;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--color-signal-primary) 42%, transparent) 18%,
+    var(--mg-accent) 50%,
+    color-mix(in srgb, var(--color-signal-primary) 42%, transparent) 82%,
+    transparent
+  );
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-signal-primary) 36%, transparent);
+}
+
+.signal-guide-popup__bracket {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-color: var(--mg-accent-dim);
+  border-style: solid;
+  pointer-events: none;
+}
+
+.signal-guide-popup__bracket--tl {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+}
+
+.signal-guide-popup__bracket--tr {
+  top: -1px;
+  right: -1px;
+  border-width: 1px 1px 0 0;
+}
+
+.signal-guide-popup__bracket--bl {
+  bottom: -1px;
+  left: -1px;
+  border-width: 0 0 1px 1px;
+}
+
+.signal-guide-popup__bracket--br {
+  right: -1px;
+  bottom: -1px;
+  border-width: 0 1px 1px 0;
+}
+
+.signal-guide-popup__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-line-subtle);
+}
+
+.signal-guide-popup__diamond {
+  color: var(--mg-accent);
+}
+
+.signal-guide-popup h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--mg-text);
+}
+
+.signal-guide-popup__body {
+  display: grid;
+  gap: 11px;
+  margin-top: 12px;
+  color: var(--mg-text-dim);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.signal-guide-popup__body p {
+  margin: 0;
+}
+
+.signal-guide-popup kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 24px;
+  margin: 0 2px;
+  padding: 0 7px;
+  border: 1px solid var(--color-residual-warmth);
+  border-radius: 3px;
+  color: var(--mg-accent);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.signal-guide-popup__legend {
+  display: grid;
+  gap: 7px;
+  margin: 1px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signal-guide-popup__legend li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.signal-guide-popup__swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.signal-guide-popup__swatch--transmission {
+  color: var(--color-threat-noise);
+}
+
+.signal-guide-popup__swatch--equipment {
+  color: var(--color-residual-warmth);
+}
+
+.signal-guide-popup__swatch--repair {
+  color: var(--color-restoration);
+}
+
+.signal-guide-popup__swatch--vision {
+  color: var(--color-signal-highlight);
+}
+
+.signal-guide-popup__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  margin-top: 15px;
+  padding: 0 14px;
+  border: 1px solid var(--mg-accent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-signal-primary) 14%, transparent);
+  color: var(--mg-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.signal-guide-popup__button:hover,
+.signal-guide-popup__button:focus-visible {
+  background: color-mix(in srgb, var(--color-signal-primary) 22%, transparent);
+  outline: 1px solid var(--color-line-strong);
+  outline-offset: 2px;
 }
 
 .map-screen {
@@ -584,7 +770,7 @@
 
 .map-screen__info-eyebrow {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.14em;
   color: var(--mg-text-muted);
   text-transform: uppercase;

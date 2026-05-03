@@ -49,12 +49,6 @@
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
           "seed": 104
-        },
-        {
-          "spawnId": "evac_wave_02_spawn_03",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_center",
-          "seed": 105
         }
       ]
     },
@@ -172,12 +166,6 @@
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_left",
           "seed": 120
-        },
-        {
-          "spawnId": "evac_wave_05_spawn_02",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_center",
-          "seed": 121
         },
         {
           "spawnId": "evac_wave_05_spawn_03",
@@ -332,12 +320,6 @@
           "seed": 150
         },
         {
-          "spawnId": "evac_wave_11_spawn_02",
-          "enemyId": "enemy_standard",
-          "spawnPointId": "spawn_top_center",
-          "seed": 151
-        },
-        {
           "spawnId": "evac_wave_11_spawn_03",
           "enemyId": "enemy_standard",
           "spawnPointId": "spawn_top_right",
@@ -459,12 +441,6 @@
           "seed": 165
         },
         {
-          "spawnId": "evac_wave_14b_spawn_02",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_left",
-          "seed": 166
-        },
-        {
           "spawnId": "evac_wave_14b_spawn_03",
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_right",
@@ -538,12 +514,6 @@
           "enemyId": "enemy_scout",
           "spawnPointId": "spawn_top_left",
           "seed": 184
-        },
-        {
-          "spawnId": "evac_wave_16b_spawn_03",
-          "enemyId": "enemy_scout",
-          "spawnPointId": "spawn_top_right",
-          "seed": 185
         }
       ]
     },
@@ -600,8 +570,7 @@
       ],
       "relatedHazardIds": [
         "hazard_evac_disaster_1",
-        "hazard_evac_disaster_4",
-        "hazard_evac_disaster_6"
+        "hazard_evac_disaster_4"
       ],
       "fragmentWindow": {
         "startMs": 22200,
@@ -622,8 +591,7 @@
         "enemy_heavy"
       ],
       "relatedHazardIds": [
-        "hazard_evac_disaster_5",
-        "hazard_evac_disaster_7"
+        "hazard_evac_disaster_5"
       ]
     },
     {
@@ -644,8 +612,7 @@
       ],
       "relatedHazardIds": [
         "hazard_evac_disaster_2",
-        "hazard_evac_disaster_3",
-        "hazard_evac_disaster_7"
+        "hazard_evac_disaster_3"
       ],
       "fragmentWindow": {
         "startMs": 47600,
@@ -679,7 +646,7 @@
       "area": {
         "shape": "rect",
         "x": -60,
-        "y": 50,
+        "y": 90,
         "width": 240,
         "height": 110
       },
@@ -701,10 +668,10 @@
       "enemyDamagePerSecond": 28,
       "area": {
         "shape": "rect",
-        "x": 20,
-        "y": 30,
-        "width": 420,
-        "height": 150
+        "x": 30,
+        "y": 230,
+        "width": 360,
+        "height": 135
       },
       "motion": {
         "motionKind": "static"
@@ -713,36 +680,9 @@
       "visibilityConditionId": "cond_always"
     },
     {
-      "hazardId": "hazard_evac_disaster_6",
-      "kind": "magneticDisaster",
-      "spawnAtMs": 22600,
-      "telegraphMs": 950,
-      "activeMs": 2600,
-      "fadeOutMs": 800,
-      "tickIntervalMs": 230,
-      "noiseDamage": 0.07,
-      "enemyDamagePerSecond": 24,
-      "area": {
-        "shape": "rect",
-        "x": 250,
-        "y": 20,
-        "width": 160,
-        "height": 250
-      },
-      "motion": {
-        "motionKind": "linear",
-        "velocity": {
-          "x": -34,
-          "y": 16
-        }
-      },
-      "visualPresetId": "hazard_magnetic_disaster_standard",
-      "visibilityConditionId": "cond_always"
-    },
-    {
       "hazardId": "hazard_evac_disaster_5",
       "kind": "magneticDisaster",
-      "spawnAtMs": 27500,
+      "spawnAtMs": 29200,
       "telegraphMs": 1100,
       "activeMs": 3400,
       "fadeOutMs": 900,
@@ -751,10 +691,10 @@
       "enemyDamagePerSecond": 26,
       "area": {
         "shape": "rect",
-        "x": 80,
-        "y": 100,
-        "width": 320,
-        "height": 140
+        "x": 70,
+        "y": 190,
+        "width": 300,
+        "height": 135
       },
       "motion": {
         "motionKind": "linear",
@@ -769,19 +709,19 @@
     {
       "hazardId": "hazard_evac_disaster_2",
       "kind": "magneticDisaster",
-      "spawnAtMs": 35000,
+      "spawnAtMs": 38000,
       "telegraphMs": 1200,
-      "activeMs": 3600,
+      "activeMs": 3200,
       "fadeOutMs": 900,
       "tickIntervalMs": 220,
       "noiseDamage": 0.09,
       "enemyDamagePerSecond": 28,
       "area": {
         "shape": "rect",
-        "x": -40,
-        "y": 130,
-        "width": 460,
-        "height": 150
+        "x": -20,
+        "y": 300,
+        "width": 380,
+        "height": 120
       },
       "motion": {
         "motionKind": "static"
@@ -790,54 +730,27 @@
       "visibilityConditionId": "cond_always"
     },
     {
-      "hazardId": "hazard_evac_disaster_7",
-      "kind": "magneticDisaster",
-      "spawnAtMs": 42600,
-      "telegraphMs": 900,
-      "activeMs": 3000,
-      "fadeOutMs": 900,
-      "tickIntervalMs": 220,
-      "noiseDamage": 0.08,
-      "enemyDamagePerSecond": 26,
-      "area": {
-        "shape": "rect",
-        "x": -100,
-        "y": 30,
-        "width": 210,
-        "height": 260
-      },
-      "motion": {
-        "motionKind": "linear",
-        "velocity": {
-          "x": 38,
-          "y": -12
-        }
-      },
-      "visualPresetId": "hazard_magnetic_disaster_standard",
-      "visibilityConditionId": "cond_always"
-    },
-    {
       "hazardId": "hazard_evac_disaster_3",
       "kind": "magneticDisaster",
-      "spawnAtMs": 49000,
+      "spawnAtMs": 52000,
       "telegraphMs": 1400,
-      "activeMs": 5600,
+      "activeMs": 4600,
       "fadeOutMs": 1000,
       "tickIntervalMs": 220,
       "noiseDamage": 0.10,
       "enemyDamagePerSecond": 32,
       "area": {
         "shape": "rect",
-        "x": 140,
-        "y": 50,
-        "width": 320,
-        "height": 250
+        "x": 130,
+        "y": 175,
+        "width": 300,
+        "height": 210
       },
       "motion": {
         "motionKind": "linear",
         "velocity": {
-          "x": -22,
-          "y": 0
+          "x": -18,
+          "y": 8
         }
       },
       "visualPresetId": "hazard_magnetic_disaster_standard",

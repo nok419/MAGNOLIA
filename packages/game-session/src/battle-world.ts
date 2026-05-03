@@ -146,7 +146,10 @@ export function isCircleInsideCircle(
   targetPosition: Vector2,
   targetRadius: number,
 ): boolean {
-  return Math.hypot(position.x - targetPosition.x, position.y - targetPosition.y) <= radius + targetRadius
+  const dx = position.x - targetPosition.x
+  const dy = position.y - targetPosition.y
+  const combinedRadius = radius + targetRadius
+  return dx * dx + dy * dy <= combinedRadius * combinedRadius
 }
 
 export function doesCircleIntersectHazardArea(
@@ -166,13 +169,22 @@ export function findNearestEnemyInRange<T extends PositionedCircle>(
   position: Vector2,
   range: number,
 ): T | undefined {
-  return enemies
-    .map((enemy) => ({
-      enemy,
-      distance: Math.hypot(enemy.position.x - position.x, enemy.position.y - position.y),
-    }))
-    .filter((entry) => entry.distance <= range)
-    .sort((left, right) => left.distance - right.distance)[0]?.enemy
+  let nearest: T | undefined
+  let nearestDistanceSq = range * range
+
+  // homing は弾ごとに呼ばれるため、配列生成と sort を避けて距離の二乗で比較します。
+  for (const enemy of enemies) {
+    const dx = enemy.position.x - position.x
+    const dy = enemy.position.y - position.y
+    const distanceSq = dx * dx + dy * dy
+    if (distanceSq > nearestDistanceSq) {
+      continue
+    }
+    nearest = enemy
+    nearestDistanceSq = distanceSq
+  }
+
+  return nearest
 }
 
 export function hasEnemyWithinRange<T extends PositionedCircle>(
@@ -180,7 +192,10 @@ export function hasEnemyWithinRange<T extends PositionedCircle>(
   position: Vector2,
   range: number,
 ): boolean {
-  return enemies.some((enemy) =>
-    Math.hypot(position.x - enemy.position.x, position.y - enemy.position.y) <= range + enemy.radius,
-  )
+  return enemies.some((enemy) => {
+    const dx = position.x - enemy.position.x
+    const dy = position.y - enemy.position.y
+    const combinedRadius = range + enemy.radius
+    return dx * dx + dy * dy <= combinedRadius * combinedRadius
+  })
 }

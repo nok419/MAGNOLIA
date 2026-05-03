@@ -4,7 +4,7 @@ import type {
   RootSnapshot,
 } from "@magnolia/contracts"
 import type { BattleRenderState } from "@magnolia/game-session"
-import { audioEvents } from "@/audio"
+import { TITLE_UI_SOUND_VOLUME, audioEvents } from "@/audio"
 
 export type AudioEventAdapterState = {
   playedPresentationRequestIds: Set<string>
@@ -98,11 +98,13 @@ function playScreenTransitionAudio(
   if (!previousWasMenu && nextIsMenu) {
     if (previousScreen === "explore" && nextSnapshot.screen === "equipment") {
       audioEvents.equipmentPanelOpen()
+    } else if (previousScreen === "title") {
+      audioEvents.uiOpen({ volume: TITLE_UI_SOUND_VOLUME })
     } else {
       audioEvents.uiOpen()
     }
   } else if (previousWasMenu && !nextIsMenu) {
-    audioEvents.uiClose()
+    audioEvents.uiClose(nextSnapshot.screen === "title" ? { volume: TITLE_UI_SOUND_VOLUME } : undefined)
   }
 
   if (nextSnapshot.screen === "title") {

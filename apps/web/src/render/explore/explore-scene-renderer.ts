@@ -257,7 +257,7 @@ export function drawExploreScene(
     drawTransmissionMarker(ctx, {
       x: point.x,
       y: point.y,
-      size: 13,
+      size: 17,
       state: node.state ?? "locked",
       timeMs: input.timeMs,
       lowFrameRateMode: input.lowFrameRateMode,

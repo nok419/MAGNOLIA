@@ -11,6 +11,11 @@ import { readTargetFrameIntervalMs } from "@/app/frame-loop/frame-timing"
 import { dispatchAndSync } from "@/app/session-command-runner"
 import { writeSeenEquipmentToStorage } from "@/app/storage/seen-equipment-store"
 import type { useMagnoliaInput } from "@/app/use-magnolia-input"
+import {
+  isBattlePerformanceProfilerEnabled,
+  readPerformanceNow,
+  recordBattleRuntimeSample,
+} from "@/app/battle-performance-profiler"
 import { audioEvents } from "@/audio"
 
 type MagnoliaInput = ReturnType<typeof useMagnoliaInput>
@@ -158,18 +163,29 @@ export function useMagnoliaFrameLoop({
 
       if (snapshot.screen === "battle") {
         stopExplorationMoveAudio(MOVEMENT_AUDIO_INTERRUPT_FADE_MS)
-        const mouseButtons = input.mouseButtons
+        const shouldProfileBattle = isBattlePerformanceProfilerEnabled()
+        const profileFrameStart = shouldProfileBattle ? readPerformanceNow() : 0
         const result = session.stepBattle({
           dtMs,
           move: input.readMovementVector(settings),
-          fireMain: mouseButtons.left,
-          fireSub: mouseButtons.right,
+          fireMain: input.isPrimaryActionPressed(settings),
+          fireSub: input.isSecondaryActionPressed(settings),
           focus: input.isDashPressed(settings),
           pausePressed: false,
         })
+        const profileAfterStep = shouldProfileBattle ? readPerformanceNow() : 0
         // 戦闘中の副ボタンは sub 用です。探索へ戻った直後の scan として再利用しません。
         input.syncButtonEdges(settings)
         syncFromSession(session, result.presentationRequests, result.events)
+        if (shouldProfileBattle) {
+          const profileAfterSync = readPerformanceNow()
+          recordBattleRuntimeSample({
+            frameMs: profileAfterSync - profileFrameStart,
+            stepMs: profileAfterStep - profileFrameStart,
+            syncMs: profileAfterSync - profileAfterStep,
+            dtMs,
+          })
+        }
         return
       }
 
@@ -257,18 +273,19 @@ function runExploreFrame({
     stopExplorationMoveAudio()
   }
 
+  const interactKeyPressed = inputsLocked ? false : input.isInteractPressed(settings)
+  const primaryActionPressed = inputsLocked ? false : input.isPrimaryActionJustPressed(settings)
+  const scanKeyPressed = inputsLocked ? false : input.isScanPressed(settings)
+  const secondaryActionPressed = inputsLocked ? false : input.isSecondaryActionJustPressed(settings)
+
   const result = session.stepExplore({
     dtMs,
     move: moveVector,
     dashPressed: inputsLocked
       ? false
       : input.isDashPressed(settings),
-    interactPressed: inputsLocked
-      ? false
-      : input.isInteractPressed(settings) || input.isPrimaryMouseJustPressed(),
-    scanPressed: inputsLocked
-      ? false
-      : input.isScanPressed(settings) || input.isSecondaryMouseJustPressed(),
+    interactPressed: interactKeyPressed || primaryActionPressed,
+    scanPressed: scanKeyPressed || secondaryActionPressed,
   })
   syncFromSession(session, result.presentationRequests, result.events)
 }

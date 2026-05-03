@@ -6,6 +6,11 @@ const PROGRESS_SAVE_SLOT_IDS: readonly SaveSlotId[] = [2, 3]
 const DEFAULT_PROGRESS_SAVE_SLOT_ID: SaveSlotId = 2
 
 export function isTitleSaveSlotEmpty(slot: SaveSlot): boolean {
+  if (slot.slotId === 1) {
+    // 既存の保存データが残っていても、SLOT 1 はデモ用の new game 入口として見せます。
+    return true
+  }
+
   // タイトルでは、作成直後でプレイ時間がないデータを続きから遊べるデータとして扱いません。
   return !slot.profileId || slot.playTimeMs <= 0
 }

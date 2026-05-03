@@ -5,6 +5,7 @@ import type {
 import type {
   ArchiveSnapshot,
   ContentBundle,
+  MissionId,
   ProfileAggregate,
   RootSnapshot,
   SettingsRow,
@@ -17,6 +18,12 @@ import type {
 import type { SlotSelectMode } from "@/app/app-types"
 import type { WebPresentationState } from "@/app/presentation/presentation-state"
 import type { ExploreItemPopup } from "@/app/popups/item-popups"
+
+export type BattleTutorialIconState = {
+  missionId: MissionId
+  mainUsed: boolean
+  subUsed: boolean
+}
 
 export type MagnoliaAppState = {
   ready: boolean
@@ -36,6 +43,7 @@ export type MagnoliaAppState = {
   equipmentModalNodeId: string | null
   seenEquipmentIds: string[]
   equipmentGuideTargetId: string | null
+  battleTutorialIconState: BattleTutorialIconState | null
 }
 
 export type MagnoliaAppStateSetter = Dispatch<SetStateAction<MagnoliaAppState>>

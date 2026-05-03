@@ -1,12 +1,12 @@
 {
   "enemyId": "b1",
-  "hp": 1180,
-  "collisionDamage": 28,
+  "hp": 1500,
+  "collisionDamage": 34,
   "analysisValue": 110,
   "behaviorKind": "slowDescent",
   "behaviorParams": {
     "speed": 12,
-    "pauseMs": 7600,
+    "pauseMs": 9000,
     "pauseAtY": 112
   },
   "movementPatternId": "move_pause_then_drift_b1",

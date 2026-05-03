@@ -14,6 +14,17 @@ export type CollectibleMarkerKind =
   | "selfRepairPoints"
   | "hiddenEquipment"
 
+type TransmissionMarkerInput = {
+  x: number
+  y: number
+  size: number
+  state: TransmissionMarkerState
+  timeMs: number
+  variant?: CanvasMarkerVariant
+  selected?: boolean
+  lowFrameRateMode?: boolean
+}
+
 type MarkerVariantSpec = {
   haloScale: number
   shadowScale: number
@@ -23,7 +34,7 @@ type MarkerVariantSpec = {
 
 type TransmissionMarkerTheme = {
   accent: string
-  haloRgb: string
+  haloRole: CanvasPaletteRole
   core: string
   satelliteRole: CanvasPaletteRole
   fillAlpha: number
@@ -63,36 +74,36 @@ const MARKER_VARIANTS: Record<CanvasMarkerVariant, MarkerVariantSpec> = {
 // state と kind の対応だけを置き、表示条件やゲームルールは他レイヤへ持ち込みません。
 const TRANSMISSION_MARKER_THEMES: Record<TransmissionMarkerState, TransmissionMarkerTheme> = {
   locked: {
-    accent: "#7f96af",
-    haloRgb: "127, 150, 175",
-    core: "#d8e0eb",
-    satelliteRole: "threatNoise",
-    fillAlpha: 0.08,
-    orbitAlpha: 0.18,
-  },
-  available: {
-    accent: "#8fdcff",
-    haloRgb: "143, 220, 255",
-    core: "#f4fbff",
+    accent: rgba("threatNoise", 1),
+    haloRole: "threatNoise",
+    core: rgba("signalReadable", 1),
     satelliteRole: "threatNoise",
     fillAlpha: 0.12,
-    orbitAlpha: 0.24,
+    orbitAlpha: 0.3,
+  },
+  available: {
+    accent: rgba("threatNoise", 0.96),
+    haloRole: "threatNoise",
+    core: rgba("signalReadable", 1),
+    satelliteRole: "threatNoise",
+    fillAlpha: 0.14,
+    orbitAlpha: 0.32,
   },
   partial: {
-    accent: "#d8e7f6",
-    haloRgb: "216, 231, 246",
-    core: "#ffffff",
+    accent: rgba("threatNoise", 0.92),
+    haloRole: "threatNoise",
+    core: rgba("signalReadable", 1),
     satelliteRole: "threatNoise",
-    fillAlpha: 0.15,
-    orbitAlpha: 0.28,
+    fillAlpha: 0.16,
+    orbitAlpha: 0.34,
   },
   complete: {
-    accent: "#69d3ff",
-    haloRgb: "105, 211, 255",
+    accent: "#ffffff",
+    haloRole: "signalReadable",
     core: "#ffffff",
     satelliteRole: "signalReadable",
-    fillAlpha: 0.18,
-    orbitAlpha: 0.34,
+    fillAlpha: 0.22,
+    orbitAlpha: 0.46,
   },
 }
 
@@ -125,22 +136,14 @@ const COLLECTIBLE_MARKER_THEMES: Record<
 
 export function drawTransmissionMarker(
   ctx: CanvasRenderingContext2D,
-  input: {
-    x: number
-    y: number
-    size: number
-    state: TransmissionMarkerState
-    timeMs: number
-    variant?: CanvasMarkerVariant
-    selected?: boolean
-    lowFrameRateMode?: boolean
-  },
+  input: TransmissionMarkerInput,
 ) {
   const variant = MARKER_VARIANTS[input.variant ?? "explore"]
   const theme = TRANSMISSION_MARKER_THEMES[input.state]
   const baseAlpha = ctx.globalAlpha
   const pulse = 0.76 + Math.sin(input.timeMs * 0.004 + input.x * 0.03 + input.y * 0.02) * 0.24
-  const orbitRadius = input.size * (1.3 * variant.orbitScale)
+  const objectiveScale = input.state === "complete" ? 1 : 1.12
+  const orbitRadius = input.size * (1.3 * variant.orbitScale * objectiveScale)
   const rotation = input.timeMs * 0.00075
   const satelliteAngle = -rotation * 0.72 + input.x * 0.011
   const satelliteRadius = orbitRadius * 1.34
@@ -153,15 +156,15 @@ export function drawTransmissionMarker(
     0,
     input.x,
     input.y,
-    input.size * 2.2 * variant.haloScale,
+    input.size * 2.45 * variant.haloScale * objectiveScale,
   )
-  haloGradient.addColorStop(0, `rgba(${theme.haloRgb}, ${(0.2 * pulse).toFixed(3)})`)
-  haloGradient.addColorStop(0.45, `rgba(${theme.haloRgb}, ${(0.08 * pulse).toFixed(3)})`)
-  haloGradient.addColorStop(1, `rgba(${theme.haloRgb}, 0)`)
+  haloGradient.addColorStop(0, rgba(theme.haloRole, (0.24 * objectiveScale) * pulse))
+  haloGradient.addColorStop(0.45, rgba(theme.haloRole, (0.1 * objectiveScale) * pulse))
+  haloGradient.addColorStop(1, rgba(theme.haloRole, 0))
   ctx.globalAlpha = baseAlpha
   ctx.fillStyle = haloGradient
   ctx.beginPath()
-  ctx.arc(input.x, input.y, input.size * 2.2 * variant.haloScale, 0, TAU)
+  ctx.arc(input.x, input.y, input.size * 2.45 * variant.haloScale * objectiveScale, 0, TAU)
   ctx.fill()
 
   // ── 残響リング (通信マーカーの「電波」感) ──
@@ -175,12 +178,16 @@ export function drawTransmissionMarker(
       const echoR = input.size * (0.9 + phase * 2.1)
       const echoAlpha = (1 - phase) * (1 - phase) * 0.14
       if (echoAlpha < 0.005) continue
-      ctx.strokeStyle = `rgba(${theme.haloRgb}, ${echoAlpha.toFixed(3)})`
+      ctx.strokeStyle = rgba(theme.haloRole, echoAlpha)
       ctx.lineWidth = Math.max(0.55, 0.75 * variant.lineScale)
       ctx.beginPath()
       ctx.arc(input.x, input.y, echoR, 0, TAU)
       ctx.stroke()
     }
+  }
+
+  if (input.state !== "complete") {
+    drawMissionObjectiveFrame(ctx, input, variant, theme.haloRole, pulse)
   }
 
   const satelliteStroke = (alpha: number) => rgba(theme.satelliteRole, alpha)
@@ -228,7 +235,7 @@ export function drawTransmissionMarker(
   }
 
   if (variant.shadowScale > 0.01) {
-    ctx.shadowColor = `rgba(${theme.haloRgb}, ${(0.7 * variant.shadowScale).toFixed(3)})`
+    ctx.shadowColor = rgba(theme.haloRole, 0.7 * variant.shadowScale)
     ctx.shadowBlur = 14 * variant.shadowScale
   }
 
@@ -271,6 +278,41 @@ export function drawTransmissionMarker(
     ctx.stroke()
   }
 
+  ctx.restore()
+}
+
+function drawMissionObjectiveFrame(
+  ctx: CanvasRenderingContext2D,
+  input: TransmissionMarkerInput,
+  variant: MarkerVariantSpec,
+  haloRole: CanvasPaletteRole,
+  pulse: number,
+) {
+  // 未完了ミッションは、通信済みノードよりも先に見つけてほしいため外枠で優先度を示します。
+  const radius = input.size * (1.85 * variant.orbitScale)
+  const tick = input.size * (0.42 * variant.lineScale)
+  const alpha = (0.28 + pulse * 0.16) * Math.max(0.55, variant.shadowScale)
+
+  ctx.save()
+  ctx.strokeStyle = rgba(haloRole, alpha)
+  ctx.lineWidth = Math.max(0.7, 1.12 * variant.lineScale)
+  ctx.setLineDash(input.lowFrameRateMode ? [] : [Math.max(3, tick * 0.55), Math.max(2, tick * 0.34)])
+  ctx.beginPath()
+  ctx.arc(input.x, input.y, radius, 0, TAU)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  ctx.strokeStyle = rgba(haloRole, Math.min(0.62, alpha + 0.16))
+  for (let index = 0; index < 4; index += 1) {
+    const angle = Math.PI * 0.25 + index * Math.PI * 0.5
+    const x = input.x + Math.cos(angle) * radius
+    const y = input.y + Math.sin(angle) * radius
+    const tangent = angle + Math.PI * 0.5
+    ctx.beginPath()
+    ctx.moveTo(x - Math.cos(tangent) * tick, y - Math.sin(tangent) * tick)
+    ctx.lineTo(x + Math.cos(tangent) * tick, y + Math.sin(tangent) * tick)
+    ctx.stroke()
+  }
   ctx.restore()
 }
 

@@ -7,7 +7,7 @@ import { hex, rgba } from "@/render/shared/canvas-palette"
 import { worldToCanvasPoint } from "@/render/shared/coordinates"
 import type { MiniMapViewModel } from "@/view-models/map-view-model"
 
-export const MINI_MAP_SIZE = 180
+export const MINI_MAP_SIZE = 196
 
 const CENTER = MINI_MAP_SIZE / 2
 const RADIUS = MINI_MAP_SIZE / 2 - 6
@@ -46,7 +46,7 @@ export function drawMiniMapFrame(input: {
     drawTransmissionMarker(ctx, {
       x: p.x,
       y: p.y,
-      size: 4.8,
+      size: 6.2,
       state: node.state,
       timeMs,
       variant: "mini",

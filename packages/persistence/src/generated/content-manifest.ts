@@ -15,6 +15,7 @@ import battleSpawnPointsSpawnSideRightJson from "../../../../content/gameplay/ba
 import battleSpawnPointsSpawnTopCenterJson from "../../../../content/gameplay/battle-spawn-points/spawn_top_center.json"
 import battleSpawnPointsSpawnTopLeftJson from "../../../../content/gameplay/battle-spawn-points/spawn_top_left.json"
 import battleSpawnPointsSpawnTopRightJson from "../../../../content/gameplay/battle-spawn-points/spawn_top_right.json"
+import bulletPatternsBpA1PressureStreamJson from "../../../../content/gameplay/bullet-patterns/bp_a1_pressure_stream.json"
 import bulletPatternsBpA2LanceSpreadJson from "../../../../content/gameplay/bullet-patterns/bp_a2_lance_spread.json"
 import bulletPatternsBpB1CoreBurstJson from "../../../../content/gameplay/bullet-patterns/bp_b1_core_burst.json"
 import bulletPatternsBpB1LanceStreamJson from "../../../../content/gameplay/bullet-patterns/bp_b1_lance_stream.json"
@@ -114,7 +115,7 @@ export const contentManifest = {
   areas: [areasAreaBroadcastFacilityJson, areasAreaCentralTowerJson],
   backgroundPresets: [backgroundPresetsBgBroadcastFacilityJson, backgroundPresetsBgCentralTowerJson],
   battleSpawnPoints: [battleSpawnPointsSpawnMidLeftJson, battleSpawnPointsSpawnMidRightJson, battleSpawnPointsSpawnPlayerCenterJson, battleSpawnPointsSpawnSideLeftJson, battleSpawnPointsSpawnSideRightJson, battleSpawnPointsSpawnTopCenterJson, battleSpawnPointsSpawnTopLeftJson, battleSpawnPointsSpawnTopRightJson],
-  bulletPatterns: [bulletPatternsBpA2LanceSpreadJson, bulletPatternsBpB1CoreBurstJson, bulletPatternsBpB1LanceStreamJson, bulletPatternsBpC1PressureRingJson, bulletPatternsBpHeavyBurstJson, bulletPatternsBpRadialBurstJson, bulletPatternsBpScoutSingleJson, bulletPatternsBpSpiralStreamJson, bulletPatternsBpStandardSpreadJson],
+  bulletPatterns: [bulletPatternsBpA1PressureStreamJson, bulletPatternsBpA2LanceSpreadJson, bulletPatternsBpB1CoreBurstJson, bulletPatternsBpB1LanceStreamJson, bulletPatternsBpC1PressureRingJson, bulletPatternsBpHeavyBurstJson, bulletPatternsBpRadialBurstJson, bulletPatternsBpScoutSingleJson, bulletPatternsBpSpiralStreamJson, bulletPatternsBpStandardSpreadJson],
   enemies: [enemiesA1Json, enemiesA2Json, enemiesB1Json, enemiesC1Json, enemiesEnemyHeavyJson, enemiesEnemyScoutJson, enemiesEnemyStandardJson],
   equipment: [equipmentEqMainCarrierJson, equipmentEqMainPulseJson, equipmentEqOsBrokenJson, equipmentEqOsLilyJson, equipmentEqOsMagnoliaJson, equipmentEqSubNoiseCancellerJson, equipmentEqSubSilentWaveJson, equipmentEqSubsystemAnalysisCircuitJson, equipmentEqSubsystemGuidedWaveJson, equipmentEqSubsystemInversePhaseJson, equipmentEqSubsystemNoiseGateJson, equipmentEqSubsystemPrecisionControlJson],
   effects: [equipmentEffectsEffMainCarrierJson, equipmentEffectsEffMainPulseJson, equipmentEffectsEffOsLilyJson, equipmentEffectsEffOsMagnoliaJson, equipmentEffectsEffSubNoiseCancellerJson, equipmentEffectsEffSubSilentWaveJson, equipmentEffectsEffSubsystemAnalysisCircuitJson, equipmentEffectsEffSubsystemGuidedWaveJson, equipmentEffectsEffSubsystemInversePhaseJson, equipmentEffectsEffSubsystemNoiseGateJson, equipmentEffectsEffSubsystemPrecisionControlJson],

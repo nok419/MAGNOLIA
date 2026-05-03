@@ -25,32 +25,33 @@ type ProjectileRendererInput = {
 type BattleProjectileRenderOptions = {
   reduceFlashing: boolean
   lowFrameRateMode: boolean
+  denseFrameMode: boolean
 }
 
 const BATTLE_PLAYER_PROJECTILE_RENDERERS: Record<
   string,
   (ctx: CanvasRenderingContext2D, input: ProjectileRendererInput) => void
 > = {
-  carrier: (ctx, input) => drawCarrierProjectile(ctx, input.projectile),
+  carrier: (ctx, input) => drawCarrierProjectile(ctx, input.projectile, input.renderOptions),
   lance: (ctx, input) => drawPulseMelee(ctx, input.projectile, input.timeMs),
   pulse: (ctx, input) => {
     // bodyKind は本体形状の正本です。radiusScale はサイズ調整だけに使います。
     if (input.projectile.visual.bodyKind === "carrierBlast") {
-      drawCarrierBlast(ctx, input.projectile)
+      drawCarrierBlast(ctx, input.projectile, input.renderOptions)
       return
     }
-    drawDefaultPlayerProjectile(ctx, input.projectile)
+    drawDefaultPlayerProjectile(ctx, input.projectile, input.renderOptions)
   },
-  default: (ctx, input) => drawDefaultPlayerProjectile(ctx, input.projectile),
+  default: (ctx, input) => drawDefaultPlayerProjectile(ctx, input.projectile, input.renderOptions),
 }
 
 const BATTLE_ENEMY_PROJECTILE_RENDERERS: Record<
   string,
   (ctx: CanvasRenderingContext2D, input: ProjectileRendererInput) => void
 > = {
-  orb: (ctx, input) => drawNoiseOrbProjectile(ctx, input.projectile, input.timeMs),
-  lance: (ctx, input) => drawEnemyLanceProjectile(ctx, input.projectile, input.timeMs),
-  pulse: (ctx, input) => drawBossCoreProjectile(ctx, input.projectile, input.timeMs),
+  orb: (ctx, input) => drawNoiseOrbProjectile(ctx, input.projectile, input.timeMs, input.renderOptions),
+  lance: (ctx, input) => drawEnemyLanceProjectile(ctx, input.projectile, input.timeMs, input.renderOptions),
+  pulse: (ctx, input) => drawBossCoreProjectile(ctx, input.projectile, input.timeMs, input.renderOptions),
   shard: (ctx, input) => {
     // bodyKind は本体形状、trailKind は軌跡だけを表します。
     if (input.projectile.visual.bodyKind === "geoDiamond") {
@@ -59,7 +60,7 @@ const BATTLE_ENEMY_PROJECTILE_RENDERERS: Record<
     }
     drawSignalShardProjectile(ctx, input.projectile, input.timeMs, input.renderOptions)
   },
-  default: (ctx, input) => drawNoiseOrbProjectile(ctx, input.projectile, input.timeMs),
+  default: (ctx, input) => drawNoiseOrbProjectile(ctx, input.projectile, input.timeMs, input.renderOptions),
 }
 
 export function drawPlayerProjectile(
@@ -75,30 +76,39 @@ export function drawPlayerProjectile(
     { category: "projectile", presetId: p.visualPresetId },
   )
   const renderEffects = p.renderEffects ?? (p.inversePhaseVisual ? ["inversePhase"] : [])
-  if (renderEffects.includes("inversePhaseAura")) {
+  if (renderEffects.includes("inversePhaseAura") && !shouldSimplifyProjectile(renderOptions)) {
     drawInversePhaseProjectileAura(ctx, p, t)
   }
   drawProjectileTrailHint(ctx, p, renderOptions)
   renderer(ctx, { projectile: p, timeMs: t, renderState, renderOptions })
 }
 
-function drawDefaultPlayerProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRenderState) {
+function drawDefaultPlayerProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: ProjectileRenderState,
+  renderOptions: BattleProjectileRenderOptions,
+) {
   const role = readProjectileRole(p, "playerSignal")
   const glow = readGlowIntensity(p.visual, 0.5)
   const { x, y } = p.position
   const length = p.radius * 4
   const width = p.radius * 0.7
+  const simplified = shouldSimplifyProjectile(renderOptions)
 
   ctx.save()
   ctx.shadowColor = rgba(role, 0.4 + glow * 0.45)
-  ctx.shadowBlur = 4 + glow * 8
+  ctx.shadowBlur = simplified ? 0 : 4 + glow * 8
 
-  const tailGrad = ctx.createLinearGradient(x, y - length * 0.3, x, y + length * 1.5)
-  tailGrad.addColorStop(0, gradientStop("signalReadable", 0.95))
-  tailGrad.addColorStop(0.3, gradientStop(role, 0.55))
-  tailGrad.addColorStop(1, gradientStop(role, 0))
-  ctx.fillStyle = tailGrad
-  ctx.fillRect(x - width * 0.5, y, width, length * 1.5)
+  if (simplified) {
+    ctx.fillStyle = rgba(role, 0.42)
+  } else {
+    const tailGrad = ctx.createLinearGradient(x, y - length * 0.3, x, y + length * 1.5)
+    tailGrad.addColorStop(0, gradientStop("signalReadable", 0.95))
+    tailGrad.addColorStop(0.3, gradientStop(role, 0.55))
+    tailGrad.addColorStop(1, gradientStop(role, 0))
+    ctx.fillStyle = tailGrad
+  }
+  ctx.fillRect(x - width * 0.5, y, width, length * (simplified ? 0.8 : 1.5))
 
   ctx.fillStyle = hex("signalReadable")
   ctx.beginPath()
@@ -144,7 +154,11 @@ function drawInversePhaseProjectileAura(
   ctx.restore()
 }
 
-function drawCarrierProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRenderState) {
+function drawCarrierProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: ProjectileRenderState,
+  renderOptions: BattleProjectileRenderOptions,
+) {
   const role = readProjectileRole(p, "playerSignal")
   const glow = readGlowIntensity(p.visual, 0.58)
   const radiusScale = p.visual.radiusScale ?? 1
@@ -155,27 +169,30 @@ function drawCarrierProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRende
   const tailX = x - direction.x * tailLength
   const tailY = y - direction.y * tailLength
   const normal = { x: -direction.y, y: direction.x }
+  const simplified = shouldSimplifyProjectile(renderOptions)
 
   ctx.save()
   ctx.shadowColor = rgba(role, 0.5 + glow * 0.4)
-  ctx.shadowBlur = 8 + glow * 10
+  ctx.shadowBlur = simplified ? 0 : 8 + glow * 10
 
-  const beamGradient = ctx.createLinearGradient(tailX, tailY, x, y)
-  beamGradient.addColorStop(0, gradientStop(role, 0))
-  beamGradient.addColorStop(0.35, gradientStop(role, 0.36))
-  beamGradient.addColorStop(0.78, gradientStop("signalReadable", 0.9))
-  beamGradient.addColorStop(1, gradientStop("signalReadable", 1))
-  ctx.fillStyle = beamGradient
-  ctx.beginPath()
-  ctx.moveTo(tailX + normal.x * halfWidth, tailY + normal.y * halfWidth)
-  ctx.lineTo(x + normal.x * (halfWidth * 0.35), y + normal.y * (halfWidth * 0.35))
-  ctx.lineTo(x - normal.x * (halfWidth * 0.35), y - normal.y * (halfWidth * 0.35))
-  ctx.lineTo(tailX - normal.x * halfWidth, tailY - normal.y * halfWidth)
-  ctx.closePath()
-  ctx.fill()
+  if (!simplified) {
+    const beamGradient = ctx.createLinearGradient(tailX, tailY, x, y)
+    beamGradient.addColorStop(0, gradientStop(role, 0))
+    beamGradient.addColorStop(0.35, gradientStop(role, 0.36))
+    beamGradient.addColorStop(0.78, gradientStop("signalReadable", 0.9))
+    beamGradient.addColorStop(1, gradientStop("signalReadable", 1))
+    ctx.fillStyle = beamGradient
+    ctx.beginPath()
+    ctx.moveTo(tailX + normal.x * halfWidth, tailY + normal.y * halfWidth)
+    ctx.lineTo(x + normal.x * (halfWidth * 0.35), y + normal.y * (halfWidth * 0.35))
+    ctx.lineTo(x - normal.x * (halfWidth * 0.35), y - normal.y * (halfWidth * 0.35))
+    ctx.lineTo(tailX - normal.x * halfWidth, tailY - normal.y * halfWidth)
+    ctx.closePath()
+    ctx.fill()
+  }
 
   ctx.strokeStyle = rgba("signalReadable", 0.92)
-  ctx.lineWidth = Math.max(1, halfWidth * 0.8)
+  ctx.lineWidth = Math.max(1, halfWidth * (simplified ? 0.55 : 0.8))
   ctx.beginPath()
   ctx.moveTo(tailX, tailY)
   ctx.lineTo(x, y)
@@ -184,28 +201,35 @@ function drawCarrierProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRende
   ctx.restore()
 }
 
-function drawCarrierBlast(ctx: CanvasRenderingContext2D, p: ProjectileRenderState) {
+function drawCarrierBlast(
+  ctx: CanvasRenderingContext2D,
+  p: ProjectileRenderState,
+  renderOptions: BattleProjectileRenderOptions,
+) {
   const role = readProjectileRole(p, "playerSignal")
   const glow = readGlowIntensity(p.visual, 0.5)
   const radiusScale = p.visual.radiusScale ?? 1
   const { x, y } = p.position
   const outerRadius = p.radius * 0.84 * radiusScale
   const innerRadius = p.radius * 0.52 * radiusScale
+  const simplified = shouldSimplifyProjectile(renderOptions)
 
   ctx.save()
   ctx.shadowColor = rgba(role, 0.6 + glow * 0.3)
-  ctx.shadowBlur = 10 + glow * 12
+  ctx.shadowBlur = simplified ? 0 : 10 + glow * 12
   ctx.strokeStyle = rgba("signalReadable", 0.82)
   ctx.lineWidth = 1.6
   ctx.beginPath()
   ctx.arc(x, y, outerRadius, 0, TAU)
   ctx.stroke()
 
-  ctx.strokeStyle = rgba(role, 0.4 + glow * 0.2)
-  ctx.lineWidth = 0.9
-  ctx.beginPath()
-  ctx.arc(x, y, innerRadius, 0, TAU)
-  ctx.stroke()
+  if (!simplified) {
+    ctx.strokeStyle = rgba(role, 0.4 + glow * 0.2)
+    ctx.lineWidth = 0.9
+    ctx.beginPath()
+    ctx.arc(x, y, innerRadius, 0, TAU)
+    ctx.stroke()
+  }
   ctx.restore()
 }
 
@@ -480,6 +504,10 @@ export function drawEnemyProjectile(
   renderState: BattleRenderState,
   renderOptions: BattleProjectileRenderOptions,
 ) {
+  if (renderOptions.denseFrameMode) {
+    drawDenseEnemyProjectile(ctx, p)
+    return
+  }
   const renderer = resolveBattleRenderer(
     BATTLE_ENEMY_PROJECTILE_RENDERERS,
     p.visual.rendererKind,
@@ -489,6 +517,38 @@ export function drawEnemyProjectile(
   renderer(ctx, { projectile: p, timeMs: t, renderState, renderOptions })
 }
 
+function drawDenseEnemyProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: ProjectileRenderState,
+): void {
+  const role = readProjectileRole(p, "enemyNoise")
+  const { x, y } = p.position
+  const r = p.radius * (p.visual.radiusScale ?? 1)
+  const isAngular =
+    p.visual.bodyKind === "geoDiamond" ||
+    p.visual.rendererKind === "lance" ||
+    p.visual.rendererKind === "shard"
+
+  ctx.save()
+  ctx.globalAlpha = 0.76
+  ctx.fillStyle = rgba(role, 0.7)
+  ctx.strokeStyle = rgba("signalReadable", 0.55)
+  ctx.lineWidth = 0.8
+  ctx.beginPath()
+  if (isAngular) {
+    ctx.moveTo(x, y - r * 0.95)
+    ctx.lineTo(x + r * 0.62, y)
+    ctx.lineTo(x, y + r * 0.95)
+    ctx.lineTo(x - r * 0.62, y)
+    ctx.closePath()
+  } else {
+    ctx.arc(x, y, Math.max(2.2, r * 0.72), 0, TAU)
+  }
+  ctx.fill()
+  ctx.stroke()
+  ctx.restore()
+}
+
 function drawProjectileTrailHint(
   ctx: CanvasRenderingContext2D,
   p: ProjectileRenderState,
@@ -496,6 +556,9 @@ function drawProjectileTrailHint(
 ): void {
   const trailKind = p.visual.trailKind
   if (!trailKind || trailKind === "none") {
+    return
+  }
+  if (renderOptions.denseFrameMode) {
     return
   }
   const role = readProjectileRole(p, p.side === "enemy" ? "enemyNoise" : "playerSignal")
@@ -510,7 +573,7 @@ function drawProjectileTrailHint(
         : trailKind === "brokenSignal" || trailKind === "geometric"
           ? 4
           : 3
-  const qualityScale = renderOptions.lowFrameRateMode ? 0.58 : 1
+  const qualityScale = shouldSimplifyProjectile(renderOptions) ? 0.58 : 1
   const length = p.radius * lengthFactor * (0.7 + motionSmear * 1.1) * qualityScale
   const baseAlpha = (trailKind === "noise" || trailKind === "shortSignal" ? 0.16 : 0.1) * qualityScale
   ctx.save()
@@ -523,7 +586,12 @@ function drawProjectileTrailHint(
   ctx.restore()
 }
 
-function drawNoiseOrbProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRenderState, t: number) {
+function drawNoiseOrbProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: ProjectileRenderState,
+  t: number,
+  renderOptions: BattleProjectileRenderOptions,
+) {
   const role = readProjectileRole(p, "enemyNoise")
   const glow = readGlowIntensity(p.visual, 0.45)
   const auraScale = readAuraScale(p.visual.auraKind, 1)
@@ -531,6 +599,7 @@ function drawNoiseOrbProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRend
   const r = p.radius * (p.visual.radiusScale ?? 1)
   const seed = hashRenderString(p.projectileInstanceId)
   const dir = seed % 2 === 0 ? 1 : -1
+  const simplified = shouldSimplifyProjectile(renderOptions)
 
   const breathe = 0.88 + 0.12 * Math.sin(t * 0.004 + seed)
   const pulse = 0.8 + 0.2 * Math.sin(t * 0.01 + seed)
@@ -538,7 +607,7 @@ function drawNoiseOrbProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRend
 
   ctx.save()
   ctx.shadowColor = rgba(role, 0.18 + glow * 0.4)
-  ctx.shadowBlur = glow * 8
+  ctx.shadowBlur = simplified ? 0 : glow * 8
 
   ctx.globalAlpha = 0.07 + 0.04 * breathe
   ctx.fillStyle = hex(role)
@@ -552,6 +621,16 @@ function drawNoiseOrbProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRend
   ctx.beginPath()
   ctx.arc(x, y, r * 1.2, rot, rot + Math.PI * 1.3)
   ctx.stroke()
+
+  if (simplified) {
+    ctx.globalAlpha = 0.72
+    ctx.fillStyle = rgba("signalReadable", 0.96)
+    ctx.beginPath()
+    ctx.arc(x, y, r * 0.24 * pulse, 0, TAU)
+    ctx.fill()
+    ctx.restore()
+    return
+  }
 
   ctx.globalAlpha = 0.18
   ctx.strokeStyle = rgba("signalReadable", 0.45)
@@ -618,6 +697,7 @@ function drawGeoDiamondProjectile(
   const rot = t * 0.003 * (seed % 2 === 0 ? 1 : -1) + seed * 0.01
   const s = r * 0.8
   const sw = s * PHI_INV
+  const simplified = shouldSimplifyProjectile(renderOptions)
   const diamondPath = readCachedCanvasPath(
     {
       rendererKind: p.visual.rendererKind,
@@ -643,7 +723,7 @@ function drawGeoDiamondProjectile(
   ctx.translate(x, y)
   ctx.rotate(rot)
   ctx.shadowColor = rgba(role, 0.24 + glow * 0.34)
-  ctx.shadowBlur = glow * 6
+  ctx.shadowBlur = simplified ? 0 : glow * 6
 
   ctx.globalAlpha = 0.09
   ctx.fillStyle = hex(role)
@@ -669,7 +749,12 @@ function drawGeoDiamondProjectile(
   ctx.restore()
 }
 
-function drawEnemyLanceProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRenderState, t: number) {
+function drawEnemyLanceProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: ProjectileRenderState,
+  t: number,
+  renderOptions: BattleProjectileRenderOptions,
+) {
   const role = readProjectileRole(p, "enemyPrototype")
   const glow = readGlowIntensity(p.visual, 0.5)
   const auraScale = readAuraScale(p.visual.auraKind, 1)
@@ -679,11 +764,12 @@ function drawEnemyLanceProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRe
   const direction = normalizeCanvasVector(p.velocity.x, p.velocity.y)
   const angle = Math.atan2(direction.y, direction.x) + Math.PI / 2
   const pulse = 0.86 + 0.14 * Math.sin(t * 0.006 + seed)
+  const simplified = shouldSimplifyProjectile(renderOptions)
 
   ctx.save()
   ctx.translate(x, y)
   ctx.shadowColor = rgba(role, 0.24 + glow * 0.4)
-  ctx.shadowBlur = glow * 6
+  ctx.shadowBlur = simplified ? 0 : glow * 6
 
   ctx.globalAlpha = 0.09 + 0.04 * pulse
   ctx.fillStyle = hex(role)
@@ -719,7 +805,12 @@ function drawEnemyLanceProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRe
   ctx.restore()
 }
 
-function drawBossCoreProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRenderState, t: number) {
+function drawBossCoreProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: ProjectileRenderState,
+  t: number,
+  renderOptions: BattleProjectileRenderOptions,
+) {
   const role = readProjectileRole(p, "enemyPrototype")
   const glow = readGlowIntensity(p.visual, 0.55)
   const auraScale = readAuraScale(p.visual.auraKind, 1.05)
@@ -729,11 +820,12 @@ function drawBossCoreProjectile(ctx: CanvasRenderingContext2D, p: ProjectileRend
   const rot = t * 0.0018 * (seed % 2 === 0 ? 1 : -1) + seed * 0.04
   const pulse = 0.86 + 0.14 * Math.sin(t * 0.005 + seed)
   const breathe = 0.94 + 0.06 * Math.sin(t * 0.003 + seed)
+  const simplified = shouldSimplifyProjectile(renderOptions)
 
   ctx.save()
   ctx.translate(x, y)
   ctx.shadowColor = rgba(role, 0.32 + glow * 0.4)
-  ctx.shadowBlur = glow * 12
+  ctx.shadowBlur = simplified ? 0 : glow * 12
 
   ctx.globalAlpha = 0.1
   ctx.fillStyle = hex(role)
@@ -795,6 +887,7 @@ function drawSignalShardProjectile(
   const rot = t * 0.0022 * dir + seed * 0.08
   const pulse = 0.82 + 0.18 * Math.sin(t * 0.008 + seed)
   const haloScale = 0.92 + 0.08 * Math.sin(t * 0.004 + seed)
+  const simplified = shouldSimplifyProjectile(renderOptions)
   const shardPath = readCachedCanvasPath(
     {
       rendererKind: p.visual.rendererKind,
@@ -820,7 +913,7 @@ function drawSignalShardProjectile(
   ctx.translate(x, y)
   ctx.rotate(rot)
   ctx.shadowColor = rgba(role, 0.2 + glow * 0.36)
-  ctx.shadowBlur = glow * 8
+  ctx.shadowBlur = simplified ? 0 : glow * 8
 
   ctx.globalAlpha = 0.07 + 0.03 * pulse
   ctx.fillStyle = hex(role)
@@ -828,7 +921,9 @@ function drawSignalShardProjectile(
   ctx.arc(0, 0, r * 2.1 * haloScale * auraScale, 0, TAU)
   ctx.fill()
 
-  for (let index = 0; index < 4; index++) {
+  // 弾が多い時は shard の複製枚数を落とします。判定は runtime 側に残るため見た目だけの軽量化です。
+  const shardCopies = simplified ? 1 : 4
+  for (let index = 0; index < shardCopies; index++) {
     const angle = (TAU / 4) * index
     ctx.save()
     ctx.rotate(angle)
@@ -857,16 +952,18 @@ function drawSignalShardProjectile(
   ctx.arc(0, 0, r * 0.22 * pulse, 0, TAU)
   ctx.fill()
 
-  ctx.globalAlpha = 0.16
-  ctx.strokeStyle = rgba(role, 0.6)
-  ctx.lineWidth = 0.4
-  ctx.beginPath()
-  for (let i = 0; i < 4; i++) {
-    const a = (TAU / 4) * i
-    ctx.moveTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3)
-    ctx.lineTo(Math.cos(a) * r * 1.5, Math.sin(a) * r * 1.5)
+  if (!simplified) {
+    ctx.globalAlpha = 0.16
+    ctx.strokeStyle = rgba(role, 0.6)
+    ctx.lineWidth = 0.4
+    ctx.beginPath()
+    for (let i = 0; i < 4; i++) {
+      const a = (TAU / 4) * i
+      ctx.moveTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3)
+      ctx.lineTo(Math.cos(a) * r * 1.5, Math.sin(a) * r * 1.5)
+    }
+    ctx.stroke()
   }
-  ctx.stroke()
 
   ctx.restore()
   ctx.globalAlpha = 1
@@ -874,6 +971,10 @@ function drawSignalShardProjectile(
 
 function readProjectileRole(p: ProjectileRenderState, fallback: CanvasPaletteRole): CanvasPaletteRole {
   return resolveCanvasPaletteRole(p.visual.paletteRole, fallback)
+}
+
+function shouldSimplifyProjectile(renderOptions: BattleProjectileRenderOptions): boolean {
+  return renderOptions.lowFrameRateMode || renderOptions.denseFrameMode
 }
 
 function readGlowIntensity(visual: ProjectileContentVisualPreset, fallback: number): number {

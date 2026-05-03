@@ -25,6 +25,20 @@ test("loadContentBundle loads content presets and presentation cues", async () =
     "  bulletPatterns: Object.keys(bundle.bulletPatterns).sort(),",
     "  projectiles: Object.keys(bundle.projectiles).sort(),",
     "}",
+    "export const mission02Pressure = {",
+    "  a1Patterns: bundle.enemies.a1.bulletPatternIds,",
+    "  a1CadenceMs: bundle.bulletPatterns.bp_a1_pressure_stream.cadenceMs,",
+    "  a2CadenceMs: bundle.bulletPatterns.bp_a2_lance_spread.cadenceMs,",
+    "  a2BurstCount: bundle.bulletPatterns.bp_a2_lance_spread.burstCount,",
+    "  scoutPatterns: bundle.enemies.enemy_scout.bulletPatternIds,",
+    "  heavyPatterns: bundle.enemies.enemy_heavy.bulletPatternIds,",
+    "}",
+    "export const missionEnemyCounts = Object.fromEntries(",
+    "  Object.entries(bundle.missions).map(([missionId, mission]) => [",
+    "    missionId,",
+    "    mission.waves.reduce((sum, wave) => sum + wave.entries.length, 0),",
+    "  ]),",
+    ")",
     "",
   ].join("\n").replace("./packages", `${ROOT}/packages`))
 
@@ -40,7 +54,7 @@ test("loadContentBundle loads content presets and presentation cues", async () =
     tsconfig: path.join(ROOT, "tsconfig.base.json"),
   })
 
-  const { counts } = await import(`file://${outfile}`)
+  const { counts, mission02Pressure, missionEnemyCounts } = await import(`file://${outfile}`)
 
   assert.deepEqual(counts.battleSpawnPoints, [
     "spawn_mid_left",
@@ -75,6 +89,7 @@ test("loadContentBundle loads content presets and presentation cues", async () =
     "enemy_standard",
   ])
   assert.deepEqual(counts.bulletPatterns, [
+    "bp_a1_pressure_stream",
     "bp_a2_lance_spread",
     "bp_b1_core_burst",
     "bp_b1_lance_stream",
@@ -95,4 +110,17 @@ test("loadContentBundle loads content presets and presentation cues", async () =
     "proj_player_pulse",
     "proj_player_pulse_melee",
   ])
+  assert.deepEqual(mission02Pressure, {
+    a1Patterns: ["bp_a1_pressure_stream"],
+    a1CadenceMs: 260,
+    a2CadenceMs: 1600,
+    a2BurstCount: 6,
+    scoutPatterns: ["bp_scout_single"],
+    heavyPatterns: ["bp_heavy_burst", "bp_spiral_stream"],
+  })
+  assert.deepEqual(missionEnemyCounts, {
+    mission_evacuation: 51,
+    mission_good_morning: 27,
+    mission_where_are_you: 29,
+  })
 })

@@ -79,7 +79,7 @@ export function App() {
           exploreEvents={app.exploreEvents}
           itemPopups={app.itemPopups}
           shipVariant={app.settings.shipVariant}
-          showEquipmentTutorialIcon={app.shouldShowEquipmentTutorialIcon}
+          showOsMagnoliaEquipPrompt={app.shouldShowOsMagnoliaEquipPrompt}
           onInteractNode={(nodeId, context) => void app.interactExploreNode(nodeId, context)}
           onSetMoveTarget={app.setExploreMoveTarget}
           onConsumePrimaryClick={app.consumePrimaryMousePress}
@@ -111,6 +111,7 @@ export function App() {
         <BattleScreen
           renderState={app.battleRenderState}
           battleEvents={app.battleEvents}
+          battleTutorialIconState={app.battleTutorialIconState}
           shipVariant={app.settings.shipVariant}
           displayOptions={displayOptions}
           onReturnToExplore={() => void app.returnToExplore()}
